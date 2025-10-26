@@ -14,13 +14,13 @@ class FullFeatureBuilder {
 
   /// Build complete 76-feature vector for 60 timesteps
   /// Returns List<List<double>> of shape (60, 76)
-  /// Minimum 60 candles required (for sequence), ideally 120+ for SMA100
+  /// Minimum 50 candles required (for new coins like WLFI with 54 days history)
   List<List<double>> buildFeatures({
     required List<Candle> candles,
   }) {
-    // Minimum 60 for sequence (for new coins like WLFI/TRUMP with limited history)
-    if (candles.length < 60) {
-      throw ArgumentError('Need at least 60 candles for sequence, got ${candles.length}');
+    // Minimum 50 for sequence (WLFI has 54 days, TRUMP has more)
+    if (candles.length < 50) {
+      throw ArgumentError('Need at least 50 candles for sequence, got ${candles.length}');
     }
 
     // Warning for coins with < 120 candles (SMA100 will be less accurate)
