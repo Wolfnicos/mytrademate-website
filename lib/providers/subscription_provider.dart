@@ -1,17 +1,41 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import '../services/app_settings_service.dart';
 
 /// Manages subscription state via RevenueCat
 /// Entitlement: "pro"
 /// Offering: "default"
 /// Products: pro_monthly_999, pro_yearly_8499
+///
+/// FREE TRIAL: First 48 hours after app install grants full Pro access
 class SubscriptionProvider extends ChangeNotifier {
   bool _isProUser = false;
   bool _isLoading = false;
   String? _errorMessage;
 
-  bool get isProUser => _isProUser;
+  /// Returns true if user has Pro subscription OR is in 48h free trial
+  bool get isProUser {
+    // Check if in trial period (48h from first launch)
+    final isInTrial = AppSettingsService().isInTrial;
+    if (isInTrial) {
+      debugPrint('🎁 TRIAL: User has Pro access via trial (${AppSettingsService().trialHoursRemaining}h remaining)');
+      return true;
+    }
+
+    // Otherwise check RevenueCat subscription
+    return _isProUser;
+  }
+
+  /// Returns true only if user has paid Pro subscription (excludes trial)
+  bool get hasProSubscription => _isProUser;
+
+  /// Returns true if user is in trial period
+  bool get isInTrial => AppSettingsService().isInTrial;
+
+  /// Get remaining trial hours (null if not in trial)
+  int? get trialHoursRemaining => AppSettingsService().trialHoursRemaining;
+
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 

@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/ai_indicator.dart';
 import '../widgets/crypto_avatar.dart';
+import '../widgets/trial_banner.dart';
 import '../ml/ensemble_predictor.dart';
 import '../utils/responsive.dart';
 
@@ -60,6 +61,11 @@ class DashboardScreen extends StatelessWidget {
                   ],
                 ),
               ),
+            ),
+
+            // Trial Banner (shows only if in trial)
+            const SliverToBoxAdapter(
+              child: TrialBanner(),
             ),
 
             // Content
