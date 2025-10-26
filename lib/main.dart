@@ -172,7 +172,7 @@ class _HomePageState extends State<HomePage> {
     _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'Dashboard'),
     _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: 'Market'),
     _NavItem(icon: Icons.smart_toy_outlined, activeIcon: Icons.smart_toy, label: 'AI'),
-    _NavItem(icon: Icons.list_alt, activeIcon: Icons.list_alt, label: 'Activity'),
+    _NavItem(icon: Icons.list_alt, activeIcon: Icons.list_alt, label: 'Trade'),
     _NavItem(icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet, label: 'Portfolio'),
   ];
 
