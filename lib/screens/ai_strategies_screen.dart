@@ -381,25 +381,12 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                         color: selected ? Colors.transparent : AppTheme.glassBorder,
                       ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          item['label'] as String,
-                          style: AppTheme.bodyMedium.copyWith(
-                            color: selected ? Colors.white : AppTheme.textSecondary,
-                            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                          ),
-                        ),
-                        if (isLocked) ...[
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.lock,
-                            size: 14,
-                            color: AppTheme.warning,
-                          ),
-                        ],
-                      ],
+                    child: Text(
+                      item['label'] as String,
+                      style: AppTheme.bodyMedium.copyWith(
+                        color: selected ? Colors.white : AppTheme.textSecondary,
+                        fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                      ),
                     ),
                   ),
                 ),
