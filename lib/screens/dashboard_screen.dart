@@ -129,22 +129,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: AppTheme.spacing16),
 
                   // Portfolio Overview Card
-                  const RepaintBoundary(
-                    child: PortfolioOverviewCard(),
+                  RepaintBoundary(
+                    key: ValueKey('portfolio_${AppSettingsService().quoteCurrency}'),
+                    child: const PortfolioOverviewCard(),
                   ),
 
                   const SizedBox(height: AppTheme.spacing16),
 
                   // AI Models Status Card
-                  const RepaintBoundary(
-                    child: AIModelsStatusCard(),
+                  RepaintBoundary(
+                    key: ValueKey('ai_models_${AppSettingsService().quoteCurrency}'),
+                    child: const AIModelsStatusCard(),
                   ),
 
                   const SizedBox(height: AppTheme.spacing16),
 
                   // P&L Today Section
-                  const RepaintBoundary(
-                    child: PnLTodaySection(),
+                  RepaintBoundary(
+                    key: ValueKey('pnl_${AppSettingsService().quoteCurrency}'),
+                    child: const PnLTodaySection(),
                   ),
 
                   const SizedBox(height: AppTheme.spacing32),
