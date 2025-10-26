@@ -25,6 +25,20 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   void initState() {
     super.initState();
     _loadPortfolio();
+    // Listen to quote currency changes and reload portfolio
+    AppSettingsService().addListener(_onSettingsChanged);
+  }
+
+  @override
+  void dispose() {
+    AppSettingsService().removeListener(_onSettingsChanged);
+    super.dispose();
+  }
+
+  void _onSettingsChanged() {
+    // Reload portfolio when quote currency changes
+    debugPrint('Portfolio: Quote currency changed, reloading portfolio...');
+    _loadPortfolio();
   }
 
   Future<void> _loadPortfolio() async {

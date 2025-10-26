@@ -48,6 +48,27 @@ class _MarketScreenState extends State<MarketScreen> {
     _selectedSymbol = 'BTC$q';
     _refreshTickers();
     _loadChart();
+    // Listen to quote currency changes and reload data
+    AppSettingsService().addListener(_onSettingsChanged);
+  }
+
+  @override
+  void dispose() {
+    AppSettingsService().removeListener(_onSettingsChanged);
+    super.dispose();
+  }
+
+  void _onSettingsChanged() {
+    // Reload tickers and chart when quote currency changes
+    final q = AppSettingsService().quoteCurrency.toUpperCase();
+    debugPrint('Market: Quote currency changed to $q, reloading data...');
+    setState(() {
+      _selectedSymbol = 'BTC$q';
+      _loadingTickers = true;
+      _loadingChart = true;
+    });
+    _refreshTickers();
+    _loadChart();
   }
 
   Future<void> _refreshTickers() async {

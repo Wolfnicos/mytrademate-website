@@ -27,6 +27,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowTrialDialog();
     });
+    // Listen to quote currency changes and rebuild all tiles
+    AppSettingsService().addListener(_onSettingsChanged);
+  }
+
+  @override
+  void dispose() {
+    AppSettingsService().removeListener(_onSettingsChanged);
+    super.dispose();
+  }
+
+  void _onSettingsChanged() {
+    // Rebuild dashboard when quote currency changes
+    debugPrint('Dashboard: Quote currency changed, rebuilding tiles...');
+    if (mounted) {
+      setState(() {
+        // Force rebuild of all dashboard tiles with new quote currency
+      });
+    }
   }
 
   Future<void> _maybeShowTrialDialog() async {
