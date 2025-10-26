@@ -48,6 +48,34 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     _loadAvailableCoins();
     // Auto-run first prediction
     Future.delayed(const Duration(milliseconds: 500), _runInference);
+    // Listen to quote currency changes
+    AppSettingsService().addListener(_onQuoteCurrencyChanged);
+  }
+
+  @override
+  void dispose() {
+    AppSettingsService().removeListener(_onQuoteCurrencyChanged);
+    super.dispose();
+  }
+
+  void _onQuoteCurrencyChanged() {
+    // Update trading pair when quote currency changes
+    final quote = AppSettingsService().quoteCurrency.toUpperCase();
+    debugPrint('AI Strategies: Quote currency changed to $quote, updating pairs...');
+
+    // Extract base asset from current pair (e.g., BTCUSDT -> BTC)
+    String baseAsset = _selectedSymbol;
+    for (final q in ['USDT', 'USDC', 'EUR', 'USD']) {
+      baseAsset = baseAsset.replaceAll(q, '');
+    }
+
+    setState(() {
+      _selectedSymbol = '$baseAsset$quote';
+    });
+
+    // Reload coins and re-run prediction with new quote
+    _loadAvailableCoins();
+    _runInference();
   }
 
   Future<void> _loadAvailableCoins() async {
