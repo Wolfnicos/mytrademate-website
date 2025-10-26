@@ -214,7 +214,6 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     final activeColor = isBuy ? AppTheme.buyGreen : AppTheme.sellRed;
-    final bool tradingEnabled = AppSettingsService().isTradingEnabled;
 
     return Scaffold(
       body: SafeArea(
@@ -316,74 +315,83 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                           ),
                         ),
                         const SizedBox(height: AppTheme.spacing16),
-                        
-                        // Order Type Selector (only in PREMIUM mode)
-                        if (AppSettingsService().isTradingEnabled)
-                          RepaintBoundary(
-                            child: GlassCard(
-                              padding: const EdgeInsets.all(AppTheme.spacing16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Order Type',
-                                    style: AppTheme.labelMedium.copyWith(
-                                      color: AppTheme.textTertiary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: AppTheme.spacing12),
-                                  Wrap(
-                                    spacing: AppTheme.spacing8,
-                                    runSpacing: AppTheme.spacing8,
-                                    children: [
-                                      _buildOrderTypeChip('Market', OrderType.market),
-                                      _buildOrderTypeChip('Limit', OrderType.limit),
-                                      _buildOrderTypeChip('Stop-Limit', OrderType.stopLimit),
-                                      _buildOrderTypeChip('Stop-Market', OrderType.stopMarket),
-                                    ],
-                                  ),
-                                  const SizedBox(height: AppTheme.spacing12),
-                                  // Order Type Explanation
-                                  Container(
-                                    padding: const EdgeInsets.all(AppTheme.spacing12),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primary.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                                      border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.info_outline, color: AppTheme.primary, size: 18),
-                                        const SizedBox(width: AppTheme.spacing8),
-                                        Expanded(
-                                          child: Text(
-                                            _getOrderTypeExplanation(_orderType),
-                                            style: AppTheme.bodySmall.copyWith(
-                                              color: AppTheme.textSecondary,
-                                              height: 1.4,
+
+                        // Trading UI - shows when user has Pro/Trial OR API has trading permission
+                        Consumer<SubscriptionProvider>(
+                          builder: (context, subscription, _) {
+                            final isProUser = subscription.isProUser;
+                            final apiHasTrading = AppSettingsService().isTradingEnabled;
+                            final tradingEnabled = isProUser || apiHasTrading;
+
+                            return Column(
+                              children: [
+                                // Order Type Selector (only when trading enabled)
+                                if (tradingEnabled)
+                                  RepaintBoundary(
+                                    child: GlassCard(
+                                      padding: const EdgeInsets.all(AppTheme.spacing16),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Order Type',
+                                            style: AppTheme.labelMedium.copyWith(
+                                              color: AppTheme.textTertiary,
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                          const SizedBox(height: AppTheme.spacing12),
+                                          Wrap(
+                                            spacing: AppTheme.spacing8,
+                                            runSpacing: AppTheme.spacing8,
+                                            children: [
+                                              _buildOrderTypeChip('Market', OrderType.market),
+                                              _buildOrderTypeChip('Limit', OrderType.limit),
+                                              _buildOrderTypeChip('Stop-Limit', OrderType.stopLimit),
+                                              _buildOrderTypeChip('Stop-Market', OrderType.stopMarket),
+                                            ],
+                                          ),
+                                          const SizedBox(height: AppTheme.spacing12),
+                                          // Order Type Explanation
+                                          Container(
+                                            padding: const EdgeInsets.all(AppTheme.spacing12),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.primary.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                                              border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.info_outline, color: AppTheme.primary, size: 18),
+                                                const SizedBox(width: AppTheme.spacing8),
+                                                Expanded(
+                                                  child: Text(
+                                                    _getOrderTypeExplanation(_orderType),
+                                                    style: AppTheme.bodySmall.copyWith(
+                                                      color: AppTheme.textSecondary,
+                                                      height: 1.4,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: AppTheme.spacing16),
-                        
-                        FutureBuilder<SharedPreferences>(
-                          future: SharedPreferences.getInstance(),
-                          builder: (context, snap) {
-                            final paper = (snap.data?.getBool('paper_trading') ?? false);
-                            return OpenOrdersCard(symbol: _selectedPair, paperMode: paper);
-                          },
-                        ),
-                        const SizedBox(height: AppTheme.spacing16),
+                                const SizedBox(height: AppTheme.spacing16),
 
-                        // Main Order Card - gated by permission (Read vs Trading)
-                        if (tradingEnabled)
+                                FutureBuilder<SharedPreferences>(
+                                  future: SharedPreferences.getInstance(),
+                                  builder: (context, snap) {
+                                    final paper = (snap.data?.getBool('paper_trading') ?? false);
+                                    return OpenOrdersCard(symbol: _selectedPair, paperMode: paper);
+                                  },
+                                ),
+                                const SizedBox(height: AppTheme.spacing16),
+
+                                // Main Order Card - shows when trading enabled (Pro/Trial or API permission)
+                                if (tradingEnabled)
                           GlassCard(
                           padding: const EdgeInsets.all(AppTheme.spacing20),
                           child: Column(
@@ -606,21 +614,13 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                                   'You can view portfolio, market data and AI insights. Trading actions are disabled when API permission is Read Only.',
                                   style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary, height: 1.4),
                                 ),
-                                const SizedBox(height: AppTheme.spacing12),
-                                OutlinedButton.icon(
-                                  onPressed: () {
-                                    Navigator.of(context).pushNamed('/welcome');
-                                  },
-                                  icon: const Icon(Icons.info_outline),
-                                  label: const Text('Learn more'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppTheme.primary,
-                                    side: const BorderSide(color: AppTheme.primary),
-                                  ),
-                                ),
                               ],
                             ),
                           ),
+                              ],
+                            );
+                          },
+                        ),
 
                         const SizedBox(height: AppTheme.spacing24),
 
@@ -628,6 +628,8 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                         Consumer<SubscriptionProvider>(
                           builder: (context, subscription, _) {
                             final isProUser = subscription.isProUser;
+                            final apiHasTrading = AppSettingsService().isTradingEnabled;
+                            final tradingEnabled = isProUser || apiHasTrading;
                             return RepaintBoundary(
                               child: Column(
                                 children: [

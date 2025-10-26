@@ -367,60 +367,129 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
                   ),
                   const SizedBox(height: AppTheme.spacing16),
-                  // READ-ONLY MODE (Always Active)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(AppTheme.spacing16),
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                      border: Border.all(
-                        color: AppTheme.primary,
-                        width: 2,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(AppTheme.spacing8),
+                  // Trading mode indicator (changes based on trial/Pro status)
+                  Consumer<SubscriptionProvider>(
+                    builder: (context, subscription, _) {
+                      final isProUser = subscription.isProUser;
+
+                      if (isProUser) {
+                        // Show TRADING ENABLED during trial or Pro
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(AppTheme.spacing16),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF00C853), Color(0xFF00E676)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                            border: Border.all(
+                              color: const Color(0xFF00C853),
+                              width: 2,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.visibility,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: AppTheme.spacing12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
                             children: [
-                              Text(
-                                'READ-ONLY MODE',
-                                style: AppTheme.labelLarge.copyWith(
+                              Container(
+                                padding: const EdgeInsets.all(AppTheme.spacing8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                                ),
+                                child: const Icon(
+                                  Icons.check_circle,
                                   color: Colors.white,
+                                  size: 20,
                                 ),
                               ),
-                              const SizedBox(height: AppTheme.spacing4),
-                              Text(
-                                'View portfolio only • No trade execution',
-                                style: AppTheme.bodySmall.copyWith(
-                                  color: Colors.white.withOpacity(0.8),
+                              const SizedBox(width: AppTheme.spacing12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'TRADING ENABLED',
+                                      style: AppTheme.labelLarge.copyWith(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: AppTheme.spacing4),
+                                    Text(
+                                      'Full access • Execute trades',
+                                      style: AppTheme.bodySmall.copyWith(
+                                        color: Colors.white.withOpacity(0.8),
+                                      ),
+                                    ),
+                                  ],
                                 ),
+                              ),
+                              Icon(
+                                Icons.rocket_launch,
+                                color: Colors.white.withOpacity(0.6),
+                                size: 20,
                               ),
                             ],
                           ),
-                        ),
-                        Icon(
-                          Icons.lock_outline,
-                          color: Colors.white.withOpacity(0.6),
-                          size: 20,
-                        ),
-                      ],
-                    ),
+                        );
+                      } else {
+                        // Show READ-ONLY MODE for free users
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(AppTheme.spacing16),
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.primaryGradient,
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                            border: Border.all(
+                              color: AppTheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(AppTheme.spacing8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                                ),
+                                child: const Icon(
+                                  Icons.visibility,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: AppTheme.spacing12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'READ-ONLY MODE',
+                                      style: AppTheme.labelLarge.copyWith(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: AppTheme.spacing4),
+                                    Text(
+                                      'View portfolio only • No trade execution',
+                                      style: AppTheme.bodySmall.copyWith(
+                                        color: Colors.white.withOpacity(0.8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.lock_outline,
+                                color: Colors.white.withOpacity(0.6),
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    },
                   ),
                   const SizedBox(height: AppTheme.spacing12),
                   // Info Card
