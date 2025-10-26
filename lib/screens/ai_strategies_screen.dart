@@ -366,27 +366,31 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                       setState(() => _interval = item['value'] as String);
                       _runInference();
                     },
-                child: Opacity(
-                  opacity: isLocked ? 0.5 : 1.0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppTheme.spacing12,
-                      vertical: AppTheme.spacing8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacing16,
+                    vertical: AppTheme.spacing8,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: selected ? AppTheme.primaryGradient : null,
+                    color: selected ? null : (Theme.of(context).brightness == Brightness.dark
+                        ? AppTheme.glassWhite
+                        : Colors.grey[100]),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                    border: Border.all(
+                      color: selected ? Colors.transparent : (Theme.of(context).brightness == Brightness.dark
+                          ? AppTheme.glassBorder
+                          : Colors.grey[300]!),
+                      width: 1,
                     ),
-                    decoration: BoxDecoration(
-                      gradient: selected ? AppTheme.primaryGradient : null,
-                      color: selected ? null : AppTheme.glassWhite,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                      border: Border.all(
-                        color: selected ? Colors.transparent : AppTheme.glassBorder,
-                      ),
-                    ),
-                    child: Text(
-                      item['label'] as String,
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: selected ? Colors.white : AppTheme.textSecondary,
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                      ),
+                  ),
+                  child: Text(
+                    item['label'] as String,
+                    style: AppTheme.bodyMedium.copyWith(
+                      color: selected ? Colors.white : (Theme.of(context).brightness == Brightness.dark
+                          ? AppTheme.textSecondary
+                          : AppTheme.textPrimaryLight),
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
                 ),
