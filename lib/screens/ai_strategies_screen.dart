@@ -58,7 +58,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     super.dispose();
   }
 
-  void _onQuoteCurrencyChanged() {
+  void _onQuoteCurrencyChanged() async {
     // Update trading pair when quote currency changes
     final quote = AppSettingsService().quoteCurrency.toUpperCase();
     debugPrint('AI Strategies: Quote currency changed to $quote, updating pairs...');
@@ -69,12 +69,23 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       baseAsset = baseAsset.replaceAll(q, '');
     }
 
-    setState(() {
-      _selectedSymbol = '$baseAsset$quote';
-    });
+    // Reload coins first to get the new list with updated quote
+    await _loadAvailableCoins();
 
-    // Reload coins and re-run prediction with new quote
-    _loadAvailableCoins();
+    // Then update selected symbol if it exists in the new list
+    final newSymbol = '$baseAsset$quote';
+    if (mounted) {
+      setState(() {
+        if (_availableCoins.contains(newSymbol)) {
+          _selectedSymbol = newSymbol;
+        } else if (_availableCoins.isNotEmpty) {
+          // If the new symbol doesn't exist, use the first available
+          _selectedSymbol = _availableCoins.first;
+        }
+      });
+    }
+
+    // Re-run prediction with new quote
     _runInference();
   }
 
