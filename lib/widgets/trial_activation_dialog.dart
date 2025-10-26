@@ -211,6 +211,7 @@ class TrialActivationDialog extends StatelessWidget {
                         onPressed: () => Navigator.of(context).pop(true),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
+                          foregroundColor: Colors.white,
                           shadowColor: Colors.transparent,
                           padding: const EdgeInsets.symmetric(vertical: AppTheme.spacing12),
                           shape: RoundedRectangleBorder(
@@ -220,11 +221,12 @@ class TrialActivationDialog extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.rocket_launch, size: 20),
+                            const Icon(Icons.rocket_launch, size: 20, color: Colors.white),
                             const SizedBox(width: AppTheme.spacing8),
                             const Text(
                               'Start FREE Trial',
                               style: TextStyle(
+                                color: Colors.white,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
