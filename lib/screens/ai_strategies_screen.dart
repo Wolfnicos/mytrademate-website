@@ -140,11 +140,6 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
   Future<void> _runInference() async {
     setState(() {
       _isRunningPrediction = true;
