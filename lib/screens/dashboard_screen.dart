@@ -6,11 +6,40 @@ import '../widgets/glass_card.dart';
 import '../widgets/ai_indicator.dart';
 import '../widgets/crypto_avatar.dart';
 import '../widgets/trial_banner.dart';
+import '../widgets/trial_activation_dialog.dart';
 import '../ml/ensemble_predictor.dart';
 import '../utils/responsive.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Show trial dialog after build completes (if needed)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeShowTrialDialog();
+    });
+  }
+
+  Future<void> _maybeShowTrialDialog() async {
+    if (!mounted) return;
+
+    final settings = AppSettingsService();
+    if (settings.shouldShowTrialDialog) {
+      final accepted = await TrialActivationDialog.show(context);
+      if (accepted) {
+        await settings.activateTrial();
+      } else {
+        await settings.declineTrial();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -9,11 +9,13 @@ class AppSettingsService extends ChangeNotifier {
 
   static const String _kQuoteKey = 'quote_currency';
   static const String _kPermissionKey = 'api_permission_level';
-  static const String _kFirstLaunchKey = 'first_launch_timestamp';
+  static const String _kTrialStartKey = 'trial_start_timestamp';
+  static const String _kTrialDeclinedKey = 'trial_declined';
 
   String _quote = 'USDT';
   String _permissionLevel = 'read'; // 'read' | 'trading'
-  DateTime? _firstLaunchTime;
+  DateTime? _trialStartTime;
+  bool _trialDeclined = false;
   bool _loaded = false;
 
   String get quoteCurrency => _quote;
@@ -22,18 +24,42 @@ class AppSettingsService extends ChangeNotifier {
 
   /// Check if user is in 48-hour free trial period
   bool get isInTrial {
-    if (_firstLaunchTime == null) return false;
+    if (_trialStartTime == null || _trialDeclined) return false;
     final now = DateTime.now();
-    final diff = now.difference(_firstLaunchTime!);
+    final diff = now.difference(_trialStartTime!);
     return diff.inHours < 48; // 48 hours = 2 days
+  }
+
+  /// Check if user needs to see trial activation dialog
+  /// Returns true if trial not started and not declined
+  bool get shouldShowTrialDialog {
+    return _trialStartTime == null && !_trialDeclined;
   }
 
   /// Get remaining trial time in hours (null if not in trial)
   int? get trialHoursRemaining {
     if (!isInTrial) return null;
     final now = DateTime.now();
-    final diff = now.difference(_firstLaunchTime!);
+    final diff = now.difference(_trialStartTime!);
     return 48 - diff.inHours;
+  }
+
+  /// Activate trial (called when user accepts in dialog)
+  Future<void> activateTrial() async {
+    _trialStartTime = DateTime.now();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kTrialStartKey, _trialStartTime!.millisecondsSinceEpoch);
+    debugPrint('🎁 FREE TRIAL: Activated 48-hour trial at $_trialStartTime');
+    notifyListeners();
+  }
+
+  /// Decline trial (called when user clicks "Maybe Later")
+  Future<void> declineTrial() async {
+    _trialDeclined = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kTrialDeclinedKey, true);
+    debugPrint('⏭️ FREE TRIAL: User declined trial');
+    notifyListeners();
   }
 
   Future<void> load() async {
@@ -42,20 +68,21 @@ class AppSettingsService extends ChangeNotifier {
     _quote = prefs.getString(_kQuoteKey) ?? 'USDT';
     _permissionLevel = prefs.getString(_kPermissionKey) ?? 'read';
 
-    // Load or set first launch time
-    final timestamp = prefs.getInt(_kFirstLaunchKey);
-    if (timestamp == null) {
-      // First time user - start trial
-      _firstLaunchTime = DateTime.now();
-      await prefs.setInt(_kFirstLaunchKey, _firstLaunchTime!.millisecondsSinceEpoch);
-      debugPrint('🎁 FREE TRIAL: Started 48-hour trial at $_firstLaunchTime');
-    } else {
-      _firstLaunchTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    // Load trial state
+    final timestamp = prefs.getInt(_kTrialStartKey);
+    _trialDeclined = prefs.getBool(_kTrialDeclinedKey) ?? false;
+
+    if (timestamp != null) {
+      _trialStartTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
       if (isInTrial) {
-        debugPrint('🎁 FREE TRIAL: ${trialHoursRemaining}h remaining (started $_firstLaunchTime)');
+        debugPrint('🎁 FREE TRIAL: ${trialHoursRemaining}h remaining (started $_trialStartTime)');
       } else {
-        debugPrint('⏰ FREE TRIAL: Expired (started $_firstLaunchTime)');
+        debugPrint('⏰ FREE TRIAL: Expired (started $_trialStartTime)');
       }
+    } else if (_trialDeclined) {
+      debugPrint('ℹ️ FREE TRIAL: User previously declined trial');
+    } else {
+      debugPrint('ℹ️ FREE TRIAL: New user - will show activation dialog');
     }
 
     _loaded = true;
