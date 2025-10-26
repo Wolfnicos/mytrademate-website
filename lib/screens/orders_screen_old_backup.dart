@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:provider/provider.dart';
 import '../backtest/backtester.dart';
 import '../services/paper_broker.dart';
 import '../services/binance_service.dart';
@@ -15,8 +14,6 @@ import '../services/app_settings_service.dart';
 import '../widgets/orders/achievement_toast.dart';
 import '../widgets/orders/open_orders_card.dart';
 import '../utils/responsive.dart';
-import '../providers/subscription_provider.dart';
-import 'paywall_screen.dart';
 
 enum OrderType { market, limit, stopLimit, stopMarket }
 
@@ -624,236 +621,231 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
                         const SizedBox(height: AppTheme.spacing24),
 
-                        // Execute Button - PRO GATING
-                        Consumer<SubscriptionProvider>(
-                          builder: (context, subscription, _) {
-                            final isProUser = subscription.isProUser;
-                            return RepaintBoundary(
-                              child: Column(
-                                children: [
-                                  Container(
-                                    width: double.infinity,
-                                    height: 60,
-                                    decoration: BoxDecoration(
-                                      gradient: isBuy ? AppTheme.buyGradient : AppTheme.sellGradient,
-                                      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                                      boxShadow: AppTheme.glowShadow,
-                                    ),
-                                    child: ElevatedButton(
-                                      onPressed: isProUser && tradingEnabled ? () async {
-                                        // Show confirmation dialog first
-                                        final confirmed = await _confirmOrder();
-                                        if (!confirmed) return;
-
-                                        final prefs = await SharedPreferences.getInstance();
-                                        final bool paper = prefs.getBool('paper_trading') ?? false;
-                                        if (!tradingEnabled) {
+                        // Execute Button - SUPER CLEAR (only when trading enabled)
+                        if (tradingEnabled)
+                          RepaintBoundary(
+                          child: Container(
+                            width: double.infinity,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              gradient: isBuy ? AppTheme.buyGradient : AppTheme.sellGradient,
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                              boxShadow: AppTheme.glowShadow,
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () async {
+                              // Show confirmation dialog first
+                              final confirmed = await _confirmOrder();
+                              if (!confirmed) return;
+                              
+                              final prefs = await SharedPreferences.getInstance();
+                              final bool paper = prefs.getBool('paper_trading') ?? false;
+                              if (!tradingEnabled) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Trading disabled (Read Only). Enable Trading in Settings.')));
+                                }
+                                return;
+                              }
+                              if (_orderType == OrderType.market) {
+                                if (paper) {
+                                  final price = double.tryParse(_priceCtrl.text) ?? 0.0;
+                                  final qty = double.tryParse(_amountCtrl.text) ?? 0.0;
+                                  PaperBroker().execute(Trade(time: DateTime.now(), side: isBuy ? 'BUY' : 'SELL', price: price, quantity: qty));
+                                  AchievementToast.show(context, 'first_paper_trade', 'Achievement unlocked: First Paper Trade!');
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Market order (Paper) executed')));
+                                  }
+                                } else {
+                                  try {
+                                    final double? qty = double.tryParse(_amountCtrl.text);
+                                    final double? total = double.tryParse(_totalCtrl.text);
+                                    final res = await BinanceService().placeMarketOrder(
+                                      symbol: _selectedPair,
+                                      side: isBuy ? 'BUY' : 'SELL',
+                                      quantity: (qty != null && qty > 0) ? qty : null,
+                                      quoteOrderQty: (total != null && total > 0) ? total : null,
+                                    );
+                                    // If protection enabled and BUY, place OCO (SELL) with TP/SL based on last price
+                                    if (_ocoEnabled && isBuy) {
+                                      final lastPrice = double.tryParse(_priceCtrl.text);
+                                      final usePrice = lastPrice ?? (res['fills'] != null && (res['fills'] as List).isNotEmpty ? double.tryParse(((res['fills'] as List).first as Map)['price']?.toString() ?? '') : null);
+                                      final double? filledQty = double.tryParse(res['executedQty']?.toString() ?? '') ?? qty;
+                                      if (usePrice != null && filledQty != null && filledQty > 0) {
+                                        final tp = usePrice * (1 + _takeProfitPct / 100.0);
+                                        final sl = usePrice * (1 - _stopLossPct / 100.0);
+                                        try {
+                                          await BinanceService().placeOcoOrder(
+                                            symbol: _selectedPair,
+                                            side: 'SELL',
+                                            quantity: filledQty,
+                                            price: tp,
+                                            stopPrice: sl,
+                                          );
                                           if (context.mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Trading disabled (Read Only). Enable Trading in Settings.')));
+                                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Protection OCO placed')));
                                           }
-                                          return;
-                                        }
-
-                                        if (_orderType == OrderType.market) {
-                                          if (paper) {
-                                            final price = double.tryParse(_priceCtrl.text) ?? 0.0;
-                                            final qty = double.tryParse(_amountCtrl.text) ?? 0.0;
-                                            PaperBroker().execute(Trade(time: DateTime.now(), side: isBuy ? 'BUY' : 'SELL', price: price, quantity: qty));
-                                            AchievementToast.show(context, 'first_paper_trade', 'Achievement unlocked: First Paper Trade!');
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Market order (Paper) executed')));
-                                            }
-                                          } else {
-                                            try {
-                                              final double? qty = double.tryParse(_amountCtrl.text);
-                                              final double? total = double.tryParse(_totalCtrl.text);
-                                              final res = await BinanceService().placeMarketOrder(
-                                                symbol: _selectedPair,
-                                                side: isBuy ? 'BUY' : 'SELL',
-                                                quantity: (qty != null && qty > 0) ? qty : null,
-                                                quoteOrderQty: (total != null && total > 0) ? total : null,
-                                              );
-                                              // If protection enabled and BUY, place OCO (SELL) with TP/SL based on last price
-                                              if (_ocoEnabled && isBuy) {
-                                                final lastPrice = double.tryParse(_priceCtrl.text);
-                                                final usePrice = lastPrice ?? (res['fills'] != null && (res['fills'] as List).isNotEmpty ? double.tryParse(((res['fills'] as List).first as Map)['price']?.toString() ?? '') : null);
-                                                final double? filledQty = double.tryParse(res['executedQty']?.toString() ?? '') ?? qty;
-                                                if (usePrice != null && filledQty != null && filledQty > 0) {
-                                                  final tp = usePrice * (1 + _takeProfitPct / 100.0);
-                                                  final sl = usePrice * (1 - _stopLossPct / 100.0);
-                                                  try {
-                                                    await BinanceService().placeOcoOrder(
-                                                      symbol: _selectedPair,
-                                                      side: 'SELL',
-                                                      quantity: filledQty,
-                                                      price: tp,
-                                                      stopPrice: sl,
-                                                    );
-                                                    if (context.mounted) {
-                                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Protection OCO placed')));
-                                                    }
-                                                  } catch (e) {
-                                                    if (context.mounted) {
-                                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('OCO error: $e')));
-                                                    }
-                                                  }
-                                                }
-                                              }
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(content: Text('Order sent: ${res['status']?.toString() ?? 'OK'}')),
-                                                );
-                                              }
-                                            } catch (e) {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(content: Text('Order error: $e')),
-                                                );
-                                              }
-                                            }
-                                          }
-                                        } else if (_orderType == OrderType.limit) {
-                                          // LIMIT ORDER
-                                          try {
-                                            final double? qty = double.tryParse(_amountCtrl.text);
-                                            final double? limitPrice = double.tryParse(_limitPriceCtrl.text);
-
-                                            if (qty == null || qty <= 0) {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(content: Text('Please enter a valid amount')),
-                                                );
-                                              }
-                                              return;
-                                            }
-
-                                            if (limitPrice == null || limitPrice <= 0) {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(content: Text('Please enter a valid limit price')),
-                                                );
-                                              }
-                                              return;
-                                            }
-
-                                            final res = await BinanceService().placeLimitOrder(
-                                              symbol: _selectedPair,
-                                              side: isBuy ? 'BUY' : 'SELL',
-                                              quantity: qty,
-                                              price: limitPrice,
-                                            );
-
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(content: Text('Limit order placed: ${res['status']?.toString() ?? 'OK'}')),
-                                              );
-                                            }
-                                          } catch (e) {
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(content: Text('Limit order error: $e')),
-                                              );
-                                            }
-                                          }
-                                        } else if (_orderType == OrderType.stopLimit) {
-                                          // STOP-LIMIT ORDER
-                                          try {
-                                            final double? qty = double.tryParse(_amountCtrl.text);
-                                            final double? limitPrice = double.tryParse(_limitPriceCtrl.text);
-                                            final double? stopPrice = double.tryParse(_stopPriceCtrl.text);
-
-                                            if (qty == null || qty <= 0) {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(content: Text('Please enter a valid amount')),
-                                                );
-                                              }
-                                              return;
-                                            }
-
-                                            if (limitPrice == null || limitPrice <= 0) {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(content: Text('Please enter a valid limit price')),
-                                                );
-                                              }
-                                              return;
-                                            }
-
-                                            if (stopPrice == null || stopPrice <= 0) {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(content: Text('Please enter a valid stop price')),
-                                                );
-                                              }
-                                              return;
-                                            }
-
-                                            final res = await BinanceService().placeStopLimitOrder(
-                                              symbol: _selectedPair,
-                                              side: isBuy ? 'BUY' : 'SELL',
-                                              quantity: qty,
-                                              price: limitPrice,
-                                              stopPrice: stopPrice,
-                                            );
-
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(content: Text('Stop-Limit order placed: ${res['status']?.toString() ?? 'OK'}')),
-                                              );
-                                            }
-                                          } catch (e) {
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(content: Text('Stop-Limit order error: $e')),
-                                              );
-                                            }
-                                          }
-                                        } else if (_orderType == OrderType.stopMarket) {
-                                          // STOP-MARKET ORDER
-                                          try {
-                                            final double? qty = double.tryParse(_amountCtrl.text);
-                                            final double? stopPrice = double.tryParse(_stopPriceCtrl.text);
-
-                                            if (qty == null || qty <= 0) {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(content: Text('Please enter a valid amount')),
-                                                );
-                                              }
-                                              return;
-                                            }
-
-                                            if (stopPrice == null || stopPrice <= 0) {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(content: Text('Please enter a valid stop price')),
-                                                );
-                                              }
-                                              return;
-                                            }
-
-                                            final res = await BinanceService().placeStopMarketOrder(
-                                              symbol: _selectedPair,
-                                              side: isBuy ? 'BUY' : 'SELL',
-                                              quantity: qty,
-                                              stopPrice: stopPrice,
-                                            );
-
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(content: Text('Stop-Market order placed: ${res['status']?.toString() ?? 'OK'}')),
-                                              );
-                                            }
-                                          } catch (e) {
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(content: Text('Stop-Market order error: $e')),
-                                              );
-                                            }
+                                        } catch (e) {
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('OCO error: $e')));
                                           }
                                         }
-                                      } : null,
+                                      }
+                                    }
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Order sent: ${res['status']?.toString() ?? 'OK'}')),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Order error: $e')),
+                                      );
+                                    }
+                                  }
+                                }
+                              } else if (_orderType == OrderType.limit) {
+                                // LIMIT ORDER
+                                try {
+                                  final double? qty = double.tryParse(_amountCtrl.text);
+                                  final double? limitPrice = double.tryParse(_limitPriceCtrl.text);
+                                  
+                                  if (qty == null || qty <= 0) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Please enter a valid amount')),
+                                      );
+                                    }
+                                    return;
+                                  }
+                                  
+                                  if (limitPrice == null || limitPrice <= 0) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Please enter a valid limit price')),
+                                      );
+                                    }
+                                    return;
+                                  }
+                                  
+                                  final res = await BinanceService().placeLimitOrder(
+                                    symbol: _selectedPair,
+                                    side: isBuy ? 'BUY' : 'SELL',
+                                    quantity: qty,
+                                    price: limitPrice,
+                                  );
+                                  
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Limit order placed: ${res['status']?.toString() ?? 'OK'}')),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Limit order error: $e')),
+                                    );
+                                  }
+                                }
+                              } else if (_orderType == OrderType.stopLimit) {
+                                // STOP-LIMIT ORDER
+                                try {
+                                  final double? qty = double.tryParse(_amountCtrl.text);
+                                  final double? limitPrice = double.tryParse(_limitPriceCtrl.text);
+                                  final double? stopPrice = double.tryParse(_stopPriceCtrl.text);
+                                  
+                                  if (qty == null || qty <= 0) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Please enter a valid amount')),
+                                      );
+                                    }
+                                    return;
+                                  }
+                                  
+                                  if (limitPrice == null || limitPrice <= 0) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Please enter a valid limit price')),
+                                      );
+                                    }
+                                    return;
+                                  }
+                                  
+                                  if (stopPrice == null || stopPrice <= 0) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Please enter a valid stop price')),
+                                      );
+                                    }
+                                    return;
+                                  }
+                                  
+                                  final res = await BinanceService().placeStopLimitOrder(
+                                    symbol: _selectedPair,
+                                    side: isBuy ? 'BUY' : 'SELL',
+                                    quantity: qty,
+                                    price: limitPrice,
+                                    stopPrice: stopPrice,
+                                  );
+                                  
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Stop-Limit order placed: ${res['status']?.toString() ?? 'OK'}')),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Stop-Limit order error: $e')),
+                                    );
+                                  }
+                                }
+                              } else if (_orderType == OrderType.stopMarket) {
+                                // STOP-MARKET ORDER
+                                try {
+                                  final double? qty = double.tryParse(_amountCtrl.text);
+                                  final double? stopPrice = double.tryParse(_stopPriceCtrl.text);
+                                  
+                                  if (qty == null || qty <= 0) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Please enter a valid amount')),
+                                      );
+                                    }
+                                    return;
+                                  }
+                                  
+                                  if (stopPrice == null || stopPrice <= 0) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Please enter a valid stop price')),
+                                      );
+                                    }
+                                    return;
+                                  }
+                                  
+                                  final res = await BinanceService().placeStopMarketOrder(
+                                    symbol: _selectedPair,
+                                    side: isBuy ? 'BUY' : 'SELL',
+                                    quantity: qty,
+                                    stopPrice: stopPrice,
+                                  );
+                                  
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Stop-Market order placed: ${res['status']?.toString() ?? 'OK'}')),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Stop-Market order error: $e')),
+                                    );
+                                  }
+                                }
+                              }
+                            },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.transparent,
                                 shadowColor: Colors.transparent,
@@ -881,44 +873,9 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                               ),
                             ),
                           ),
+                        ),
 
-                          // Upgrade message for free users
-                          if (!isProUser) ...[
-                            const SizedBox(height: AppTheme.spacing12),
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const PaywallScreen()),
-                                );
-                              },
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.lock_outline,
-                                    size: 16,
-                                    color: AppTheme.primary,
-                                  ),
-                                  const SizedBox(width: AppTheme.spacing8),
-                                  Text(
-                                    'Upgrade to Pro to place orders',
-                                    style: AppTheme.bodySmall.copyWith(
-                                      color: AppTheme.primary,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: AppTheme.spacing32),
+                        const SizedBox(height: AppTheme.spacing32),
                       ]),
                 ),
               ),

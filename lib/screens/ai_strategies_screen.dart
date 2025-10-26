@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 // Services
 import '../services/app_settings_service.dart';
@@ -12,7 +13,12 @@ import '../ml/crypto_ml_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/risk_disclaimer.dart';
+import '../widgets/upgrade_banner.dart';
 import '../utils/responsive.dart';
+
+// Providers
+import '../providers/subscription_provider.dart';
+import 'paywall_screen.dart';
 
 class AiStrategiesScreen extends StatefulWidget {
   const AiStrategiesScreen({super.key});
@@ -28,7 +34,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
   String _predictionError = '';
 
   String _selectedSymbol = 'BTCUSDT';
-  String _interval = '1h';
+  String _interval = '1d'; // Default to 1D (free tier)
 
   // Portfolio coins for dynamic dropdown
   List<String> _availableCoins = [];
@@ -210,6 +216,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
               ),
             ),
 
+            // Upgrade Banner (only shown to free users)
+            const UpgradeBanner(),
+
             // AI Predictions Content (no tabs)
             Expanded(
               child: _buildPredictionsTab(),
@@ -329,27 +338,34 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           // Timeframe Selector
           Text('Timeframe', style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary)),
           const SizedBox(height: AppTheme.spacing8),
-          Wrap(
-            spacing: AppTheme.spacing8,
-            runSpacing: AppTheme.spacing8,
-            children: [
-              {'label': '5M', 'value': '5m'},
-              {'label': '15M', 'value': '15m'},
-              {'label': '1H', 'value': '1h'},
-              {'label': '4H', 'value': '4h'},
-              {'label': '1D', 'value': '1d'},
-            ].map((item) {
-              final bool selected = _interval == item['value'];
-              // Lock short-term timeframes in FREE mode (only 1D available)
-              final bool isLocked = !AppSettingsService().isTradingEnabled && 
-                                    item['value'] != '1d';
-              
-              return GestureDetector(
-                onTap: isLocked ? null : () {
-                  HapticFeedback.selectionClick();
-                  setState(() => _interval = item['value'] as String);
-                  _runInference();
-                },
+          Consumer<SubscriptionProvider>(
+            builder: (context, subscription, _) {
+              final isProUser = subscription.isProUser;
+              return Wrap(
+                spacing: AppTheme.spacing8,
+                runSpacing: AppTheme.spacing8,
+                children: [
+                  {'label': isProUser ? '5M' : '5M 🔒', 'value': '5m'},
+                  {'label': isProUser ? '15M' : '15M 🔒', 'value': '15m'},
+                  {'label': isProUser ? '1H' : '1H 🔒', 'value': '1h'},
+                  {'label': isProUser ? '4H' : '4H 🔒', 'value': '4h'},
+                  {'label': isProUser ? '1D' : '1D FREE', 'value': '1d'},
+                ].map((item) {
+                  final bool selected = _interval == item['value'];
+                  final bool isLocked = !isProUser && item['value'] != '1d';
+
+                  return GestureDetector(
+                    onTap: isLocked ? () {
+                      // Show paywall for locked timeframes
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const PaywallScreen()),
+                      );
+                    } : () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _interval = item['value'] as String);
+                      _runInference();
+                    },
                 child: Opacity(
                   opacity: isLocked ? 0.5 : 1.0,
                   child: Container(
@@ -389,6 +405,8 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                 ),
               );
             }).toList(),
+              );
+            },
           ),
           
           // Explanation for locked timeframes in FREE mode

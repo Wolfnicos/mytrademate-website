@@ -10,6 +10,10 @@ class CryptoAvatar extends StatelessWidget {
   final double size;
   final bool showBorder;
 
+  // Cache of known unavailable logos (WLFI, TRUMP are too new)
+  static final Set<String> _knownUnavailable = {'WLFI', 'TRUMP'};
+  static final Set<String> _loggedErrors = {};
+
   const CryptoAvatar({
     super.key,
     required this.symbol,
@@ -21,6 +25,32 @@ class CryptoAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final brandColor = Color(CryptoIconService.getBrandColor(symbol));
     final logoUrl = CryptoIconService.getLogoUrl(symbol);
+
+    // If known to be unavailable, skip network call and show fallback immediately
+    if (_knownUnavailable.contains(symbol)) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              brandColor.withOpacity(0.3),
+              brandColor.withOpacity(0.1),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+          border: showBorder
+              ? Border.all(
+                  color: brandColor.withOpacity(0.3),
+                  width: 1.5,
+                )
+              : null,
+        ),
+        child: _buildLetterFallback(brandColor),
+      );
+    }
 
     return Container(
       width: size,
@@ -49,16 +79,14 @@ class CryptoAvatar extends StatelessWidget {
           fit: BoxFit.cover,
           placeholder: (context, url) => _buildLetterFallback(brandColor),
           errorWidget: (context, url, error) {
-            // Debug: print error to see what's wrong
-            debugPrint('CryptoAvatar: Failed to load $symbol from $logoUrl - Error: $error');
+            // Only log error once per symbol to avoid spam
+            if (!_loggedErrors.contains(symbol)) {
+              _loggedErrors.add(symbol);
+              debugPrint('CryptoAvatar: Logo unavailable for $symbol (using fallback)');
+            }
             return _buildLetterFallback(brandColor);
           },
-          // Add cache key to force refresh when URL changes
           cacheKey: logoUrl,
-          // Retry failed images
-          errorListener: (error) {
-            debugPrint('CryptoAvatar: Error loading $symbol: $error');
-          },
         ),
       ),
     );

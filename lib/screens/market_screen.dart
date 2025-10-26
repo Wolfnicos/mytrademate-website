@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
 import '../models/candle.dart';
 import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/crypto_avatar.dart';
+import '../widgets/upgrade_banner.dart';
 import '../utils/responsive.dart';
+import '../providers/subscription_provider.dart';
+import 'paywall_screen.dart';
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -18,7 +22,7 @@ class MarketScreen extends StatefulWidget {
 class _MarketScreenState extends State<MarketScreen> {
   final BinanceService _binance = BinanceService();
   final Map<String, Map<String, double>> _tickers = {};
-  String _interval = '1h';
+  String _interval = '1d'; // Default to 1D (free tier)
   String _selectedSymbol = 'BTCUSDT';
   List<CandleData> _candles = <CandleData>[];
   bool _loadingChart = true;
@@ -176,6 +180,11 @@ class _MarketScreenState extends State<MarketScreen> {
               ),
             ),
 
+            // Upgrade Banner
+            const SliverToBoxAdapter(
+              child: UpgradeBanner(),
+            ),
+
             // Coin Carousel
             SliverToBoxAdapter(
               child: SizedBox(
@@ -278,16 +287,21 @@ class _MarketScreenState extends State<MarketScreen> {
                       const SizedBox(height: AppTheme.spacing20),
 
                       // Interval Selector
-                      Wrap(
-                        spacing: AppTheme.spacing8,
-                        runSpacing: AppTheme.spacing8,
-                        children: [
-                          _buildIntervalChip('5M', '5m'),
-                          _buildIntervalChip('15M', '15m'),
-                          _buildIntervalChip('1H', '1h'),
-                          _buildIntervalChip('4H', '4h'),
-                          _buildIntervalChip('1D', '1d'),
-                        ],
+                      Consumer<SubscriptionProvider>(
+                        builder: (context, subscription, _) {
+                          final isProUser = subscription.isProUser;
+                          return Wrap(
+                            spacing: AppTheme.spacing8,
+                            runSpacing: AppTheme.spacing8,
+                            children: [
+                              _buildIntervalChip(isProUser ? '5M' : '5M 🔒', '5m', isProUser),
+                              _buildIntervalChip(isProUser ? '15M' : '15M 🔒', '15m', isProUser),
+                              _buildIntervalChip(isProUser ? '1H' : '1H 🔒', '1h', isProUser),
+                              _buildIntervalChip(isProUser ? '4H' : '4H 🔒', '4h', isProUser),
+                              _buildIntervalChip(isProUser ? '1D' : '1D FREE', '1d', true),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -303,12 +317,22 @@ class _MarketScreenState extends State<MarketScreen> {
     );
   }
 
-  Widget _buildIntervalChip(String label, String value) {
+  Widget _buildIntervalChip(String label, String value, bool isUnlocked) {
     final bool selected = _interval == value;
+    final isLocked = !isUnlocked && ['5m', '15m', '1h', '4h'].contains(value);
+
     return GestureDetector(
       onTap: () {
-        setState(() => _interval = value);
-        _loadChart();
+        if (isLocked) {
+          // Show paywall for locked timeframes
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const PaywallScreen()),
+          );
+        } else {
+          setState(() => _interval = value);
+          _loadChart();
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(

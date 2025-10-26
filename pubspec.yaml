@@ -69,6 +69,9 @@ dependencies:
   intl: ^0.20.2
   url_launcher: ^6.3.1
 
+  # Subscriptions
+  purchases_flutter: ^8.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

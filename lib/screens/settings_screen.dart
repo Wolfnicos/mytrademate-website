@@ -4,11 +4,13 @@ import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/theme_provider.dart';
+import '../providers/subscription_provider.dart';
 import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
+import 'paywall_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -250,8 +252,110 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: AppTheme.spacing24),
 
-          // API Permission Level
-          _buildSectionHeader('API Permission Level', Icons.vpn_lock),
+          // Subscription Section
+          _buildSectionHeader('Subscription', Icons.workspace_premium),
+          Consumer<SubscriptionProvider>(
+            builder: (context, subscription, _) {
+              return GlassCard(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppTheme.spacing16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (subscription.isProUser) ...[
+                        // Pro User Status
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(AppTheme.spacing8),
+                              decoration: BoxDecoration(
+                                gradient: AppTheme.primaryGradient,
+                                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                              ),
+                              child: const Icon(
+                                Icons.workspace_premium,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: AppTheme.spacing12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Pro Active',
+                                    style: AppTheme.headingMedium.copyWith(
+                                      color: AppTheme.primary,
+                                    ),
+                                  ),
+                                  Text(
+                                    'You have access to all features',
+                                    style: AppTheme.bodySmall.copyWith(
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.check_circle,
+                              color: AppTheme.success,
+                              size: 24,
+                            ),
+                          ],
+                        ),
+                      ] else ...[
+                        // Free User - Upgrade Button
+                        Text(
+                          'Upgrade to Pro',
+                          style: AppTheme.headingMedium,
+                        ),
+                        const SizedBox(height: AppTheme.spacing8),
+                        Text(
+                          'Unlock short-term AI predictions (5m–4h) and price alerts',
+                          style: AppTheme.bodySmall.copyWith(
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.spacing16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const PaywallScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.rocket_launch),
+                            label: const Text('Upgrade to Pro'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: AppTheme.spacing16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: AppTheme.spacing24),
+
+          // Binance Connection (Read-Only)
+          _buildSectionHeader('Binance Connection (Read-Only)', Icons.vpn_lock),
           GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(AppTheme.spacing16),
@@ -259,198 +363,95 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Control what your AI assistant can do',
+                    'Connect your Binance account to view your portfolio',
                     style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
                   ),
                   const SizedBox(height: AppTheme.spacing16),
-                  Wrap(
-                    spacing: AppTheme.spacing12,
-                    runSpacing: AppTheme.spacing12,
-                    children: [
-                      // READ ONLY (Free)
-                      GestureDetector(
-                        onTap: () async {
-                          await AppSettingsService().setPermissionLevel('read');
-                          setState(() => _permissionLevel = 'read');
-                          _showSnackBar('API Permission: Read Only (Free)', isError: false);
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(AppTheme.spacing16),
+                  // READ-ONLY MODE (Always Active)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppTheme.spacing16),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                      border: Border.all(
+                        color: AppTheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(AppTheme.spacing8),
                           decoration: BoxDecoration(
-                            gradient: _permissionLevel == 'read' ? AppTheme.primaryGradient : null,
-                            color: _permissionLevel == 'read' ? null : AppTheme.glassWhite,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                            border: Border.all(
-                              color: _permissionLevel == 'read' ? AppTheme.primary : AppTheme.glassBorder,
-                              width: 2,
-                            ),
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                           ),
-                          child: Row(
+                          child: const Icon(
+                            Icons.visibility,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: AppTheme.spacing12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(AppTheme.spacing8),
-                                decoration: BoxDecoration(
-                                  color: _permissionLevel == 'read'
-                                      ? Colors.white.withOpacity(0.2)
-                                      : AppTheme.primary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                                ),
-                                child: Icon(
-                                  Icons.visibility,
-                                  color: _permissionLevel == 'read' ? Colors.white : AppTheme.primary,
-                                  size: 20,
+                              Text(
+                                'READ-ONLY MODE',
+                                style: AppTheme.labelLarge.copyWith(
+                                  color: Colors.white,
                                 ),
                               ),
-                              const SizedBox(width: AppTheme.spacing12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Flexible(
-                                          child: Text(
-                                            'READ ONLY',
-                                            style: AppTheme.labelLarge.copyWith(
-                                              color: _permissionLevel == 'read' ? Colors.white : AppTheme.textPrimary,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        const SizedBox(width: AppTheme.spacing8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: AppTheme.spacing8,
-                                            vertical: AppTheme.spacing4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: AppTheme.success.withOpacity(0.2),
-                                            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                                          ),
-                                          child: Text(
-                                            'FREE',
-                                            style: AppTheme.labelSmall.copyWith(
-                                              color: AppTheme.success,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: AppTheme.spacing4),
-                                    Text(
-                                      'View portfolio & get AI analysis',
-                                      style: AppTheme.bodySmall.copyWith(
-                                        color: _permissionLevel == 'read'
-                                            ? Colors.white.withOpacity(0.8)
-                                            : AppTheme.textTertiary,
-                                      ),
-                                    ),
-                                  ],
+                              const SizedBox(height: AppTheme.spacing4),
+                              Text(
+                                'View portfolio only • No trade execution',
+                                style: AppTheme.bodySmall.copyWith(
+                                  color: Colors.white.withOpacity(0.8),
                                 ),
                               ),
                             ],
                           ),
                         ),
+                        Icon(
+                          Icons.lock_outline,
+                          color: Colors.white.withOpacity(0.6),
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacing12),
+                  // Info Card
+                  Container(
+                    padding: const EdgeInsets.all(AppTheme.spacing12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.glassWhite,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                      border: Border.all(
+                        color: AppTheme.glassBorder,
+                        width: 1,
                       ),
-
-                      // TRADING ENABLED (Premium)
-                      GestureDetector(
-                        onTap: () async {
-                          // TODO: Show payment/subscription dialog in future
-                          await AppSettingsService().setPermissionLevel('trading');
-                          setState(() => _permissionLevel = 'trading');
-                          _showSnackBar('API Permission: Trading Enabled (Premium)', isError: false);
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(AppTheme.spacing16),
-                          decoration: BoxDecoration(
-                            gradient: _permissionLevel == 'trading' ? AppTheme.buyGradient : null,
-                            color: _permissionLevel == 'trading' ? null : AppTheme.glassWhite,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                            border: Border.all(
-                              color: _permissionLevel == 'trading' ? AppTheme.buyGreen : AppTheme.glassBorder,
-                              width: 2,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.info_outline,
+                          color: AppTheme.textSecondary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: AppTheme.spacing12),
+                        Expanded(
+                          child: Text(
+                            'MyTradeMate does not execute trades. To trade, use Binance directly.',
+                            style: AppTheme.bodySmall.copyWith(
+                              color: AppTheme.textSecondary,
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(AppTheme.spacing8),
-                                decoration: BoxDecoration(
-                                  color: _permissionLevel == 'trading'
-                                      ? Colors.white.withOpacity(0.2)
-                                      : AppTheme.buyGreen.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                                ),
-                                child: Icon(
-                                  Icons.swap_horiz,
-                                  color: _permissionLevel == 'trading' ? Colors.white : AppTheme.buyGreen,
-                                  size: 20,
-                                ),
-                              ),
-                              const SizedBox(width: AppTheme.spacing12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Flexible(
-                                          child: Text(
-                                            'TRADING ENABLED',
-                                            style: AppTheme.labelLarge.copyWith(
-                                              color: _permissionLevel == 'trading' ? Colors.white : AppTheme.textPrimary,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        const SizedBox(width: AppTheme.spacing8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: AppTheme.spacing8,
-                                            vertical: AppTheme.spacing4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            gradient: AppTheme.premiumGoldGradient,
-                                            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withOpacity(0.12),
-                                                blurRadius: 6,
-                                                offset: const Offset(0, 2),
-                                              ),
-                                            ],
-                                          ),
-                                          child: Text(
-                                            'PRO',
-                                            style: AppTheme.labelSmall.copyWith(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: AppTheme.spacing4),
-                                    Text(
-                                      'AI can execute trades for you',
-                                      style: AppTheme.bodySmall.copyWith(
-                                        color: _permissionLevel == 'trading'
-                                            ? Colors.white.withOpacity(0.8)
-                                            : AppTheme.textTertiary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),

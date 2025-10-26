@@ -217,7 +217,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 12),
 
           Text(
-            'AI-Powered Crypto Trading',
+            'AI-Powered Crypto Tracking',
             style: AppTheme.headingMedium.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -227,7 +227,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 8),
 
           Text(
-            'Your intelligent trading assistant with advanced AI predictions',
+            'Your intelligent portfolio assistant with advanced AI predictions',
             style: AppTheme.bodyMedium.copyWith(
               color: AppTheme.textSecondary,
             ),
@@ -250,8 +250,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           _buildFeatureCard(
             icon: Icons.show_chart_rounded,
             iconColor: const Color(0xFF34C759),
-            title: '4 Order Types',
-            description: 'Market, Limit, Stop-Limit, Stop-Market',
+            title: 'Multi-Timeframe Analysis',
+            description: '5 timeframes • 1D free • Pro unlocks 5m-4h',
           ),
 
           const SizedBox(height: 12),
@@ -271,7 +271,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             icon: Icons.shield_outlined,
             iconColor: const Color(0xFF34C759),
             title: 'Secure & Private',
-            description: 'Biometric auth • Encrypted storage • Your keys stay on your device',
+            description: 'Read-only access • Encrypted storage • No trade execution',
           ),
 
           const SizedBox(height: 40),
@@ -289,7 +289,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 32),
 
           Text(
-            'Choose Your Plan',
+            'Free or Pro?',
             style: AppTheme.displayLarge.copyWith(
               fontSize: 32,
               fontWeight: FontWeight.bold,
@@ -300,7 +300,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 16),
 
           Text(
-            'Start with FREE, upgrade anytime',
+            '1D predictions free forever. Upgrade for faster signals.',
             style: AppTheme.bodyLarge.copyWith(
               fontSize: 17,
               color: AppTheme.textSecondary,
@@ -338,12 +338,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                _buildFeature('✓ AI predictions on 1D timeframe only', fontSize: 15),
-                _buildFeature('✓ READ-only Binance API access', fontSize: 15),
-                _buildFeature('✓ View portfolio & balances', fontSize: 15),
-                _buildFeature('✓ Basic market data', fontSize: 15),
-                _buildFeature('✗ Cannot place trades', isDisabled: true, fontSize: 15),
-                _buildFeature('✗ Limited AI timeframes', isDisabled: true, fontSize: 15),
+                _buildFeature('✓ AI predictions on 1D timeframe', fontSize: 15),
+                _buildFeature('✓ Portfolio view (read-only)', fontSize: 15),
+                _buildFeature('✓ Real-time price data', fontSize: 15),
+                _buildFeature('✓ Candlestick charts', fontSize: 15),
+                _buildFeature('✗ Short-term AI (5m–4h)', isDisabled: true, fontSize: 15),
+                _buildFeature('✗ Price alerts', isDisabled: true, fontSize: 15),
               ],
             ),
           ),
@@ -381,7 +381,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     Icon(Icons.star, color: AppTheme.primary, size: 28),
                     const SizedBox(width: 12),
                     Text(
-                      'PREMIUM',
+                      'Pro',
                       style: AppTheme.headingLarge.copyWith(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -391,17 +391,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                _buildFeature('✓ AI predictions on ALL timeframes (5m, 15m, 1h, 4h, 1d)', fontSize: 15),
-                _buildFeature('✓ TRADING Binance API (place real orders)', fontSize: 15),
-                _buildFeature('✓ 4 order types (Market, Limit, Stop-Loss, OCO)', fontSize: 15),
-                _buildFeature('✓ Full portfolio management', fontSize: 15),
+                _buildFeature('✓ All Free features', fontSize: 15),
+                _buildFeature('✓ AI predictions on 5m, 15m, 1h, 4h timeframes', fontSize: 15),
+                _buildFeature('✓ Price alerts and notifications', fontSize: 15),
+                _buildFeature('✓ Faster signal refresh', fontSize: 15),
                 const SizedBox(height: 16),
                 Text(
-                  'Requires: TRADING API key from Binance',
+                  '€9.99/month or €84.99/year (save 30%)',
                   style: AppTheme.labelMedium.copyWith(
                     fontSize: 13,
-                    color: AppTheme.textTertiary,
-                    fontStyle: FontStyle.italic,
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -458,15 +458,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
                 _buildDisclaimerItem(
                   icon: Icons.warning_rounded,
-                  text: 'Crypto trading involves substantial risk of loss',
+                  text: 'Cryptocurrency markets are volatile and risky',
                 ),
                 _buildDisclaimerItem(
                   icon: Icons.bar_chart_rounded,
-                  text: 'Not financial advice - AI predictions may be inaccurate',
+                  text: 'AI predictions are not financial advice',
                 ),
                 _buildDisclaimerItem(
-                  icon: Icons.block_rounded,
-                  text: 'You must be 18+ to use this app',
+                  icon: Icons.visibility_outlined,
+                  text: 'This app is view-only and does not execute trades',
                 ),
                 _buildDisclaimerItem(
                   icon: Icons.school_outlined,

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../ml/crypto_ml_service.dart';
 import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
 import '../widgets/premium_card.dart';
+import '../widgets/upgrade_banner.dart';
+import '../providers/subscription_provider.dart';
+import 'paywall_screen.dart';
 
 class AiPredictionPage extends StatefulWidget {
   const AiPredictionPage({super.key});
@@ -19,7 +23,7 @@ class _AiPredictionPageState extends State<AiPredictionPage> {
   bool _isFetchingData = false;
   String _errorMessage = '';
   String _selectedSymbol = 'BTCUSDT';
-  String _interval = '1h'; // 15m, 1h, 4h
+  String _interval = '1d'; // Default to 1D (free tier)
 
   // final BinanceService _binanceService = BinanceService();
   final List<String> _bases = const ['BTC','ETH','BNB','SOL','WLFI','TRUMP'];
@@ -51,6 +55,22 @@ class _AiPredictionPageState extends State<AiPredictionPage> {
 
   Future<void> _runPrediction() async {
     if (!_isModelReady) return;
+
+    // Check if timeframe is locked
+    final subscription = Provider.of<SubscriptionProvider>(context, listen: false);
+    final isProUser = subscription.isProUser;
+    final isLockedTimeframe = ['5m', '15m', '1h', '4h'].contains(_interval);
+
+    if (isLockedTimeframe && !isProUser) {
+      // Show paywall instead of running prediction
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const PaywallScreen()),
+        );
+      }
+      return;
+    }
 
     setState(() {
       _isFetchingData = true;
@@ -160,6 +180,9 @@ class _AiPredictionPageState extends State<AiPredictionPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // Upgrade Banner (for free users)
+                        const UpgradeBanner(),
+
                         // Symbol Selector - Premium Design
                         PremiumCard(
                           useGradient: true,
@@ -236,23 +259,41 @@ class _AiPredictionPageState extends State<AiPredictionPage> {
                         const SizedBox(height: 24),
 
                         // Interval selector
-                        Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: 8,
-                          children: [
-                            {'label': '15m', 'value': '15m'},
-                            {'label': '1H', 'value': '1h'},
-                            {'label': '4H', 'value': '4h'},
-                          ].map((item) {
-                            final bool isSel = _interval == item['value'];
-                            return ChoiceChip(
-                              label: Text(item['label'] as String),
-                              selected: isSel,
-                              onSelected: (_) {
-                                setState(() => _interval = item['value'] as String);
-                              },
+                        Consumer<SubscriptionProvider>(
+                          builder: (context, subscription, _) {
+                            final isProUser = subscription.isProUser;
+                            return Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 8,
+                              children: [
+                                {'label': isProUser ? '5m' : '5m 🔒 Pro', 'value': '5m'},
+                                {'label': isProUser ? '15m' : '15m 🔒 Pro', 'value': '15m'},
+                                {'label': isProUser ? '1H' : '1H 🔒 Pro', 'value': '1h'},
+                                {'label': isProUser ? '4H' : '4H 🔒 Pro', 'value': '4h'},
+                                {'label': isProUser ? '1D' : '1D FREE', 'value': '1d'},
+                              ].map((item) {
+                                final bool isSel = _interval == item['value'];
+                                final isLocked = !isProUser && ['5m', '15m', '1h', '4h'].contains(item['value']);
+                                return GestureDetector(
+                                  onTap: isLocked ? () {
+                                    // Show paywall when tapping locked timeframe
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const PaywallScreen()),
+                                    );
+                                  } : null,
+                                  child: ChoiceChip(
+                                    label: Text(item['label'] as String),
+                                    selected: isSel,
+                                    onSelected: isLocked ? null : (_) {
+                                      setState(() => _interval = item['value'] as String);
+                                    },
+                                    backgroundColor: isLocked ? Colors.grey.withOpacity(0.2) : null,
+                                  ),
+                                );
+                              }).toList(),
                             );
-                          }).toList(),
+                          },
                         ),
                         const SizedBox(height: 16),
 

@@ -9,6 +9,7 @@ import 'ml/unified_ml_service.dart';
 import 'ml/ensemble_predictor.dart';
 import 'ml/crypto_ml_service.dart';
 import 'providers/theme_provider.dart';
+import 'providers/subscription_provider.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/market_screen.dart';
 import 'screens/ai_strategies_screen.dart';
@@ -37,11 +38,19 @@ Future<void> main() async {
   final themeProvider = ThemeProvider();
   await themeProvider.init();
 
+  // Initialize RevenueCat SDK
+  await SubscriptionProvider.initializeRevenueCat();
+
+  // Initialize subscription provider and check status
+  final subscriptionProvider = SubscriptionProvider();
+  await subscriptionProvider.checkSubscriptionStatus();
+
   // Start the app immediately
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: themeProvider),
+        ChangeNotifierProvider.value(value: subscriptionProvider),
         ChangeNotifierProvider.value(value: AppSettingsService()),
         ChangeNotifierProvider.value(value: AuthService()),
         ChangeNotifierProvider.value(value: AchievementService()),
@@ -163,7 +172,7 @@ class _HomePageState extends State<HomePage> {
     _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'Dashboard'),
     _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: 'Market'),
     _NavItem(icon: Icons.smart_toy_outlined, activeIcon: Icons.smart_toy, label: 'AI'),
-    _NavItem(icon: Icons.swap_horiz, activeIcon: Icons.swap_horiz, label: 'Orders'),
+    _NavItem(icon: Icons.list_alt, activeIcon: Icons.list_alt, label: 'Activity'),
     _NavItem(icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet, label: 'Portfolio'),
   ];
 
