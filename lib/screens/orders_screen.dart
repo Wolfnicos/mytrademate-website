@@ -258,11 +258,13 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
   /// Extract base asset from trading pair (e.g., 'BNBEUR' -> 'BNB')
   String _getBaseAsset() {
+    // IMPORTANT: Check longest strings FIRST to avoid partial matches
+    // e.g., 'USDC' must be checked before 'USD' to avoid 'BTCC' bug
     final base = _selectedPair
-        .replaceAll('EUR', '')
-        .replaceAll('USDT', '')
-        .replaceAll('USD', '')
-        .replaceAll('USDC', '');
+        .replaceAll('USDT', '')  // Check 4-char first
+        .replaceAll('USDC', '')  // Check 4-char first
+        .replaceAll('EUR', '')   // Then 3-char
+        .replaceAll('USD', '');  // Then 3-char last
     return base;
   }
 
