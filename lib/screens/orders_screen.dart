@@ -221,10 +221,6 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
       });
 
       debugPrint('Orders: Loaded ${_balances.length} balances for amount display');
-      // Debug: Print all balances
-      _balances.forEach((asset, amount) {
-        debugPrint('  💰 $asset: $amount');
-      });
     } catch (e) {
       debugPrint('Orders: Error loading balances: $e');
       if (!mounted) return;
@@ -239,7 +235,6 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   double _getBalance(String asset) {
     final upperAsset = asset.toUpperCase();
     final balance = _balances[upperAsset] ?? 0.0;
-    debugPrint('📊 _getBalance($upperAsset) = $balance (from ${_balances.length} total balances)');
     return balance;
   }
 
@@ -268,7 +263,6 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
         .replaceAll('USDT', '')
         .replaceAll('USD', '')
         .replaceAll('USDC', '');
-    debugPrint('🪙 _getBaseAsset() from $_selectedPair = $base');
     return base;
   }
 
@@ -286,7 +280,6 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     } else {
       quote = 'USDT';
     }
-    debugPrint('💵 _getQuoteAsset() from $_selectedPair = $quote');
     return quote;
   }
 
