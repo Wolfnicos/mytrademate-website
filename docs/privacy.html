@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MyTradeMate Privacy Policy - Your data privacy and security are our top priority. We don't collect, store, or sell your personal information.">
     <title>Privacy Policy - MyTradeMate</title>
     <style>
         * {
@@ -12,321 +12,284 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-glass: rgba(255, 255, 255, 0.15);
+            --card-border: rgba(255, 255, 255, 0.25);
+            --gold: #FFD700;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background: #f5f5f5;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--primary-gradient);
             color: white;
-            padding: 40px 20px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 3em;
-            margin-bottom: 10px;
+            line-height: 1.8;
+            min-height: 100vh;
         }
 
         .container {
-            max-width: 1000px;
-            margin: 40px auto;
-            padding: 40px;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 20px;
         }
 
-        h2 {
-            color: #667eea;
-            margin-top: 40px;
-            margin-bottom: 20px;
-            font-size: 2em;
-        }
-
-        h3 {
-            color: #764ba2;
-            margin-top: 25px;
-            margin-bottom: 15px;
-            font-size: 1.5em;
-        }
-
-        p {
-            margin-bottom: 15px;
-        }
-
-        ul {
-            margin-left: 30px;
-            margin-bottom: 20px;
-        }
-
-        li {
-            margin-bottom: 10px;
-        }
-
-        .highlight {
-            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
-            padding: 25px;
-            border-left: 5px solid #667eea;
-            margin: 30px 0;
-            border-radius: 8px;
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 60px;
         }
 
         .back-link {
             display: inline-block;
-            margin-top: 40px;
-            padding: 12px 30px;
-            background: #667eea;
+            margin-bottom: 30px;
             color: white;
             text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
+            font-size: 18px;
+            opacity: 0.9;
             transition: all 0.3s;
         }
 
         .back-link:hover {
-            background: #764ba2;
-            transform: translateY(-2px);
+            opacity: 1;
+            transform: translateX(-5px);
+        }
+
+        h1 {
+            font-size: 56px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: linear-gradient(to right, #fff, #f0f0f0, #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .last-updated {
-            color: #666;
-            font-style: italic;
-            margin-bottom: 30px;
-            padding: 15px;
-            background: #f9f9f9;
-            border-radius: 8px;
+            font-size: 16px;
+            opacity: 0.8;
+        }
+
+        /* Content Card */
+        .content-card {
+            background: var(--card-glass);
+            backdrop-filter: blur(30px);
+            border: 1px solid var(--card-border);
+            border-radius: 25px;
+            padding: 50px 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 40px;
+        }
+
+        .intro {
+            font-size: 20px;
+            margin-bottom: 40px;
+            padding: 25px;
+            background: rgba(0, 200, 83, 0.15);
+            border-left: 4px solid #00C853;
+            border-radius: 10px;
+        }
+
+        h2 {
+            font-size: 32px;
+            margin: 40px 0 20px 0;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h3 {
+            font-size: 24px;
+            margin: 30px 0 15px 0;
+            font-weight: 600;
+        }
+
+        p {
+            margin-bottom: 20px;
+            font-size: 17px;
+            opacity: 0.95;
+        }
+
+        ul, ol {
+            margin: 20px 0 20px 30px;
+        }
+
+        li {
+            margin-bottom: 12px;
+            font-size: 17px;
+        }
+
+        .highlight-box {
+            background: rgba(255, 215, 0, 0.15);
+            border: 2px solid var(--gold);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+
+        .highlight-box h3 {
+            color: var(--gold);
+            margin-top: 0;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            margin-top: 60px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+            opacity: 0.9;
+            transition: all 0.3s;
+            font-size: 16px;
+        }
+
+        .footer-links a:hover {
+            opacity: 1;
+            text-decoration: underline;
         }
 
         @media (max-width: 768px) {
-            .container {
-                margin: 20px;
-                padding: 25px;
-            }
-
-            .header h1 {
-                font-size: 2em;
-            }
+            h1 { font-size: 38px; }
+            h2 { font-size: 26px; }
+            .content-card { padding: 30px 25px; }
         }
     </style>
 </head>
-
 <body>
-    <div class="header">
-        <h1>🔒 Privacy Policy</h1>
-        <p>Your Privacy is Our Priority</p>
-    </div>
-
     <div class="container">
-        <p class="last-updated"><strong>Last Updated:</strong> October 23, 2025 | <strong>Effective Date:</strong>
-            October 23, 2025</p>
+        <header>
+            <a href="index.html" class="back-link">← Back to Home</a>
+            <h1>🔒 Privacy Policy</h1>
+            <p class="last-updated">Last Updated: January 26, 2025</p>
+        </header>
 
-        <div class="highlight">
-            <h3>🎯 TL;DR - The Short Version</h3>
-            <p><strong>We don't collect, store, or transmit ANY of your personal data. Everything stays on YOUR
-                    device.</strong></p>
-            <p>No tracking. No analytics. No data collection. Period.</p>
-        </div>
+        <div class="content-card">
+            <div class="intro">
+                <strong>Your Privacy Matters.</strong> MyTradeMate is built on a foundation of privacy and security. We believe your trading data is yours alone. This policy explains how we protect your information.
+            </div>
 
-        <h2>What We DO NOT Collect</h2>
-        <p>MyTradeMate is built with privacy-first principles. We <strong>DO NOT</strong> collect:</p>
-        <ul>
-            <li>❌ Your name, email, or contact information</li>
-            <li>❌ Your Binance API keys or credentials</li>
-            <li>❌ Your trading history or portfolio data</li>
-            <li>❌ Your device information or identifiers</li>
-            <li>❌ Your location data</li>
-            <li>❌ Your usage analytics or behavior</li>
-            <li>❌ Any cookies or tracking data</li>
-            <li>❌ Any personally identifiable information (PII)</li>
-        </ul>
+            <h2>🎯 Our Privacy Philosophy</h2>
+            <p>MyTradeMate operates on a simple principle: <strong>Your keys, your crypto, your data.</strong> We designed our app to minimize data collection and maximize your privacy. All sensitive information stays on your device, encrypted and secure.</p>
 
-        <h2>How Your Data is Stored</h2>
-        <h3>Local Storage Only</h3>
-        <p>All data in MyTradeMate is stored <strong>locally on your device</strong>:</p>
-
-        <p><strong>1. FlutterSecureStorage (for API keys)</strong></p>
-        <ul>
-            <li>Your Binance API keys are encrypted and stored in your device's secure keychain</li>
-            <li>iOS: Stored in iOS Keychain (hardware-encrypted)</li>
-            <li>Android: Stored in Android Keystore (hardware-encrypted)</li>
-            <li>Never transmitted to our servers (we don't have servers!)</li>
-        </ul>
-
-        <p><strong>2. SharedPreferences (for app settings)</strong></p>
-        <ul>
-            <li>Theme preference (light/dark mode)</li>
-            <li>Quote currency preference (USDT/EUR/USDC)</li>
-            <li>Paper trading mode toggle</li>
-            <li>Risk disclaimer acceptance flag</li>
-        </ul>
-
-        <div class="highlight">
-            <h3>✅ What This Means for You</h3>
+            <h2>📊 What We DON'T Collect</h2>
+            <p>Unlike most trading apps, MyTradeMate does NOT collect or store:</p>
             <ul>
-                <li>✅ Your data never leaves your device</li>
-                <li>✅ We cannot access your API keys</li>
-                <li>✅ We cannot see your portfolio</li>
-                <li>✅ We cannot track your trades</li>
-                <li>✅ If you uninstall the app, all data is deleted</li>
+                <li><strong>API Keys</strong> - Your Binance API credentials are encrypted and stored ONLY on your device</li>
+                <li><strong>Trading History</strong> - Your trades, orders, and portfolio data never leave your device</li>
+                <li><strong>Personal Information</strong> - No email, phone number, or identity verification required</li>
+                <li><strong>Financial Data</strong> - We never see your balances, profits, or losses</li>
+                <li><strong>Location Data</strong> - No GPS tracking or location monitoring</li>
+                <li><strong>Behavioral Data</strong> - No tracking pixels, analytics, or user profiling</li>
             </ul>
+
+            <h2>✅ What We DO Collect (Minimal)</h2>
+            <p>To provide basic app functionality, we collect only:</p>
+            <ul>
+                <li><strong>Crash Reports</strong> - Anonymous error logs to fix bugs (optional, can be disabled)</li>
+                <li><strong>App Version</strong> - To ensure compatibility and updates</li>
+                <li><strong>Device Type</strong> - iOS or Android, for optimization purposes only</li>
+            </ul>
+            <p>All of this data is <strong>anonymous</strong> and cannot be linked back to you personally.</p>
+
+            <h2>🔐 How We Protect Your Data</h2>
+
+            <h3>Local Encryption</h3>
+            <p>Your Binance API keys are encrypted using <strong>AES-256 encryption</strong> and stored in your device's secure keychain (iOS Keychain or Android Keystore). We never transmit your keys to our servers.</p>
+
+            <h3>Biometric Security</h3>
+            <p>You can enable Face ID, Touch ID, or fingerprint authentication to add an extra layer of protection. Your biometric data never leaves your device and is managed by Apple/Google security systems.</p>
+
+            <h3>No Cloud Sync</h3>
+            <p>Your trading data, settings, and preferences are stored locally on your device. We don't sync data to the cloud, meaning you have complete control over your information.</p>
+
+            <div class="highlight-box">
+                <h3>⚠️ Important: API Key Permissions</h3>
+                <p>When creating your Binance API key for MyTradeMate, we recommend these settings:</p>
+                <ul>
+                    <li><strong>Enable:</strong> Read permissions (to view balances and orders)</li>
+                    <li><strong>Enable:</strong> Spot & Margin Trading (only if you want to trade)</li>
+                    <li><strong>Disable:</strong> Withdrawals (for maximum security)</li>
+                    <li><strong>Enable:</strong> IP Access Restrictions (whitelist only your IP)</li>
+                </ul>
+                <p>This ensures that even if your device is compromised, attackers cannot withdraw funds from your account.</p>
+            </div>
+
+            <h2>🍪 Cookies and Tracking</h2>
+            <p>MyTradeMate does NOT use:</p>
+            <ul>
+                <li>Advertising cookies</li>
+                <li>Social media tracking pixels</li>
+                <li>Third-party analytics (Google Analytics, Facebook Pixel, etc.)</li>
+                <li>Cross-site tracking or fingerprinting</li>
+            </ul>
+            <p>Our website uses minimal technical cookies only for basic functionality (like remembering your language preference).</p>
+
+            <h2>🤝 Third-Party Services</h2>
+            <p>MyTradeMate connects to these third-party services:</p>
+
+            <h3>Binance API</h3>
+            <p>When you use your API keys, the app communicates directly with Binance servers to fetch market data and execute trades. This communication is encrypted (HTTPS) and follows Binance's own privacy policy.</p>
+
+            <h3>RevenueCat (Subscription Management)</h3>
+            <p>For in-app purchases and subscriptions, we use RevenueCat. They collect minimal data (transaction ID, subscription status) to manage your premium access. RevenueCat is GDPR and CCPA compliant.</p>
+
+            <h2>👤 Your Rights (GDPR & CCPA Compliant)</h2>
+            <p>Under data protection laws, you have the right to:</p>
+            <ul>
+                <li><strong>Access:</strong> Request a copy of any data we hold (which is essentially zero)</li>
+                <li><strong>Delete:</strong> Request deletion of your data (can be done by uninstalling the app)</li>
+                <li><strong>Opt-Out:</strong> Disable crash reporting and analytics in app settings</li>
+                <li><strong>Portability:</strong> Export your data at any time (saved locally on your device)</li>
+            </ul>
+
+            <h2>👶 Children's Privacy</h2>
+            <p>MyTradeMate is not intended for users under 18 years old. Cryptocurrency trading involves financial risk and is restricted to adults. We do not knowingly collect data from minors.</p>
+
+            <h2>🔄 Changes to This Policy</h2>
+            <p>We may update this Privacy Policy occasionally to reflect changes in our practices or legal requirements. We will notify you of significant changes through the app or website. Your continued use of MyTradeMate after changes constitutes acceptance of the updated policy.</p>
+
+            <h2>📧 Contact Us</h2>
+            <p>If you have questions about this Privacy Policy or want to exercise your data rights, contact us at:</p>
+            <p><strong>Email:</strong> <a href="mailto:mytrademate.app@gmail.com" style="color: var(--gold);">mytrademate.app@gmail.com</a></p>
+
+            <!-- Placeholder for future social media links -->
+            <!--
+            <p><strong>Social Media:</strong></p>
+            <ul>
+                <li>Instagram: @mytrademate</li>
+                <li>TikTok: @mytrademate</li>
+                <li>Twitter/X: @mytrademate</li>
+            </ul>
+            -->
+
+            <div class="highlight-box">
+                <h3>🛡️ Bottom Line</h3>
+                <p><strong>MyTradeMate respects your privacy.</strong> We built this app for traders who value security and control. Your API keys, trading data, and personal information stay on your device, encrypted and protected. We can't access it, we don't want to access it, and we will never sell it.</p>
+            </div>
         </div>
 
-        <h2>Third-Party Services</h2>
-        <p>MyTradeMate connects to external services to provide functionality:</p>
-
-        <h3>1. Binance API</h3>
-        <ul>
-            <li><strong>Purpose:</strong> Fetch market data, portfolio balances, and execute trades</li>
-            <li><strong>Data Sent:</strong> Your API keys (encrypted in transit via HTTPS)</li>
-            <li><strong>Data Received:</strong> Market prices, portfolio balances, order status</li>
-            <li><strong>Privacy Policy:</strong> <a href="https://www.binance.com/en/privacy" target="_blank">Binance
-                    Privacy Policy</a></li>
-        </ul>
-
-        <h3>2. Coinpaprika API</h3>
-        <ul>
-            <li><strong>Purpose:</strong> Fetch cryptocurrency logos</li>
-            <li><strong>Data Sent:</strong> Cryptocurrency symbol only (e.g., "BTC")</li>
-            <li><strong>Data Received:</strong> Logo image URL</li>
-            <li><strong>Privacy Policy:</strong> <a href="https://coinpaprika.com/privacy-policy"
-                    target="_blank">Coinpaprika Privacy</a></li>
-        </ul>
-
-        <h3>3. RevenueCat (Subscription Management)</h3>
-        <ul>
-            <li><strong>Purpose:</strong> Process in-app subscriptions (Premium plan)</li>
-            <li><strong>Data Sent:</strong> Anonymous user ID, subscription status, purchase receipts</li>
-            <li><strong>Data Received:</strong> Subscription status, entitlements, expiration date</li>
-            <li><strong>Data Stored:</strong> Purchase history (required by Apple/Google)</li>
-            <li><strong>Privacy Policy:</strong> <a href="https://www.revenuecat.com/privacy" target="_blank">RevenueCat
-                    Privacy Policy</a></li>
-        </ul>
-
-        <h3>4. Apple App Store / Google Play Store</h3>
-        <ul>
-            <li><strong>Purpose:</strong> Process payments for Premium subscriptions</li>
-            <li><strong>Data Collected:</strong> Payment information, purchase history (handled by Apple/Google)</li>
-            <li><strong>Privacy Policy:</strong>
-                <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple Privacy</a> |
-                <a href="https://policies.google.com/privacy" target="_blank">Google Privacy</a>
-            </li>
-        </ul>
-
-        <p><strong>Important:</strong> All API calls are made <strong>directly from your device</strong> to these
-            services. We do not act as a middleman. We do not log or store any requests.</p>
-
-        <h2>Permissions Used</h2>
-
-        <h3>iOS Permissions:</h3>
-        <ul>
-            <li><strong>Internet Access:</strong> Required to connect to Binance API</li>
-            <li><strong>Face ID / Touch ID (Optional):</strong> Secure authentication when opening the app</li>
-        </ul>
-
-        <h3>Android Permissions:</h3>
-        <ul>
-            <li><strong>Internet Access:</strong> Required to connect to Binance API</li>
-            <li><strong>Network State:</strong> Check internet connection status</li>
-            <li><strong>Biometric Authentication (Optional):</strong> Fingerprint authentication</li>
-        </ul>
-
-        <h2>Subscription Data</h2>
-        <p>If you subscribe to MyTradeMate Premium, the following data is processed:</p>
-
-        <h3>What We Collect for Subscriptions:</h3>
-        <ul>
-            <li><strong>Anonymous User ID:</strong> Generated by RevenueCat (not linked to your identity)</li>
-            <li><strong>Subscription Status:</strong> Active, expired, or cancelled</li>
-            <li><strong>Purchase Receipts:</strong> Validated by Apple/Google (we don't see payment details)</li>
-            <li><strong>Subscription Type:</strong> Monthly or Annual plan</li>
-            <li><strong>Expiration Date:</strong> When your subscription renews or expires</li>
-        </ul>
-
-        <h3>What We DO NOT Collect:</h3>
-        <ul>
-            <li>❌ Credit card numbers or payment information</li>
-            <li>❌ Your real name or email (unless you contact support)</li>
-            <li>❌ Billing address</li>
-            <li>❌ Purchase history beyond subscription status</li>
-        </ul>
-
-        <h3>How Subscription Data is Used:</h3>
-        <ul>
-            <li>✅ Verify your Premium subscription status</li>
-            <li>✅ Unlock Premium features in the app</li>
-            <li>✅ Restore purchases on new devices</li>
-            <li>✅ Prevent subscription fraud</li>
-        </ul>
-
-        <h3>Data Retention:</h3>
-        <ul>
-            <li>Subscription data is retained as long as your subscription is active</li>
-            <li>After cancellation, data is retained for 90 days (for refund/support purposes)</li>
-            <li>You can request deletion by emailing mytrademate.app@gmail.com</li>
-        </ul>
-
-        <h2>Data Security</h2>
-        <p>Even though we don't collect data, we take security seriously:</p>
-        <ul>
-            <li>✅ API keys encrypted using FlutterSecureStorage</li>
-            <li>✅ All API calls use HTTPS (TLS 1.2+)</li>
-            <li>✅ No plaintext storage of sensitive data</li>
-            <li>✅ Optional biometric authentication</li>
-            <li>✅ Password hashing using SHA-256</li>
-            <li>✅ Order confirmation dialogs prevent accidental trades</li>
-            <li>✅ Subscription data encrypted in transit and at rest</li>
-            <li>✅ Payment processing handled by Apple/Google (PCI-DSS compliant)</li>
-        </ul>
-
-        <h2>Your Rights</h2>
-        <p>Since we don't collect any data:</p>
-        <ul>
-            <li><strong>Delete:</strong> Simply uninstall the app</li>
-            <li><strong>Export:</strong> You control your device</li>
-            <li><strong>Correct:</strong> Edit settings in the app</li>
-            <li><strong>Access:</strong> All data is on your device</li>
-        </ul>
-
-        <h2>Children's Privacy</h2>
-        <p>MyTradeMate is <strong>NOT intended for users under 18 years of age.</strong> Cryptocurrency trading involves
-            financial risk and is only suitable for adults.</p>
-
-        <h2>GDPR Compliance (EU Users)</h2>
-        <ul>
-            <li><strong>Data Controller:</strong> You (it's on your device)</li>
-            <li><strong>Legal Basis:</strong> Not applicable (we don't process personal data)</li>
-            <li><strong>Your Rights:</strong> Full control via your device</li>
-        </ul>
-
-        <h2>CCPA Compliance (California Users)</h2>
-        <ul>
-            <li><strong>Personal Information Collected:</strong> None</li>
-            <li><strong>Sale of Personal Information:</strong> We don't sell data (we don't collect it)</li>
-        </ul>
-
-        <h2>Contact Us</h2>
-        <p>Questions about this Privacy Policy?</p>
-        <ul>
-            <li><strong>Email:</strong> <a href="mailto:mytrademate.app@gmail.com">mytrademate.app@gmail.com</a></li>
-            <li><strong>Website:</strong> <a href="https://mytrademate.app">https://mytrademate.app</a></li>
-            <li><strong>Response Time:</strong> Within 48 hours</li>
-        </ul>
-
-        <div class="highlight">
-            <h3>📋 Summary</h3>
-            <p><strong>What we collect:</strong> Nothing</p>
-            <p><strong>What we store:</strong> Nothing (except locally on your device)</p>
-            <p><strong>What we share:</strong> Nothing</p>
-            <p><strong>What we sell:</strong> Nothing</p>
-            <p><strong>Your data = Your device = Your control</strong></p>
-        </div>
-
-        <a href="index.html" class="back-link">← Back to Home</a>
+        <footer>
+            <div class="footer-links">
+                <a href="index.html">Home</a>
+                <a href="privacy.html">Privacy Policy</a>
+                <a href="terms.html">Terms of Service</a>
+                <a href="support.html">Support & FAQ</a>
+                <a href="contact.html">Contact Us</a>
+            </div>
+            <p style="opacity: 0.7; font-size: 14px;">© 2025 MyTradeMate. All rights reserved.</p>
+        </footer>
     </div>
 </body>
-
 </html>

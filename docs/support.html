@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MyTradeMate Support & FAQ - Get help with setup, trading, AI predictions, and troubleshooting.">
     <title>Support & FAQ - MyTradeMate</title>
     <style>
         * {
@@ -12,179 +12,230 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-glass: rgba(255, 255, 255, 0.15);
+            --card-border: rgba(255, 255, 255, 0.25);
+            --gold: #FFD700;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background: #f5f5f5;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--primary-gradient);
             color: white;
-            padding: 40px 20px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 3em;
-            margin-bottom: 10px;
+            line-height: 1.8;
+            min-height: 100vh;
         }
 
         .container {
             max-width: 1000px;
-            margin: 40px auto;
-            padding: 40px;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+            padding: 60px 20px;
         }
 
-        h2 {
-            color: #667eea;
-            margin-top: 40px;
-            margin-bottom: 20px;
-            font-size: 2em;
-        }
-
-        h3 {
-            color: #764ba2;
-            margin-top: 25px;
-            margin-bottom: 15px;
-            font-size: 1.5em;
-        }
-
-        p {
-            margin-bottom: 15px;
-        }
-
-        ul {
-            margin-left: 30px;
-            margin-bottom: 20px;
-        }
-
-        li {
-            margin-bottom: 10px;
-        }
-
-        .contact-box {
-            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
-            padding: 30px;
-            border-radius: 12px;
-            margin: 30px 0;
+        /* Header */
+        header {
             text-align: center;
-            border: 2px solid #667eea;
-        }
-
-        .contact-box h3 {
-            color: #667eea;
-            margin-bottom: 15px;
-            font-size: 1.8em;
-        }
-
-        .contact-box a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 1.3em;
-        }
-
-        .contact-box a:hover {
-            text-decoration: underline;
-        }
-
-        .faq-item {
-            background: #f9f9f9;
-            padding: 25px;
-            margin-bottom: 20px;
-            border-radius: 10px;
-            border-left: 5px solid #667eea;
-            transition: all 0.3s;
-        }
-
-        .faq-item:hover {
-            box-shadow: 0 3px 15px rgba(102, 126, 234, 0.2);
-        }
-
-        .faq-question {
-            font-weight: 600;
-            color: #667eea;
-            margin-bottom: 12px;
-            font-size: 1.2em;
-        }
-
-        .faq-answer {
-            color: #555;
-        }
-
-        .faq-answer table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-
-        .faq-answer th {
-            padding: 12px;
-            text-align: left;
-            border: 1px solid #ddd;
-            background: #f0f0ff;
-        }
-
-        .faq-answer td {
-            padding: 12px;
-            border: 1px solid #ddd;
+            margin-bottom: 60px;
         }
 
         .back-link {
             display: inline-block;
-            margin-top: 40px;
-            padding: 12px 30px;
-            background: #667eea;
+            margin-bottom: 30px;
             color: white;
             text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
+            font-size: 18px;
+            opacity: 0.9;
             transition: all 0.3s;
         }
 
         .back-link:hover {
-            background: #764ba2;
-            transform: translateY(-2px);
+            opacity: 1;
+            transform: translateX(-5px);
         }
 
-        .highlight {
-            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
-            padding: 25px;
-            border-left: 5px solid #667eea;
-            margin: 30px 0;
-            border-radius: 8px;
+        h1 {
+            font-size: 56px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: linear-gradient(to right, #fff, #f0f0f0, #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            opacity: 0.85;
+            margin-bottom: 30px;
+        }
+
+        /* Contact Box */
+        .contact-box {
+            background: var(--card-glass);
+            backdrop-filter: blur(30px);
+            border: 2px solid var(--gold);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 50px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .contact-box h3 {
+            color: var(--gold);
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+
+        .contact-box a {
+            color: var(--gold);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 20px;
+            transition: opacity 0.3s;
+        }
+
+        .contact-box a:hover {
+            opacity: 0.8;
+            text-decoration: underline;
+        }
+
+        /* Section Titles */
+        h2 {
+            font-size: 40px;
+            font-weight: 700;
+            margin: 50px 0 30px 0;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        /* FAQ Cards */
+        .faq-item {
+            background: var(--card-glass);
+            backdrop-filter: blur(30px);
+            border: 1px solid var(--card-border);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s;
+        }
+
+        .faq-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .faq-question {
+            font-weight: 700;
+            color: var(--gold);
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .faq-answer {
+            opacity: 0.95;
+            font-size: 17px;
+        }
+
+        .faq-answer strong {
+            color: white;
+            opacity: 1;
+        }
+
+        .faq-answer ul,
+        .faq-answer ol {
+            margin: 15px 0 15px 30px;
+        }
+
+        .faq-answer li {
+            margin-bottom: 10px;
+        }
+
+        /* Table */
+        .faq-answer table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .faq-answer th {
+            padding: 15px;
+            text-align: left;
+            background: rgba(255, 255, 255, 0.1);
+            font-weight: 700;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .faq-answer td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .faq-answer td:nth-child(2),
+        .faq-answer td:nth-child(3),
+        .faq-answer th:nth-child(2),
+        .faq-answer th:nth-child(3) {
+            text-align: center;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            margin-top: 60px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+            opacity: 0.9;
+            transition: all 0.3s;
+            font-size: 16px;
+        }
+
+        .footer-links a:hover {
+            opacity: 1;
+            text-decoration: underline;
         }
 
         @media (max-width: 768px) {
-            .container {
-                margin: 20px;
-                padding: 25px;
-            }
-
-            .header h1 {
-                font-size: 2em;
-            }
+            h1 { font-size: 38px; }
+            h2 { font-size: 32px; }
+            .faq-item { padding: 20px; }
+            .faq-question { font-size: 18px; }
         }
     </style>
 </head>
-
 <body>
-    <div class="header">
-        <h1>💬 Support & FAQ</h1>
-        <p>Get Help with MyTradeMate</p>
-    </div>
-
     <div class="container">
+        <header>
+            <a href="index.html" class="back-link">← Back to Home</a>
+            <h1>💬 Support & FAQ</h1>
+            <p class="subtitle">Get Help with MyTradeMate</p>
+        </header>
+
         <div class="contact-box">
             <h3>📧 Need Help?</h3>
-            <p>Email us at:</p>
+            <p style="margin: 15px 0; font-size: 18px; opacity: 0.9;">Email us at:</p>
             <a href="mailto:mytrademate.app@gmail.com">mytrademate.app@gmail.com</a>
-            <p style="margin-top: 15px; color: #666; font-size: 1.1em;">Response time: Within 24-48 hours</p>
+            <p style="margin-top: 15px; opacity: 0.8; font-size: 16px;">Response time: Within 24-48 hours</p>
         </div>
 
         <h2>🚀 Getting Started</h2>
@@ -195,7 +246,8 @@
                 <p><strong>A:</strong> Follow these steps:</p>
                 <ol>
                     <li>Download the app from App Store or Google Play</li>
-                    <li>Complete the onboarding and accept the risk disclaimer</li>
+                    <li>Complete the onboarding (48h FREE TRIAL starts automatically)</li>
+                    <li>Accept the risk disclaimer</li>
                     <li>Create a Binance account (if you don't have one)</li>
                     <li>Create Binance API keys</li>
                     <li>Add your API keys in Settings → API Configuration</li>
@@ -207,30 +259,34 @@
         <div class="faq-item">
             <div class="faq-question">Q: Do I need a Binance account?</div>
             <div class="faq-answer">
-                <p><strong>A:</strong> Yes, MyTradeMate connects to Binance API to fetch market data and execute trades.
-                </p>
-                <p>Create a free account at: <a href="https://www.binance.com"
-                        target="_blank">https://www.binance.com</a></p>
+                <p><strong>A:</strong> Yes, MyTradeMate connects to Binance API to fetch market data and execute trades. We use Binance because it's the world's largest crypto exchange with:</p>
+                <ul>
+                    <li>High liquidity and low fees</li>
+                    <li>Wide selection of trading pairs</li>
+                    <li>Reliable API infrastructure</li>
+                </ul>
+                <p>Create a free account at: <a href="https://www.binance.com" target="_blank" style="color: var(--gold);">https://www.binance.com</a></p>
             </div>
         </div>
 
         <div class="faq-item">
             <div class="faq-question">Q: How do I create Binance API keys?</div>
             <div class="faq-answer">
-                <p><strong>A:</strong></p>
+                <p><strong>A:</strong> Step-by-step guide:</p>
                 <ol>
                     <li>Log in to Binance</li>
-                    <li>Go to Profile → API Management</li>
+                    <li>Go to Profile (top right) → API Management</li>
                     <li>Click "Create API"</li>
+                    <li>Choose "System Generated" (recommended)</li>
                     <li>Set permissions:
                         <ul>
-                            <li><strong>FREE mode:</strong> Enable "Read Info" only</li>
-                            <li><strong>PREMIUM mode:</strong> Enable "Enable Spot & Margin Trading"</li>
-                            <li><strong>Important:</strong> Do NOT enable "Enable Withdrawals"</li>
+                            <li><strong>Enable "Read Info"</strong> (view portfolio)</li>
+                            <li><strong>Enable "Spot & Margin Trading"</strong> (for PREMIUM trading)</li>
+                            <li><strong>⚠️ DO NOT enable "Enable Withdrawals"</strong> (CRITICAL for security!)</li>
                         </ul>
                     </li>
                     <li>Copy API Key and Secret Key</li>
-                    <li>Add them to MyTradeMate in Settings</li>
+                    <li>Paste them into MyTradeMate Settings → API Configuration</li>
                 </ol>
             </div>
         </div>
@@ -240,46 +296,56 @@
         <div class="faq-item">
             <div class="faq-question">Q: What's the difference between FREE and PREMIUM mode?</div>
             <div class="faq-answer">
-                <p><strong>A:</strong></p>
+                <p><strong>A:</strong> Comparison table:</p>
                 <table>
                     <tr>
                         <th>Feature</th>
-                        <th style="text-align: center;">FREE</th>
-                        <th style="text-align: center;">PREMIUM</th>
+                        <th>FREE</th>
+                        <th>PREMIUM</th>
                     </tr>
                     <tr>
                         <td>Portfolio Viewing</td>
-                        <td style="text-align: center;">✅</td>
-                        <td style="text-align: center;">✅</td>
+                        <td>✅</td>
+                        <td>✅</td>
                     </tr>
                     <tr>
-                        <td>Real-time Prices</td>
-                        <td style="text-align: center;">✅</td>
-                        <td style="text-align: center;">✅</td>
+                        <td>Real-time Prices & Charts</td>
+                        <td>✅</td>
+                        <td>✅</td>
                     </tr>
                     <tr>
-                        <td>Charts (all timeframes)</td>
-                        <td style="text-align: center;">✅</td>
-                        <td style="text-align: center;">✅</td>
+                        <td>Charts (all timeframes: 5m to 1d)</td>
+                        <td>✅</td>
+                        <td>✅</td>
                     </tr>
                     <tr>
-                        <td>AI Predictions (1D)</td>
-                        <td style="text-align: center;">✅</td>
-                        <td style="text-align: center;">✅</td>
+                        <td>AI Predictions (1D only)</td>
+                        <td>✅</td>
+                        <td>✅</td>
                     </tr>
                     <tr>
-                        <td>AI Predictions (5m-4h)</td>
-                        <td style="text-align: center;">❌</td>
-                        <td style="text-align: center;">✅</td>
+                        <td>AI Predictions (5m, 15m, 1h, 4h)</td>
+                        <td>❌</td>
+                        <td>✅</td>
                     </tr>
                     <tr>
-                        <td>Trading Orders</td>
-                        <td style="text-align: center;">❌</td>
-                        <td style="text-align: center;">✅</td>
+                        <td>Trading Orders (4 Order Types)</td>
+                        <td>❌</td>
+                        <td>✅</td>
+                    </tr>
+                    <tr>
+                        <td>Advanced Indicators & Analytics</td>
+                        <td>❌</td>
+                        <td>✅</td>
+                    </tr>
+                    <tr>
+                        <td>Priority Support</td>
+                        <td>❌</td>
+                        <td>✅</td>
                     </tr>
                 </table>
-                <p style="margin-top: 15px;"><strong>How to upgrade:</strong> Create a Binance API key with TRADING
-                    permission and add it to MyTradeMate.</p>
+                <p style="margin-top: 20px;"><strong>48h FREE TRIAL:</strong> All new users get full PREMIUM access for 48 hours, starting from first app launch!</p>
+                <p><strong>Upgrade to PREMIUM:</strong> €9.99/month or €84.99/year (save 30%)</p>
             </div>
         </div>
 
@@ -288,13 +354,19 @@
         <div class="faq-item">
             <div class="faq-question">Q: How accurate are AI predictions?</div>
             <div class="faq-answer">
-                <p><strong>A:</strong> AI predictions are based on 76 technical indicators and historical data. However:
-                </p>
+                <p><strong>A:</strong> Our AI models (Transformer, LSTM, Random Forest) are trained on 76 technical indicators and millions of historical data points. Typical accuracy:</p>
                 <ul>
-                    <li>⚠️ Past performance ≠ future results</li>
-                    <li>⚠️ AI is not 100% accurate</li>
-                    <li>⚠️ Markets are unpredictable</li>
-                    <li>⚠️ Always do your own research</li>
+                    <li><strong>Transformer Model:</strong> ~58.67% accuracy (primary model)</li>
+                    <li><strong>LSTM Model:</strong> ~51% accuracy (fallback)</li>
+                    <li><strong>Random Forest:</strong> ~43.82% accuracy (rule-based fallback)</li>
+                </ul>
+                <p><strong>⚠️ Important Disclaimers:</strong></p>
+                <ul>
+                    <li>Past performance ≠ future results</li>
+                    <li>AI is not 100% accurate (no model is!)</li>
+                    <li>Markets are unpredictable (black swan events, news, regulations)</li>
+                    <li>Always do your own research (DYOR)</li>
+                    <li>Only invest what you can afford to lose</li>
                 </ul>
                 <p><strong>Use AI as ONE tool in your decision-making, not the only tool.</strong></p>
             </div>
@@ -303,13 +375,18 @@
         <div class="faq-item">
             <div class="faq-question">Q: What do BUY/SELL/HOLD signals mean?</div>
             <div class="faq-answer">
-                <p><strong>A:</strong></p>
+                <p><strong>A:</strong> Signal meanings:</p>
                 <ul>
-                    <li><strong>BUY:</strong> AI predicts price will go UP. Consider entering a long position.</li>
-                    <li><strong>SELL:</strong> AI predicts price will go DOWN. Consider exiting positions.</li>
-                    <li><strong>HOLD:</strong> AI predicts sideways movement. Wait for clearer signals.</li>
+                    <li><strong>🟢 BUY:</strong> AI predicts price will go UP. Consider entering a long position.</li>
+                    <li><strong>🔴 SELL:</strong> AI predicts price will go DOWN. Consider exiting positions or shorting.</li>
+                    <li><strong>🟡 HOLD:</strong> AI predicts sideways movement. Wait for clearer signals.</li>
                 </ul>
-                <p><strong>Important:</strong> These are suggestions, not commands. You decide!</p>
+                <p><strong>Important:</strong> These are suggestions, not commands. YOU decide! Always combine AI signals with:</p>
+                <ul>
+                    <li>Your own technical analysis</li>
+                    <li>Fundamental research (news, project updates)</li>
+                    <li>Risk management (stop-losses, position sizing)</li>
+                </ul>
             </div>
         </div>
 
@@ -320,26 +397,27 @@
             <div class="faq-answer">
                 <p><strong>A:</strong> MyTradeMate supports 4 order types:</p>
                 <ul>
-                    <li><strong>Market Order:</strong> Executes immediately at current price</li>
-                    <li><strong>Limit Order:</strong> Executes only at your specified price (or better)</li>
-                    <li><strong>Stop-Limit Order:</strong> Triggers a limit order when price hits stop price</li>
-                    <li><strong>Stop-Market Order:</strong> Triggers a market order when price hits stop price</li>
+                    <li><strong>Market Order:</strong> Executes immediately at current market price. Fast but may slip on volatile markets.</li>
+                    <li><strong>Limit Order:</strong> Executes only at your specified price (or better). Waits for your price, may not fill.</li>
+                    <li><strong>Stop-Limit Order:</strong> Triggers a limit order when price hits stop price. Good for taking profits or cutting losses.</li>
+                    <li><strong>Stop-Market Order:</strong> Triggers a market order when price hits stop price. Guaranteed execution at stop trigger.</li>
                 </ul>
             </div>
         </div>
 
         <div class="faq-item">
-            <div class="faq-question">Q: What is API Mode?</div>
+            <div class="faq-question">Q: What are the 76 AI indicators?</div>
             <div class="faq-answer">
-                <p><strong>A:</strong> API Mode determines how MyTradeMate connects to Binance:</p>
+                <p><strong>A:</strong> Our AI analyzes 76 technical indicators across multiple categories:</p>
                 <ul>
-                    <li><strong>FREE Mode (Read-Only):</strong> View portfolio and AI predictions only. No trading.</li>
-                    <li><strong>PREMIUM Mode (Trading):</strong> Full trading capabilities with real orders.</li>
+                    <li><strong>Momentum:</strong> RSI, Stochastic, MACD, Williams %R</li>
+                    <li><strong>Trend:</strong> Moving Averages (SMA, EMA), ADX, Parabolic SAR</li>
+                    <li><strong>Volatility:</strong> Bollinger Bands, ATR, Standard Deviation</li>
+                    <li><strong>Volume:</strong> OBV, Volume SMA, Money Flow Index</li>
+                    <li><strong>Support/Resistance:</strong> Pivot Points, Fibonacci Retracements</li>
+                    <li><strong>Custom:</strong> Price action patterns, candlestick formations</li>
                 </ul>
-                <p><strong>How to switch:</strong> Go to Settings → API Configuration → Add API keys with appropriate
-                    permissions</p>
-                <p><strong>Tip:</strong> Start with FREE mode to learn the app, then upgrade to PREMIUM when ready to
-                    trade.</p>
+                <p>All indicators are calculated in real-time and fed into our ensemble ML models for multi-timeframe predictions (5m, 15m, 1h, 4h, 1d).</p>
             </div>
         </div>
 
@@ -350,11 +428,12 @@
             <div class="faq-answer">
                 <p><strong>A:</strong> Yes! We take security seriously:</p>
                 <ul>
-                    <li>✅ No data collection (everything stays on your device)</li>
-                    <li>✅ API keys encrypted with FlutterSecureStorage</li>
-                    <li>✅ No passwords stored (only hashes)</li>
-                    <li>✅ Biometric authentication option</li>
-                    <li>✅ Order confirmation dialogs</li>
+                    <li>✅ <strong>No data collection:</strong> Everything stays on your device</li>
+                    <li>✅ <strong>AES-256 encryption:</strong> API keys encrypted with iOS Keychain or Android Keystore</li>
+                    <li>✅ <strong>No passwords:</strong> We don't store passwords (biometric auth only)</li>
+                    <li>✅ <strong>Biometric authentication:</strong> Face ID, Touch ID, or fingerprint</li>
+                    <li>✅ <strong>Order confirmation dialogs:</strong> Prevent accidental trades</li>
+                    <li>✅ <strong>Open-source security:</strong> Transparent codebase (coming soon to GitHub)</li>
                 </ul>
             </div>
         </div>
@@ -362,13 +441,19 @@
         <div class="faq-item">
             <div class="faq-question">Q: Can MyTradeMate withdraw my funds?</div>
             <div class="faq-answer">
-                <p><strong>A:</strong> <strong>NO!</strong> We strongly recommend:</p>
+                <p><strong>A:</strong> <strong>NO!</strong> We CANNOT and NEVER will withdraw your funds. Here's why:</p>
                 <ul>
-                    <li>❌ Do NOT enable "Enable Withdrawals" permission on your Binance API key</li>
-                    <li>✅ Only enable "Read Info" and "Enable Spot & Margin Trading"</li>
+                    <li>❌ Our app code does NOT have withdrawal functions</li>
+                    <li>❌ We CANNOT access your API keys (they're encrypted on your device)</li>
+                    <li>✅ You control the API key permissions in Binance</li>
+                    <li>✅ <strong>ALWAYS disable "Enable Withdrawals" permission</strong> when creating your API key</li>
                 </ul>
-                <p>MyTradeMate code does NOT have withdrawal functions. We cannot access your API keys (they're on your
-                    device).</p>
+                <p><strong>Recommended API Permissions:</strong></p>
+                <ul>
+                    <li>✅ Enable "Read Info"</li>
+                    <li>✅ Enable "Spot & Margin Trading" (for PREMIUM)</li>
+                    <li>❌ DO NOT enable "Enable Withdrawals"</li>
+                </ul>
             </div>
         </div>
 
@@ -377,15 +462,15 @@
         <div class="faq-item">
             <div class="faq-question">Q: App won't connect to Binance</div>
             <div class="faq-answer">
-                <p><strong>A:</strong> Try these solutions:</p>
+                <p><strong>A:</strong> Try these solutions in order:</p>
                 <ol>
-                    <li>Check your internet connection</li>
-                    <li>Verify API keys are correct (no extra spaces)</li>
-                    <li>Check if keys are still active in Binance</li>
-                    <li>Verify API permissions are enabled</li>
-                    <li>Restart the app</li>
-                    <li>Check Binance status: <a href="https://www.binance.com/en/support/announcement"
-                            target="_blank">Binance Status</a></li>
+                    <li>Check your internet connection (Wi-Fi or cellular data)</li>
+                    <li>Verify API keys are correct (no extra spaces, copy/paste carefully)</li>
+                    <li>Check if API keys are still active in Binance (they can be revoked or expired)</li>
+                    <li>Verify API permissions are enabled in Binance</li>
+                    <li>Restart the app (force close and reopen)</li>
+                    <li>Check Binance server status: <a href="https://www.binance.com/en/support/announcement" target="_blank" style="color: var(--gold);">Binance Status</a></li>
+                    <li>If still failing, contact us at mytrademate.app@gmail.com</li>
                 </ol>
             </div>
         </div>
@@ -393,33 +478,43 @@
         <div class="faq-item">
             <div class="faq-question">Q: Orders not executing</div>
             <div class="faq-answer">
-                <p><strong>A:</strong> Check these:</p>
+                <p><strong>A:</strong> Common causes and fixes:</p>
                 <ul>
-                    <li>FREE mode (READ ONLY) cannot place orders - need TRADING permission</li>
-                    <li>Check if you have enough funds</li>
-                    <li>Binance has minimum order sizes (~$10-20 USD)</li>
-                    <li>Verify your API key has "Enable Spot & Margin Trading" permission</li>
+                    <li><strong>FREE mode (READ ONLY):</strong> Cannot place orders. Upgrade to PREMIUM or use trial period.</li>
+                    <li><strong>Insufficient funds:</strong> Check if you have enough balance for the trade.</li>
+                    <li><strong>Minimum order size:</strong> Binance requires minimum ~$10-20 USD per order.</li>
+                    <li><strong>API permission missing:</strong> Verify your API key has "Spot & Margin Trading" enabled.</li>
+                    <li><strong>Limit order not filling:</strong> Your limit price may be too far from market price. Use Market order for immediate execution.</li>
                 </ul>
             </div>
         </div>
 
-        <h2>💰 Fees & Costs</h2>
+        <h2>💰 Pricing & Subscription</h2>
 
         <div class="faq-item">
-            <div class="faq-question">Q: Does MyTradeMate charge fees?</div>
+            <div class="faq-question">Q: How does the 48h FREE TRIAL work?</div>
             <div class="faq-answer">
-                <p><strong>A:</strong> <strong>No!</strong> MyTradeMate is completely free.</p>
+                <p><strong>A:</strong> Simple and automatic:</p>
                 <ul>
-                    <li>❌ No subscription fees</li>
-                    <li>❌ No in-app purchases</li>
-                    <li>❌ No hidden charges</li>
-                    <li>❌ No commission on trades</li>
+                    <li>✅ Starts automatically when you first launch the app</li>
+                    <li>✅ Full PREMIUM access for 48 hours (not 2 calendar days, exactly 48 hours)</li>
+                    <li>✅ No credit card required</li>
+                    <li>✅ Trading enabled (if you add API keys with trading permissions)</li>
+                    <li>✅ All AI predictions unlocked (5m, 15m, 1h, 4h, 1d)</li>
                 </ul>
-                <p><strong>What Binance charges:</strong></p>
+                <p>After 48 hours, the app reverts to FREE mode (view-only, 1D AI predictions only). Upgrade to PREMIUM to continue trading.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Q: How much does PREMIUM cost?</div>
+            <div class="faq-answer">
+                <p><strong>A:</strong> Two subscription options:</p>
                 <ul>
-                    <li>Trading fees: ~0.1% per trade</li>
-                    <li>Withdrawal fees: Vary by cryptocurrency</li>
+                    <li><strong>Monthly:</strong> €9.99/month (charged monthly)</li>
+                    <li><strong>Annual:</strong> €84.99/year (save 30%, ~€7/month)</li>
                 </ul>
+                <p>Billing is handled by Apple App Store or Google Play Store. Subscriptions auto-renew unless cancelled.</p>
             </div>
         </div>
 
@@ -427,23 +522,41 @@
 
         <div class="contact-box">
             <h3>Still Need Help?</h3>
-            <p>Email us at:</p>
+            <p style="margin: 15px 0; font-size: 18px;">Email us at:</p>
             <a href="mailto:mytrademate.app@gmail.com">mytrademate.app@gmail.com</a>
-            <p style="margin-top: 15px; color: #666;">
+            <p style="margin-top: 20px; opacity: 0.85; font-size: 16px;">
                 <strong>Response Time:</strong> Within 24-48 hours<br>
-                <strong>Support Hours:</strong> Monday-Friday, 9 AM - 6 PM EST
+                <strong>Support Hours:</strong> Monday-Friday, 9 AM - 6 PM CET
             </p>
-            <p style="margin-top: 15px;">
+            <p style="margin-top: 20px; opacity: 0.85; font-size: 15px;">
                 <strong>When contacting support, include:</strong><br>
                 • Device model and OS version<br>
-                • App version<br>
-                • Description of issue<br>
+                • App version (found in Settings)<br>
+                • Detailed description of issue<br>
                 • Screenshots (if applicable)
             </p>
         </div>
 
-        <a href="index.html" class="back-link">← Back to Home</a>
+        <!-- Placeholder for future social media links -->
+        <!--
+        <div style="text-align: center; margin-top: 40px;">
+            <h3 style="font-size: 24px; margin-bottom: 20px;">Follow Us</h3>
+            <p>Instagram: @mytrademate</p>
+            <p>TikTok: @mytrademate</p>
+            <p>Twitter/X: @mytrademate</p>
+        </div>
+        -->
+
+        <footer>
+            <div class="footer-links">
+                <a href="index.html">Home</a>
+                <a href="privacy.html">Privacy Policy</a>
+                <a href="terms.html">Terms of Service</a>
+                <a href="support.html">Support & FAQ</a>
+                <a href="contact.html">Contact Us</a>
+            </div>
+            <p style="opacity: 0.7; font-size: 14px;">© 2025 MyTradeMate. All rights reserved.</p>
+        </footer>
     </div>
 </body>
-
 </html>

@@ -3,101 +3,391 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Contact MyTradeMate - Get in touch with our support team for help with your AI-powered crypto trading assistant.">
     <title>Contact Us - MyTradeMate</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; background: #f5f5f5; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 20px; text-align: center; }
-        .header h1 { font-size: 3em; margin-bottom: 10px; }
-        .container { max-width: 800px; margin: 40px auto; padding: 40px; background: white; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
-        .contact-box { background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 40px; border-radius: 15px; margin: 30px 0; text-align: center; border: 2px solid #667eea; }
-        .contact-box h2 { color: #667eea; margin-bottom: 20px; font-size: 2em; }
-        .contact-box a { color: #667eea; text-decoration: none; font-weight: 600; font-size: 1.5em; }
-        .contact-box a:hover { text-decoration: underline; }
-        .contact-info { margin: 30px 0; }
-        .contact-item { display: flex; align-items: center; padding: 20px; margin: 15px 0; background: #f9f9f9; border-radius: 10px; border-left: 4px solid #667eea; }
-        .contact-item .icon { font-size: 2em; margin-right: 20px; }
-        .contact-item .details h3 { color: #667eea; margin-bottom: 5px; }
-        .contact-item .details p { color: #666; }
-        .back-link { display: inline-block; margin-top: 40px; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: all 0.3s; }
-        .back-link:hover { background: #764ba2; transform: translateY(-2px); }
-        @media (max-width: 768px) { .container { margin: 20px; padding: 25px; } .header h1 { font-size: 2em; } }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-glass: rgba(255, 255, 255, 0.15);
+            --card-border: rgba(255, 255, 255, 0.25);
+            --gold: #FFD700;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--primary-gradient);
+            color: white;
+            line-height: 1.8;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 30px;
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+            opacity: 0.9;
+            transition: all 0.3s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+            transform: translateX(-5px);
+        }
+
+        h1 {
+            font-size: 56px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: linear-gradient(to right, #fff, #f0f0f0, #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            opacity: 0.85;
+        }
+
+        /* Main Contact Box */
+        .contact-box {
+            background: var(--card-glass);
+            backdrop-filter: blur(30px);
+            border: 3px solid var(--gold);
+            border-radius: 25px;
+            padding: 50px 40px;
+            text-align: center;
+            margin-bottom: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .contact-box h2 {
+            color: var(--gold);
+            font-size: 36px;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .contact-box p {
+            font-size: 18px;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+
+        .contact-box a {
+            color: var(--gold);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 24px;
+            transition: all 0.3s;
+        }
+
+        .contact-box a:hover {
+            opacity: 0.8;
+            text-decoration: underline;
+        }
+
+        /* Contact Items */
+        .contact-item {
+            background: var(--card-glass);
+            backdrop-filter: blur(30px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s;
+        }
+
+        .contact-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .contact-item .icon {
+            font-size: 48px;
+            margin-right: 25px;
+            flex-shrink: 0;
+        }
+
+        .contact-item .details h3 {
+            color: var(--gold);
+            margin-bottom: 10px;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .contact-item .details p {
+            opacity: 0.9;
+            font-size: 17px;
+            margin-bottom: 5px;
+        }
+
+        .contact-item .details a {
+            color: var(--gold);
+            text-decoration: none;
+            font-weight: 600;
+            transition: opacity 0.3s;
+        }
+
+        .contact-item .details a:hover {
+            opacity: 0.8;
+            text-decoration: underline;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: rgba(255, 215, 0, 0.15);
+            backdrop-filter: blur(30px);
+            border: 2px solid var(--gold);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 40px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .info-box h3 {
+            color: var(--gold);
+            margin-bottom: 15px;
+            font-size: 26px;
+            font-weight: 700;
+        }
+
+        .info-box p {
+            margin-bottom: 10px;
+            font-size: 17px;
+            opacity: 0.95;
+        }
+
+        .info-box ul {
+            margin-left: 30px;
+            margin-top: 15px;
+        }
+
+        .info-box li {
+            margin-bottom: 10px;
+            font-size: 17px;
+            opacity: 0.9;
+        }
+
+        /* Quick Links */
+        .quick-links {
+            background: var(--card-glass);
+            backdrop-filter: blur(30px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 40px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .quick-links h3 {
+            color: var(--gold);
+            margin-bottom: 20px;
+            font-size: 26px;
+            font-weight: 700;
+        }
+
+        .quick-links ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .quick-links li {
+            margin-bottom: 15px;
+        }
+
+        .quick-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 18px;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+
+        .quick-links a:hover {
+            color: var(--gold);
+            transform: translateX(5px);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            margin-top: 60px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+            opacity: 0.9;
+            transition: all 0.3s;
+            font-size: 16px;
+        }
+
+        .footer-links a:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 38px; }
+            .contact-box { padding: 30px 25px; }
+            .contact-box h2 { font-size: 28px; }
+            .contact-box a { font-size: 20px; }
+            .contact-item {
+                flex-direction: column;
+                text-align: center;
+            }
+            .contact-item .icon {
+                margin-right: 0;
+                margin-bottom: 15px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>📧 Contact Us</h1>
-        <p>We're Here to Help</p>
-    </div>
-    
     <div class="container">
+        <header>
+            <a href="index.html" class="back-link">← Back to Home</a>
+            <h1>📧 Contact Us</h1>
+            <p class="subtitle">We're Here to Help</p>
+        </header>
+
         <div class="contact-box">
             <h2>Get in Touch</h2>
-            <p style="margin-bottom: 20px; font-size: 1.1em;">Have questions? Need support? We'd love to hear from you!</p>
+            <p>Have questions? Need support? We'd love to hear from you!</p>
+            <p style="margin-top: 25px; margin-bottom: 20px; font-size: 20px;">Email us at:</p>
             <a href="mailto:mytrademate.app@gmail.com">mytrademate.app@gmail.com</a>
         </div>
-        
-        <div class="contact-info">
-            <div class="contact-item">
-                <div class="icon">📧</div>
-                <div class="details">
-                    <h3>Email Support</h3>
-                    <p><a href="mailto:mytrademate.app@gmail.com" style="color: #667eea;">mytrademate.app@gmail.com</a></p>
-                    <p>Response time: Within 24-48 hours</p>
-                </div>
-            </div>
-            
-            <div class="contact-item">
-                <div class="icon">🌐</div>
-                <div class="details">
-                    <h3>Website</h3>
-                    <p><a href="https://mytrademate.app" target="_blank" style="color: #667eea;">https://mytrademate.app</a></p>
-                    <p>Visit our website for more information</p>
-                </div>
-            </div>
-            
-            <div class="contact-item">
-                <div class="icon">❓</div>
-                <div class="details">
-                    <h3>Support & FAQ</h3>
-                    <p><a href="support.html" style="color: #667eea;">View FAQ</a></p>
-                    <p>Find answers to common questions</p>
-                </div>
-            </div>
-            
-            <div class="contact-item">
-                <div class="icon">⏰</div>
-                <div class="details">
-                    <h3>Support Hours</h3>
-                    <p>Monday - Friday: 9 AM - 6 PM EST</p>
-                    <p>We respond to all emails within 24-48 hours</p>
-                </div>
+
+        <div class="contact-item">
+            <div class="icon">📧</div>
+            <div class="details">
+                <h3>Email Support</h3>
+                <p><a href="mailto:mytrademate.app@gmail.com">mytrademate.app@gmail.com</a></p>
+                <p>Response time: Within 24-48 hours</p>
             </div>
         </div>
-        
-        <div style="background: #f9f9f9; padding: 30px; border-radius: 10px; margin: 30px 0;">
-            <h3 style="color: #667eea; margin-bottom: 15px;">📝 When Contacting Support</h3>
-            <p style="margin-bottom: 10px;">Please include the following information to help us assist you faster:</p>
-            <ul style="margin-left: 30px; color: #666;">
+
+        <div class="contact-item">
+            <div class="icon">🌐</div>
+            <div class="details">
+                <h3>Website</h3>
+                <p><a href="https://mytrademate.app" target="_blank">https://mytrademate.app</a></p>
+                <p>Visit our website for more information</p>
+            </div>
+        </div>
+
+        <div class="contact-item">
+            <div class="icon">❓</div>
+            <div class="details">
+                <h3>Support & FAQ</h3>
+                <p><a href="support.html">View FAQ</a></p>
+                <p>Find answers to common questions</p>
+            </div>
+        </div>
+
+        <div class="contact-item">
+            <div class="icon">⏰</div>
+            <div class="details">
+                <h3>Support Hours</h3>
+                <p>Monday - Friday: 9 AM - 6 PM CET</p>
+                <p>We respond to all emails within 24-48 hours</p>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <h3>📝 When Contacting Support</h3>
+            <p>Please include the following information to help us assist you faster:</p>
+            <ul>
                 <li>Device model (e.g., iPhone 15 Pro, Samsung Galaxy S24)</li>
                 <li>Operating system version (e.g., iOS 17.2, Android 14)</li>
-                <li>App version (found in Settings)</li>
-                <li>Detailed description of your issue</li>
+                <li>App version (found in Settings → About)</li>
+                <li>Detailed description of your issue or question</li>
                 <li>Screenshots (if applicable)</li>
+                <li>Steps to reproduce the problem (if it's a bug)</li>
             </ul>
         </div>
-        
-        <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 30px; border-radius: 10px; border-left: 5px solid #667eea;">
-            <h3 style="color: #667eea; margin-bottom: 15px;">💡 Quick Links</h3>
-            <ul style="list-style: none; margin: 0; padding: 0;">
-                <li style="margin: 10px 0;"><a href="support.html" style="color: #667eea; text-decoration: none; font-weight: 600;">📚 Support & FAQ</a></li>
-                <li style="margin: 10px 0;"><a href="privacy.html" style="color: #667eea; text-decoration: none; font-weight: 600;">🔒 Privacy Policy</a></li>
-                <li style="margin: 10px 0;"><a href="terms.html" style="color: #667eea; text-decoration: none; font-weight: 600;">📜 Terms of Service</a></li>
-                <li style="margin: 10px 0;"><a href="index.html" style="color: #667eea; text-decoration: none; font-weight: 600;">🏠 Home</a></li>
+
+        <!-- Placeholder for future social media links -->
+        <!--
+        <div class="info-box">
+            <h3>🌟 Follow Us on Social Media</h3>
+            <p>Stay updated with the latest features, trading tips, and crypto market insights:</p>
+            <ul>
+                <li><strong>Instagram:</strong> @mytrademate - Daily signals and portfolio screenshots</li>
+                <li><strong>TikTok:</strong> @mytrademate - Quick trading tips and app tutorials</li>
+                <li><strong>Twitter/X:</strong> @mytrademate - Real-time market updates and announcements</li>
             </ul>
         </div>
-        
-        <a href="index.html" class="back-link">← Back to Home</a>
+        -->
+
+        <div class="quick-links">
+            <h3>💡 Quick Links</h3>
+            <ul>
+                <li><a href="support.html">📚 Support & FAQ</a></li>
+                <li><a href="privacy.html">🔒 Privacy Policy</a></li>
+                <li><a href="terms.html">📜 Terms of Service</a></li>
+                <li><a href="index.html">🏠 Home</a></li>
+            </ul>
+        </div>
+
+        <div class="info-box">
+            <h3>💬 What Can We Help With?</h3>
+            <p>Our support team can assist you with:</p>
+            <ul>
+                <li><strong>Setup & Onboarding:</strong> Help creating Binance API keys and configuring the app</li>
+                <li><strong>Trading Questions:</strong> Understanding order types, AI predictions, and strategies</li>
+                <li><strong>Technical Issues:</strong> Connection problems, bugs, or app crashes</li>
+                <li><strong>Account & Billing:</strong> Subscription management, trial questions, refunds</li>
+                <li><strong>Security Concerns:</strong> API key security, biometric auth, data privacy</li>
+                <li><strong>Feature Requests:</strong> Suggestions for new features or improvements</li>
+            </ul>
+        </div>
+
+        <footer>
+            <div class="footer-links">
+                <a href="index.html">Home</a>
+                <a href="privacy.html">Privacy Policy</a>
+                <a href="terms.html">Terms of Service</a>
+                <a href="support.html">Support & FAQ</a>
+                <a href="contact.html">Contact Us</a>
+            </div>
+            <p style="opacity: 0.7; font-size: 14px;">© 2025 MyTradeMate. All rights reserved.</p>
+        </footer>
     </div>
 </body>
 </html>
