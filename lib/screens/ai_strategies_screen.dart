@@ -399,34 +399,47 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
               );
             },
           ),
-          
-          // Explanation for locked timeframes in FREE mode
-          if (!AppSettingsService().isTradingEnabled) ...[
-            const SizedBox(height: AppTheme.spacing12),
-            Container(
-              padding: const EdgeInsets.all(AppTheme.spacing12),
-              decoration: BoxDecoration(
-                color: AppTheme.warning.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
-              ),
-              child: Row(
+
+          // Explanation for locked timeframes in FREE mode (wrapped in Consumer for trial support)
+          Consumer<SubscriptionProvider>(
+            builder: (context, subscription, _) {
+              final isProUser = subscription.isProUser;
+
+              // Don't show message if user is Pro or in trial
+              if (isProUser) {
+                return const SizedBox.shrink();
+              }
+
+              return Column(
                 children: [
-                  Icon(Icons.info_outline, color: AppTheme.warning, size: 18),
-                  const SizedBox(width: AppTheme.spacing8),
-                  Expanded(
-                    child: Text(
-                      '🔒 Short-term timeframes (5m-1h) and long-term (1d) are Premium only. Upgrade to unlock all signals.',
-                      style: AppTheme.bodySmall.copyWith(
-                        color: AppTheme.textSecondary,
-                        height: 1.4,
-                      ),
+                  const SizedBox(height: AppTheme.spacing12),
+                  Container(
+                    padding: const EdgeInsets.all(AppTheme.spacing12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.warning.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                      border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: AppTheme.warning, size: 18),
+                        const SizedBox(width: AppTheme.spacing8),
+                        Expanded(
+                          child: Text(
+                            '🔒 Short-term timeframes (5m-1h) and long-term (1d) are Premium only. Upgrade to unlock all signals.',
+                            style: AppTheme.bodySmall.copyWith(
+                              color: AppTheme.textSecondary,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ),
-            ),
-          ],
+              );
+            },
+          ),
         ],
       ),
     );

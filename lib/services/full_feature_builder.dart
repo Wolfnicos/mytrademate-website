@@ -186,7 +186,102 @@ class FullFeatureBuilder {
     final output = <List<double>>[];
     final startIdx = n - 60;
 
-    for (int i = startIdx; i < n; i++) {
+    // If we don't have 60 candles, pad with first candle data or use what we have
+    if (startIdx < 0) {
+      debugPrint('⚠️ WARNING: Only $n candles available, need 60. Padding sequence with earliest data.');
+      // For coins with < 60 candles, take all available and pad at the beginning
+      final paddingNeeded = -startIdx;
+
+      // Pad with copies of the first candle's features
+      for (int p = 0; p < paddingNeeded; p++) {
+        final row = <double>[];
+        final firstIdx = 0;
+
+        // Candle patterns (0-24)
+        for (final patternName in patternOrder) {
+          row.add(patterns[patternName]![firstIdx]);
+        }
+
+        // Price action (25-29)
+        row.add(returns[firstIdx]);
+        row.add(logReturns[firstIdx]);
+        row.add(volatility[firstIdx]);
+        row.add(hlRange[firstIdx]);
+        row.add(closePosition[firstIdx]);
+
+        // RSI (30-32)
+        row.add(rsi[firstIdx]);
+        row.add(rsiOversold[firstIdx]);
+        row.add(rsiOverbought[firstIdx]);
+
+        // MACD (33-37)
+        row.add(macdLine[firstIdx]);
+        row.add(macdSignal[firstIdx]);
+        row.add(macdHistogram[firstIdx]);
+        row.add(macdCrossAbove[firstIdx]);
+        row.add(macdCrossBelow[firstIdx]);
+
+        // Bollinger Bands (38-43)
+        row.add(bbUpper[firstIdx]);
+        row.add(bbMiddle[firstIdx]);
+        row.add(bbLower[firstIdx]);
+        row.add(bbWidth[firstIdx]);
+        row.add(bbPosition[firstIdx]);
+        row.add(bbSqueeze[firstIdx]);
+
+        // ATR (44-45)
+        row.add(atr[firstIdx]);
+        row.add(atrPct[firstIdx]);
+
+        // ADX (46-47)
+        row.add(adx[firstIdx]);
+        row.add(trending[firstIdx]);
+
+        // Stochastic (48-51)
+        row.add(stochK[firstIdx]);
+        row.add(stochD[firstIdx]);
+        row.add(stochOversold[firstIdx]);
+        row.add(stochOverbought[firstIdx]);
+
+        // Ichimoku (52-58)
+        row.add(ichimokuTenkan[firstIdx]);
+        row.add(ichimokuKijun[firstIdx]);
+        row.add(ichimokuSenkouA[firstIdx]);
+        row.add(ichimokuSenkouB[firstIdx]);
+        row.add(ichimokuCloudGreen[firstIdx]);
+        row.add(ichimokuAboveCloud[firstIdx]);
+        row.add(ichimokuBelowCloud[firstIdx]);
+
+        // Volume (59-63)
+        row.add(volumes[firstIdx]);
+        row.add(volSMA[firstIdx]);
+        row.add(volRatio[firstIdx]);
+        row.add(obv[firstIdx]);
+        row.add(highVolume[firstIdx]);
+
+        // Moving averages (64-71)
+        row.add(sma20[firstIdx]);
+        row.add(sma50[firstIdx]);
+        row.add(sma200[firstIdx]);
+        row.add(priceAboveSma20[firstIdx]);
+        row.add(priceAboveSma50[firstIdx]);
+        row.add(priceAboveSma200[firstIdx]);
+        row.add(goldenCross[firstIdx]);
+        row.add(deathCross[firstIdx]);
+
+        // Trend (73-76)
+        row.add(higherHigh[firstIdx]);
+        row.add(lowerLow[firstIdx]);
+        row.add(uptrend[firstIdx]);
+        row.add(downtrend[firstIdx]);
+
+        output.add(row);
+      }
+    }
+
+    final actualStartIdx = startIdx < 0 ? 0 : startIdx;
+
+    for (int i = actualStartIdx; i < n; i++) {
       final row = <double>[];
 
       // Candle patterns (0-24)

@@ -19,7 +19,7 @@ class SubscriptionProvider extends ChangeNotifier {
     // Check if in trial period (48h from first launch)
     final isInTrial = AppSettingsService().isInTrial;
     if (isInTrial) {
-      debugPrint('🎁 TRIAL: User has Pro access via trial (${AppSettingsService().trialHoursRemaining}h remaining)');
+      // Log only once per minute to avoid spam
       return true;
     }
 

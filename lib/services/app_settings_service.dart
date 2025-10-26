@@ -62,6 +62,17 @@ class AppSettingsService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// DEBUG ONLY: Reset trial state (for testing)
+  Future<void> resetTrialForTesting() async {
+    _trialStartTime = null;
+    _trialDeclined = false;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kTrialStartKey);
+    await prefs.remove(_kTrialDeclinedKey);
+    debugPrint('🔄 DEBUG: Trial state reset - dialog will show again');
+    notifyListeners();
+  }
+
   Future<void> load() async {
     if (_loaded) return;
     final prefs = await SharedPreferences.getInstance();

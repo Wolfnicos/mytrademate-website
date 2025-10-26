@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
+import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/ai_indicator.dart';
@@ -35,6 +37,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final accepted = await TrialActivationDialog.show(context);
       if (accepted) {
         await settings.activateTrial();
+        // Notify SubscriptionProvider to rebuild UI (hide upgrade banners)
+        if (mounted) {
+          Provider.of<SubscriptionProvider>(context, listen: false).notifyListeners();
+        }
       } else {
         await settings.declineTrial();
       }
