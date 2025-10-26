@@ -34,7 +34,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
   String _predictionError = '';
 
   String _selectedSymbol = 'BTCUSDT';
-  String _interval = '1d'; // Default to 1D (free tier)
+  String _interval = '4h'; // Default to 4H (free tier)
 
   // Portfolio coins for dynamic dropdown
   List<String> _availableCoins = [];
@@ -348,11 +348,11 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                   {'label': isProUser ? '5M' : '5M 🔒', 'value': '5m'},
                   {'label': isProUser ? '15M' : '15M 🔒', 'value': '15m'},
                   {'label': isProUser ? '1H' : '1H 🔒', 'value': '1h'},
-                  {'label': isProUser ? '4H' : '4H 🔒', 'value': '4h'},
-                  {'label': isProUser ? '1D' : '1D FREE', 'value': '1d'},
+                  {'label': isProUser ? '4H' : '4H FREE', 'value': '4h'},
+                  {'label': isProUser ? '1D' : '1D 🔒', 'value': '1d'},
                 ].map((item) {
                   final bool selected = _interval == item['value'];
-                  final bool isLocked = !isProUser && item['value'] != '1d';
+                  final bool isLocked = !isProUser && item['value'] != '4h';
 
                   return GestureDetector(
                     onTap: isLocked ? () {
@@ -425,7 +425,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                   const SizedBox(width: AppTheme.spacing8),
                   Expanded(
                     child: Text(
-                      '🔒 Short-term timeframes (5m-4h) are Premium only. Upgrade to unlock day trading signals.',
+                      '🔒 Short-term timeframes (5m-1h) and long-term (1d) are Premium only. Upgrade to unlock all signals.',
                       style: AppTheme.bodySmall.copyWith(
                         color: AppTheme.textSecondary,
                         height: 1.4,
@@ -1343,7 +1343,8 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
             const SizedBox(height: AppTheme.spacing8),
             Text(
               'Upgrade to Premium for:\n'
-              '• 5m, 15m, 1h, 4h predictions (day trading)\n'
+              '• 5m, 15m, 1h predictions (day trading)\n'
+              '• 1d predictions (swing trading)\n'
               '• Volatility & liquidity indicators\n'
               '• Model contributions breakdown\n'
               '• Trading capabilities',

@@ -23,7 +23,7 @@ class _AiPredictionPageState extends State<AiPredictionPage> {
   bool _isFetchingData = false;
   String _errorMessage = '';
   String _selectedSymbol = 'BTCUSDT';
-  String _interval = '1d'; // Default to 1D (free tier)
+  String _interval = '4h'; // Default to 4H (free tier)
 
   // final BinanceService _binanceService = BinanceService();
   final List<String> _bases = const ['BTC','ETH','BNB','SOL','WLFI','TRUMP'];
@@ -59,7 +59,7 @@ class _AiPredictionPageState extends State<AiPredictionPage> {
     // Check if timeframe is locked
     final subscription = Provider.of<SubscriptionProvider>(context, listen: false);
     final isProUser = subscription.isProUser;
-    final isLockedTimeframe = ['5m', '15m', '1h', '4h'].contains(_interval);
+    final isLockedTimeframe = ['5m', '15m', '1h', '1d'].contains(_interval);
 
     if (isLockedTimeframe && !isProUser) {
       // Show paywall instead of running prediction
@@ -269,11 +269,11 @@ class _AiPredictionPageState extends State<AiPredictionPage> {
                                 {'label': isProUser ? '5m' : '5m 🔒 Pro', 'value': '5m'},
                                 {'label': isProUser ? '15m' : '15m 🔒 Pro', 'value': '15m'},
                                 {'label': isProUser ? '1H' : '1H 🔒 Pro', 'value': '1h'},
-                                {'label': isProUser ? '4H' : '4H 🔒 Pro', 'value': '4h'},
-                                {'label': isProUser ? '1D' : '1D FREE', 'value': '1d'},
+                                {'label': isProUser ? '4H' : '4H FREE', 'value': '4h'},
+                                {'label': isProUser ? '1D' : '1D 🔒 Pro', 'value': '1d'},
                               ].map((item) {
                                 final bool isSel = _interval == item['value'];
-                                final isLocked = !isProUser && ['5m', '15m', '1h', '4h'].contains(item['value']);
+                                final isLocked = !isProUser && ['5m', '15m', '1h', '1d'].contains(item['value']);
                                 return GestureDetector(
                                   onTap: isLocked ? () {
                                     // Show paywall when tapping locked timeframe

@@ -22,7 +22,7 @@ class MarketScreen extends StatefulWidget {
 class _MarketScreenState extends State<MarketScreen> {
   final BinanceService _binance = BinanceService();
   final Map<String, Map<String, double>> _tickers = {};
-  String _interval = '1d'; // Default to 1D (free tier)
+  String _interval = '4h'; // Default to 4H (free tier)
   String _selectedSymbol = 'BTCUSDT';
   List<CandleData> _candles = <CandleData>[];
   bool _loadingChart = true;
@@ -297,8 +297,8 @@ class _MarketScreenState extends State<MarketScreen> {
                               _buildIntervalChip(isProUser ? '5M' : '5M 🔒', '5m', isProUser),
                               _buildIntervalChip(isProUser ? '15M' : '15M 🔒', '15m', isProUser),
                               _buildIntervalChip(isProUser ? '1H' : '1H 🔒', '1h', isProUser),
-                              _buildIntervalChip(isProUser ? '4H' : '4H 🔒', '4h', isProUser),
-                              _buildIntervalChip(isProUser ? '1D' : '1D FREE', '1d', true),
+                              _buildIntervalChip(isProUser ? '4H' : '4H FREE', '4h', true),
+                              _buildIntervalChip(isProUser ? '1D' : '1D 🔒', '1d', isProUser),
                             ],
                           );
                         },

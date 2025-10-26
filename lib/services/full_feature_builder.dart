@@ -14,12 +14,18 @@ class FullFeatureBuilder {
 
   /// Build complete 76-feature vector for 60 timesteps
   /// Returns List<List<double>> of shape (60, 76)
-  /// Minimum 120 candles required (for SMA100 + 60 sequence)
+  /// Minimum 60 candles required (for sequence), ideally 120+ for SMA100
   List<List<double>> buildFeatures({
     required List<Candle> candles,
   }) {
+    // Minimum 60 for sequence (for new coins like WLFI/TRUMP with limited history)
+    if (candles.length < 60) {
+      throw ArgumentError('Need at least 60 candles for sequence, got ${candles.length}');
+    }
+
+    // Warning for coins with < 120 candles (SMA100 will be less accurate)
     if (candles.length < 120) {
-      throw ArgumentError('Need at least 120 candles (for SMA100 + 60 sequence), got ${candles.length}');
+      debugPrint('⚠️ Only ${candles.length} candles available (< 120). SMA100 and long-term indicators may be less accurate.');
     }
 
     // Sort by time ascending
