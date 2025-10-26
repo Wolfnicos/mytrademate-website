@@ -46,17 +46,22 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   StreamSubscription<List<StrategySignal>>? _hybridSub;
   Timer? _aiTimer;
 
+  // Balances from Binance account
+  Map<String, double> _balances = {};
+  bool _loadingBalances = true;
+
   @override
   void initState() {
     super.initState();
     // Set initial pair based on quote currency
     final quote = AppSettingsService().quoteCurrency.toUpperCase();
     _selectedPair = 'BTC$quote';
-    
+
     // Load last order type preference
     _loadSavedOrderType();
     _loadPairs();
-    
+    _loadBalances();
+
     // Listen for quote currency changes
     AppSettingsService().addListener(_onQuoteCurrencyChanged);
   }
@@ -70,6 +75,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     });
     _loadPairs();
     _loadCurrentPrice();
+    _loadBalances(); // Refresh balances when currency changes
   }
 
   Future<void> _loadSavedOrderType() async {
@@ -195,6 +201,132 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
       }
     } catch (e) {
       debugPrint('Error loading current price: $e');
+    }
+  }
+
+  /// Load account balances from Binance for showing available amounts
+  Future<void> _loadBalances() async {
+    if (!mounted) return;
+    setState(() => _loadingBalances = true);
+
+    try {
+      final binance = BinanceService();
+      await binance.loadCredentials();
+      final balances = await binance.getAccountBalances();
+
+      if (!mounted) return;
+      setState(() {
+        _balances = balances;
+        _loadingBalances = false;
+      });
+
+      debugPrint('Orders: Loaded ${_balances.length} balances for amount display');
+      // Debug: Print all balances
+      _balances.forEach((asset, amount) {
+        debugPrint('  💰 $asset: $amount');
+      });
+    } catch (e) {
+      debugPrint('Orders: Error loading balances: $e');
+      if (!mounted) return;
+      setState(() {
+        _balances = {};
+        _loadingBalances = false;
+      });
+    }
+  }
+
+  /// Get balance for a specific asset
+  double _getBalance(String asset) {
+    final upperAsset = asset.toUpperCase();
+    final balance = _balances[upperAsset] ?? 0.0;
+    debugPrint('📊 _getBalance($upperAsset) = $balance (from ${_balances.length} total balances)');
+    return balance;
+  }
+
+  /// Format balance with smart decimals (removes trailing zeros)
+  String _formatBalance(double balance) {
+    if (balance == 0) return '0';
+
+    // For large amounts (>= 1), use 2-4 decimals
+    if (balance >= 1) {
+      // Remove trailing zeros after decimal point
+      String formatted = balance.toStringAsFixed(4);
+      formatted = formatted.replaceAll(RegExp(r'\.?0+$'), '');
+      return formatted;
+    }
+
+    // For small amounts (< 1), use up to 8 decimals but remove trailing zeros
+    String formatted = balance.toStringAsFixed(8);
+    formatted = formatted.replaceAll(RegExp(r'\.?0+$'), '');
+    return formatted;
+  }
+
+  /// Extract base asset from trading pair (e.g., 'BNBEUR' -> 'BNB')
+  String _getBaseAsset() {
+    final base = _selectedPair
+        .replaceAll('EUR', '')
+        .replaceAll('USDT', '')
+        .replaceAll('USD', '')
+        .replaceAll('USDC', '');
+    debugPrint('🪙 _getBaseAsset() from $_selectedPair = $base');
+    return base;
+  }
+
+  /// Extract quote asset from trading pair (e.g., 'BNBEUR' -> 'EUR')
+  String _getQuoteAsset() {
+    String quote;
+    if (_selectedPair.contains('EUR')) {
+      quote = 'EUR';
+    } else if (_selectedPair.contains('USDT')) {
+      quote = 'USDT';
+    } else if (_selectedPair.contains('USDC')) {
+      quote = 'USDC';
+    } else if (_selectedPair.contains('USD')) {
+      quote = 'USD';
+    } else {
+      quote = 'USDT';
+    }
+    debugPrint('💵 _getQuoteAsset() from $_selectedPair = $quote');
+    return quote;
+  }
+
+  /// Fill amount field with max available balance
+  void _fillMaxAmount() {
+    if (isBuy) {
+      // For BUY: calculate max base asset you can buy with quote balance
+      final quoteAsset = _getQuoteAsset();
+      final quoteBalance = _getBalance(quoteAsset);
+      final currentPrice = double.tryParse(_priceCtrl.text) ?? 0.0;
+
+      if (currentPrice > 0 && quoteBalance > 0) {
+        final maxBaseAmount = quoteBalance / currentPrice;
+        setState(() {
+          _amountCtrl.text = maxBaseAmount.toStringAsFixed(8);
+          _updateTotal();
+        });
+      }
+    } else {
+      // For SELL: fill with max base asset balance
+      final baseAsset = _getBaseAsset();
+      final baseBalance = _getBalance(baseAsset);
+
+      if (baseBalance > 0) {
+        setState(() {
+          _amountCtrl.text = baseBalance.toStringAsFixed(8);
+          _updateTotal();
+        });
+      }
+    }
+  }
+
+  /// Update total field based on amount and price
+  void _updateTotal() {
+    if (!_updatingFields) {
+      _updatingFields = true;
+      final amount = double.tryParse(_amountCtrl.text) ?? 0.0;
+      final price = double.tryParse(_priceCtrl.text) ?? 0.0;
+      _totalCtrl.text = (amount * price).toStringAsFixed(2);
+      _updatingFields = false;
     }
   }
 
@@ -410,11 +542,31 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                               const SizedBox(height: AppTheme.spacing20),
 
                               // Amount Input
-                              Text(
-                                'Amount',
-                                style: AppTheme.labelMedium.copyWith(
-                                  color: AppTheme.textTertiary,
-                                ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Amount',
+                                    style: AppTheme.labelMedium.copyWith(
+                                      color: AppTheme.textTertiary,
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: _fillMaxAmount,
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: Text(
+                                      'MAX',
+                                      style: AppTheme.labelSmall.copyWith(
+                                        color: AppTheme.primary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: AppTheme.spacing8),
                               TextField(
@@ -436,7 +588,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                                     horizontal: AppTheme.spacing16,
                                     vertical: AppTheme.spacing16,
                                   ),
-                                  suffixText: _selectedPair.replaceAll('USDT', '').replaceAll('EUR', '').replaceAll('USD', ''),
+                                  suffixText: _getBaseAsset(),
                                   suffixStyle: AppTheme.bodyMedium.copyWith(
                                     color: AppTheme.textSecondary,
                                   ),
@@ -452,6 +604,44 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                                     });
                                   }
                                 },
+                              ),
+                              const SizedBox(height: AppTheme.spacing8),
+                              // Available balance indicator
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Available:',
+                                    style: AppTheme.bodySmall.copyWith(
+                                      color: AppTheme.textTertiary,
+                                    ),
+                                  ),
+                                  if (_loadingBalances)
+                                    Text(
+                                      'Loading...',
+                                      style: AppTheme.bodySmall.copyWith(
+                                        color: AppTheme.textTertiary,
+                                      ),
+                                    )
+                                  else if (isBuy)
+                                    Text(
+                                      '${_getBalance(_getQuoteAsset()).toStringAsFixed(2)} ${_getQuoteAsset()}',
+                                      style: AppTheme.monoMedium.copyWith(
+                                        color: AppTheme.textSecondary,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                      ),
+                                    )
+                                  else
+                                    Text(
+                                      '${_formatBalance(_getBalance(_getBaseAsset()))} ${_getBaseAsset()}',
+                                      style: AppTheme.monoMedium.copyWith(
+                                        color: AppTheme.textSecondary,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                ],
                               ),
 
                               const SizedBox(height: AppTheme.spacing20),
@@ -1258,6 +1448,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                                       setState(() => _selectedPair = sym);
                                       Navigator.of(context).pop();
                                       _loadCurrentPrice();
+                                      _loadBalances(); // Refresh balances when pair changes
                                     },
                                   );
                                 },
