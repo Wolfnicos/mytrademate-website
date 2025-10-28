@@ -306,12 +306,22 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
               // Model Contributions / AI Technical Analysis (only for short-term trading signals, not long-term trends)
               if (_lastPrediction != null && _interval != '1d' && _interval != '1w')
                 _buildModelContributions(),
-              
-              // Upgrade to Premium CTA (FREE mode only)
-              if (!AppSettingsService().isTradingEnabled) ...[
-                const SizedBox(height: AppTheme.spacing16),
-                _buildUpgradeToPremiumCTA(),
-              ],
+
+              // Upgrade to Premium CTA (FREE mode only, NOT during trial)
+              Consumer<SubscriptionProvider>(
+                builder: (context, subscription, _) {
+                  // Only show if user is NOT pro AND NOT in trial
+                  if (!subscription.isProUser) {
+                    return Column(
+                      children: [
+                        const SizedBox(height: AppTheme.spacing16),
+                        _buildUpgradeToPremiumCTA(),
+                      ],
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
             ]),
           ),
         ),
@@ -610,7 +620,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Ensemble Prediction',
+                'AI Analysis',
                 style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
               ),
               if (prediction.atr != null && prediction.volumePercentile != null) ...[
