@@ -95,15 +95,20 @@ class _MarketScreenState extends State<MarketScreen> {
     });
     try {
       // Use different limits based on timeframe to avoid too much historical data
+      // Fewer candles = larger, more visible candles on chart
       int limit;
       if (_interval == '1d') {
         limit = 30;  // 30 days = 1 month
       } else if (_interval == '4h') {
         limit = 42;  // 42 x 4h = 7 days
+      } else if (_interval == '1h') {
+        limit = 48;  // 48 hours = 2 days
+      } else if (_interval == '15m') {
+        limit = 48;  // 15m x 48 = 12 hours
       } else if (_interval == '5m') {
-        limit = 100;  // 5m x 100 = ~8 hours
+        limit = 48;  // 5m x 48 = 4 hours (more visible candles!)
       } else {
-        limit = 60;  // 15m/1h: 60 candles
+        limit = 60;  // Default fallback
       }
 
       // Find the symbol list for fallback (try multiple quote currencies)
@@ -592,7 +597,7 @@ class CandlestickChart extends StatelessWidget {
         alignment: BarChartAlignment.spaceBetween,
         maxY: maxPrice * 1.03,
         minY: minPrice * 0.97,
-        groupsSpace: 3, // Reduced from 6 to make candles more visible
+        groupsSpace: 2, // Reduced spacing for better density
         barTouchData: BarTouchData(
           enabled: true,
           handleBuiltInTouches: true,
@@ -677,8 +682,8 @@ class CandlestickChart extends StatelessWidget {
               BarChartRodData(
                 fromY: candle.low,
                 toY: candle.high,
-                width: 4.0, // Increased from 2.4 to make candles more visible
-                color: color.withOpacity(0.9),
+                width: 5.5, // Increased to make candles clearly visible
+                color: color.withOpacity(0.95),
                 rodStackItems: [
                   BarChartRodStackItem(
                     candle.low,
