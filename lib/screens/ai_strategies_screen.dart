@@ -32,6 +32,8 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
   CryptoPrediction? _lastPrediction;
   bool _isRunningPrediction = false;
   String _predictionError = '';
+  DateTime? _lastUpdateTime; // Track when prediction was last updated
+  double? _previousAtr; // Track previous ATR to show trend
 
   String _selectedSymbol = 'BTCUSDT';
   String _interval = '4h'; // Default to 4H (free tier)
@@ -182,7 +184,10 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
 
       if (mounted) {
         setState(() {
+          // Store previous ATR before updating prediction
+          _previousAtr = _lastPrediction?.atr;
           _lastPrediction = prediction;
+          _lastUpdateTime = DateTime.now();
           _isRunningPrediction = false;
         });
       }
@@ -596,11 +601,28 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
             ),
           ),
           const SizedBox(height: AppTheme.spacing16),
-          Text(
-            'Ensemble Prediction',
-            style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
+
+          // Last Updated timestamp with live indicator and ATR trend
+          _buildLiveUpdateIndicator(prediction),
+
+          const SizedBox(height: AppTheme.spacing12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Ensemble Prediction',
+                style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
+              ),
+              if (prediction.atr != null && prediction.volumePercentile != null) ...[
+                const SizedBox(width: AppTheme.spacing8),
+                _buildMarketActivityIndicator(
+                  atr: prediction.atr!,
+                  volumePercentile: prediction.volumePercentile!,
+                ),
+              ],
+            ],
           ),
-          
+
           // PHASE 4: Market Context Badges (ATR + Volume) with animation
           if (prediction.atr != null || prediction.volumePercentile != null) ...[
             const SizedBox(height: AppTheme.spacing16),
@@ -653,6 +675,188 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primary,
               foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build live update indicator with timestamp and ATR trend
+  Widget _buildLiveUpdateIndicator(CryptoPrediction prediction) {
+    if (_lastUpdateTime == null) return const SizedBox.shrink();
+
+    // Calculate time since last update
+    final now = DateTime.now();
+    final diff = now.difference(_lastUpdateTime!);
+    String timeAgo;
+    if (diff.inSeconds < 60) {
+      timeAgo = 'Just now';
+    } else if (diff.inMinutes < 60) {
+      timeAgo = '${diff.inMinutes}m ago';
+    } else if (diff.inHours < 24) {
+      timeAgo = '${diff.inHours}h ago';
+    } else {
+      timeAgo = '${diff.inDays}d ago';
+    }
+
+    // Determine ATR trend
+    String atrTrend = '';
+    Color? atrTrendColor;
+    IconData? atrTrendIcon;
+    if (prediction.atr != null && _previousAtr != null) {
+      final atrChange = prediction.atr! - _previousAtr!;
+      final atrChangePercent = (atrChange / _previousAtr!) * 100;
+
+      if (atrChangePercent.abs() > 5) { // Only show if change > 5%
+        if (atrChange > 0) {
+          atrTrend = '+${atrChangePercent.toStringAsFixed(1)}%';
+          atrTrendColor = AppTheme.sellRed; // Higher volatility = red
+          atrTrendIcon = Icons.trending_up;
+        } else {
+          atrTrend = '${atrChangePercent.toStringAsFixed(1)}%';
+          atrTrendColor = AppTheme.buyGreen; // Lower volatility = green (calmer)
+          atrTrendIcon = Icons.trending_down;
+        }
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spacing12,
+        vertical: AppTheme.spacing8,
+      ),
+      decoration: BoxDecoration(
+        color: AppTheme.glassWhite,
+        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+        border: Border.all(color: AppTheme.glassBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Pulsing live indicator
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.3, end: 1.0),
+            duration: const Duration(milliseconds: 1500),
+            curve: Curves.easeInOut,
+            builder: (context, value, child) {
+              return Opacity(
+                opacity: value,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: AppTheme.success,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.success.withOpacity(0.5),
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+            onEnd: () {
+              // Restart animation if mounted
+              if (mounted) {
+                setState(() {});
+              }
+            },
+          ),
+          const SizedBox(width: AppTheme.spacing8),
+          Icon(Icons.schedule, size: 14, color: AppTheme.textTertiary),
+          const SizedBox(width: AppTheme.spacing4),
+          Text(
+            'Updated $timeAgo',
+            style: AppTheme.bodySmall.copyWith(
+              color: AppTheme.textTertiary,
+              fontSize: 12,
+            ),
+          ),
+
+          // ATR trend indicator (if significant change)
+          if (atrTrend.isNotEmpty) ...[
+            const SizedBox(width: AppTheme.spacing8),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.spacing6,
+                vertical: AppTheme.spacing2,
+              ),
+              decoration: BoxDecoration(
+                color: atrTrendColor!.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                border: Border.all(color: atrTrendColor.withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(atrTrendIcon, size: 12, color: atrTrendColor),
+                  const SizedBox(width: AppTheme.spacing2),
+                  Text(
+                    'Vol $atrTrend',
+                    style: AppTheme.bodySmall.copyWith(
+                      color: atrTrendColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Build market activity indicator based on ATR and volume
+  Widget _buildMarketActivityIndicator({required double atr, required double volumePercentile}) {
+    // Determine market activity level
+    String activityLabel;
+    Color activityColor;
+    IconData activityIcon;
+
+    // High activity: high volatility OR high volume
+    // Normal activity: medium volatility AND medium volume
+    // Quiet activity: low volatility AND low volume
+    if (atr > 0.025 || volumePercentile > 0.70) {
+      activityLabel = 'Active';
+      activityColor = AppTheme.success;
+      activityIcon = Icons.whatshot;
+    } else if (atr < 0.015 && volumePercentile < 0.30) {
+      activityLabel = 'Quiet';
+      activityColor = AppTheme.textTertiary;
+      activityIcon = Icons.bedtime;
+    } else {
+      activityLabel = 'Normal';
+      activityColor = Colors.blue;
+      activityIcon = Icons.wb_sunny_outlined;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spacing6,
+        vertical: AppTheme.spacing2,
+      ),
+      decoration: BoxDecoration(
+        color: activityColor.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+        border: Border.all(color: activityColor.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(activityIcon, size: 12, color: activityColor),
+          const SizedBox(width: AppTheme.spacing4),
+          Text(
+            activityLabel,
+            style: AppTheme.bodySmall.copyWith(
+              color: activityColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -1437,7 +1641,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         return 'AI analysis suggests $coin is in a consolidation phase on the $tfDisplay timeframe. '
                'This means the price is moving sideways without clear direction. '
                'Wait for a clearer signal before buying or selling.\n\n'
-               '💡 Check back later or try a different timeframe for more insights.';
+               '📊 During consolidation, predictions may stay stable for hours or days. '
+               'This is normal - the AI is working correctly and will update when market conditions change.\n\n'
+               '💡 Check the "Updated" timestamp and volatility indicator above to confirm the system is actively monitoring live data.';
       
       default:
         return 'AI is analyzing market conditions for $coin. Check back soon for updated signals.';
