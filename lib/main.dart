@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:syncfusion_flutter_core/theme.dart';
 import 'dart:ui';
 import 'ml/tflite_predictor.dart';
 import 'ml/ml_service.dart';
@@ -27,6 +28,9 @@ import 'widgets/risk_disclaimer_dialog.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Register Syncfusion license (7-day temporary, will be replaced with permanent Community License)
+  SyncfusionLicense.registerLicense('Ngo9BigBOggjHTQxAR8/V1JFaF1cX2hIf0xyWmFZfVtgfV9FYlZTTGYuP1ZhSXxWd0VhUX9Xc3ZXTmlaVkx9XEM=');
 
   // Initialize ONLY fast, essential services in main()
   // This allows the app to start in <1 second
