@@ -564,10 +564,10 @@ class CandlestickChart extends StatelessWidget {
     final double minPrice = data.map((e) => e.low).reduce((a, b) => a < b ? a : b);
     final double range = maxPrice - minPrice;
 
-    // Calculate smart interval - aim for 4-5 labels
+    // Calculate smart interval - aim for 4-5 labels on Y axis
     double interval = range / 4;
 
-    // Round interval to nice numbers
+    // Round interval to nice numbers based on magnitude
     if (interval > 1000) {
       interval = (interval / 1000).ceilToDouble() * 1000;
     } else if (interval > 100) {
@@ -576,6 +576,15 @@ class CandlestickChart extends StatelessWidget {
       interval = (interval / 10).ceilToDouble() * 10;
     } else if (interval > 1) {
       interval = interval.ceilToDouble();
+    } else if (interval > 0.1) {
+      // For prices like $5-6 (TRUMP), round to 0.5, 1.0, etc.
+      interval = (interval * 10).ceilToDouble() / 10;
+    } else if (interval > 0.01) {
+      // For prices like $0.12 (WLFI), round to 0.02, 0.05, etc.
+      interval = (interval * 100).ceilToDouble() / 100;
+    } else if (interval > 0.001) {
+      // For very small prices, round to 0.001, 0.002, etc.
+      interval = (interval * 1000).ceilToDouble() / 1000;
     }
 
     return BarChart(
@@ -628,11 +637,11 @@ class CandlestickChart extends StatelessWidget {
                     '\$${value.toStringAsFixed(decimals)}',
                     style: AppTheme.bodySmall.copyWith(
                       color: colors.onSurface.withOpacity(0.6),
-                      fontSize: 9,
+                      fontSize: 8.5, // Reduced from 9 to prevent overlap
                     ),
                     textAlign: TextAlign.right,
                     maxLines: 1,
-                    overflow: TextOverflow.visible,
+                    overflow: TextOverflow.ellipsis, // Changed from visible to ellipsis
                   ),
                 );
               },
