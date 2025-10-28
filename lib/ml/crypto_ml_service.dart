@@ -563,6 +563,16 @@ class CryptoMLService {
     // Normalizare
     final normalizedData = _normalizeData(priceData, scaler);
 
+    // DEBUG: Log first and last feature values to detect if input changes
+    if (!silent && normalizedData.isNotEmpty) {
+      final firstRow = normalizedData.first;
+      final lastRow = normalizedData.last;
+      // ignore: avoid_print
+      print('🔬 DEBUG INPUT: First row features [0-5]: [${firstRow.take(6).map((v) => v.toStringAsFixed(4)).join(', ')}]');
+      // ignore: avoid_print
+      print('🔬 DEBUG INPUT: Last row features [0-5]: [${lastRow.take(6).map((v) => v.toStringAsFixed(4)).join(', ')}]');
+    }
+
     // Input: [1, 60, 76]
     final List<List<List<double>>> input = [normalizedData];
 
@@ -574,6 +584,12 @@ class CryptoMLService {
     );
 
     interpreter.run(input, output);
+
+    // DEBUG: Log raw model output
+    if (!silent) {
+      // ignore: avoid_print
+      print('🔬 DEBUG OUTPUT ($modelKey): RAW probabilities = [${output[0].map((v) => v.toStringAsFixed(6)).join(', ')}]');
+    }
 
     final probabilities = output[0];
     final maxIndex = _argmax(probabilities);
