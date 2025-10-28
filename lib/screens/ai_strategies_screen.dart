@@ -1519,8 +1519,36 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           const SizedBox(height: AppTheme.spacing12),
           
           // Action instruction based on mode
-          if (!AppSettingsService().isTradingEnabled) ...[
-            // FREE mode - show upgrade message
+          // BETA MODE: Always show action instructions (no paywall)
+          if (AppSettingsService().isTradingEnabled || AppSettingsService.IS_BETA_BUILD) ...[
+            // PREMIUM/BETA mode - show action instruction
+            Container(
+              padding: const EdgeInsets.all(AppTheme.spacing12),
+              decoration: BoxDecoration(
+                color: signalColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                border: Border.all(color: signalColor.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.touch_app, color: signalColor, size: 18),
+                  const SizedBox(width: AppTheme.spacing8),
+                  Expanded(
+                    child: Text(
+                      action == 'HOLD'
+                        ? '💡 Wait for a clearer signal before trading.'
+                        : '💡 Go to Orders tab to manually place a ${action.toLowerCase()} order.',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: signalColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            // FREE mode (non-beta) - show upgrade message
             Container(
               padding: const EdgeInsets.all(AppTheme.spacing12),
               decoration: BoxDecoration(
@@ -1544,39 +1572,12 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                 ],
               ),
             ),
-          ] else ...[
-            // PREMIUM mode - show action instruction
-            Container(
-              padding: const EdgeInsets.all(AppTheme.spacing12),
-              decoration: BoxDecoration(
-                color: signalColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                border: Border.all(color: signalColor.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.touch_app, color: signalColor, size: 18),
-                  const SizedBox(width: AppTheme.spacing8),
-                  Expanded(
-                    child: Text(
-                      action == 'HOLD' 
-                        ? '💡 Wait for a clearer signal before trading.'
-                        : '💡 Go to Orders tab to manually place a ${action.toLowerCase()} order.',
-                      style: AppTheme.bodySmall.copyWith(
-                        color: signalColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ],
       ),
     );
   }
-  
+
   /// Build "Upgrade to Premium" CTA
   Widget _buildUpgradeToPremiumCTA() {
     return GlassCard(
