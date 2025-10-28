@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
 import '../models/candle.dart';
 import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
@@ -307,6 +307,7 @@ class _MarketScreenState extends State<MarketScreen> {
                                     data: _candles,
                                     bullColor: AppTheme.buyGreen,
                                     bearColor: AppTheme.sellRed,
+                                    symbol: _selectedSymbol,
                                   ),
                       ),
 
@@ -545,13 +546,39 @@ class CandlestickChart extends StatelessWidget {
   final List<CandleData> data;
   final Color bullColor;
   final Color bearColor;
+  final String symbol;
 
   const CandlestickChart({
     super.key,
     required this.data,
     required this.bullColor,
     required this.bearColor,
+    required this.symbol,
   });
+
+  // Detect quote currency from symbol
+  String _getQuoteCurrency() {
+    if (symbol.endsWith('EUR')) return 'EUR';
+    if (symbol.endsWith('USD')) return 'USD';
+    if (symbol.endsWith('USDT')) return 'USDT';
+    if (symbol.endsWith('USDC')) return 'USDC';
+    return 'USD'; // fallback
+  }
+
+  // Get currency prefix (€ for EUR, $ for others)
+  String _getCurrencyPrefix() {
+    final quote = _getQuoteCurrency();
+    return quote == 'EUR' ? '€' : '\$';
+  }
+
+  // Get optimal decimal places based on price
+  int _getDecimals(double price) {
+    if (price >= 100) return 0;      // BTC, ETH: €95000 → €95000
+    if (price >= 10) return 2;       // BNB, SOL, TRUMP: €171 → €171.00, €6.13 → €6.13
+    if (price >= 1) return 2;        // Mid-range: €5.97 → €5.97
+    if (price >= 0.01) return 2;     // WLFI: €0.1254 → €0.13 (2 decimale!)
+    return 2;                        // Very small prices - 2 decimale peste tot!
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -565,147 +592,137 @@ class CandlestickChart extends StatelessWidget {
       );
     }
 
-    final double maxPrice = data.map((e) => e.high).reduce((a, b) => a > b ? a : b);
-    final double minPrice = data.map((e) => e.low).reduce((a, b) => a < b ? a : b);
-    final double range = maxPrice - minPrice;
+    // Get current price (last candle close)
+    final double currentPrice = data.last.close;
+    final String currencyPrefix = _getCurrencyPrefix();
 
-    // Calculate smart interval - aim for 4-5 labels on Y axis
-    double interval = range / 4;
-
-    // Round interval to nice numbers based on magnitude
-    if (interval > 1000) {
-      interval = (interval / 1000).ceilToDouble() * 1000;
-    } else if (interval > 100) {
-      interval = (interval / 100).ceilToDouble() * 100;
-    } else if (interval > 10) {
-      interval = (interval / 10).ceilToDouble() * 10;
-    } else if (interval > 1) {
-      interval = interval.ceilToDouble();
-    } else if (interval > 0.1) {
-      // For prices like $5-6 (TRUMP), round to 0.5, 1.0, etc.
-      interval = (interval * 10).ceilToDouble() / 10;
-    } else if (interval > 0.01) {
-      // For prices like $0.12 (WLFI), round to 0.02, 0.05, etc.
-      interval = (interval * 100).ceilToDouble() / 100;
-    } else if (interval > 0.001) {
-      // For very small prices, round to 0.001, 0.002, etc.
-      interval = (interval * 1000).ceilToDouble() / 1000;
-    }
-
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceBetween,
-        maxY: maxPrice * 1.03,
-        minY: minPrice * 0.97,
-        groupsSpace: 2, // Reduced spacing for better density
-        barTouchData: BarTouchData(
-          enabled: true,
-          handleBuiltInTouches: true,
-          touchTooltipData: BarTouchTooltipData(
-            getTooltipColor: (group) => AppTheme.surface,
-            tooltipPadding: const EdgeInsets.all(AppTheme.spacing8),
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              final candle = data[group.x.toInt()];
-              return BarTooltipItem(
-                'O: ${candle.open.toStringAsFixed(4)}\n'
-                'H: ${candle.high.toStringAsFixed(4)}\n'
-                'L: ${candle.low.toStringAsFixed(4)}\n'
-                'C: ${candle.close.toStringAsFixed(4)}',
-                AppTheme.bodySmall.copyWith(
-                  color: AppTheme.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-              );
-            },
+    return SfCartesianChart(
+      plotAreaBorderWidth: 0,
+      // Trackball for current price line (like TradingView)
+      trackballBehavior: TrackballBehavior(
+        enable: true,
+        activationMode: ActivationMode.singleTap,
+        lineType: TrackballLineType.vertical,
+        lineColor: AppTheme.primary.withOpacity(0.5),
+        lineWidth: 1,
+        lineDashArray: const [5, 5],
+        tooltipSettings: InteractiveTooltip(
+          enable: true,
+          color: AppTheme.surface,
+          textStyle: AppTheme.bodySmall.copyWith(
+            color: AppTheme.textPrimary,
+            fontWeight: FontWeight.w600,
           ),
-          touchCallback: (event, response) {},
+          borderColor: AppTheme.glassBorder,
+          borderWidth: 1,
+          format: 'O: point.open\nH: point.high\nL: point.low\nC: point.close',
         ),
-        titlesData: FlTitlesData(
-          show: true,
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 70,
-              interval: interval > 0 ? interval : null,
-              getTitlesWidget: (value, meta) {
-                final double absValue = value.abs();
-                final int decimals = absValue >= 100
-                    ? 0
-                    : absValue >= 1
-                        ? 2
-                        : 4;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: Text(
-                    '\$${value.toStringAsFixed(decimals)}',
-                    style: AppTheme.bodySmall.copyWith(
-                      color: colors.onSurface.withOpacity(0.6),
-                      fontSize: 8.5, // Reduced from 9 to prevent overlap
-                    ),
-                    textAlign: TextAlign.right,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis, // Changed from visible to ellipsis
-                  ),
-                );
-              },
-            ),
-          ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                if (value.toInt() % 10 == 0) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: AppTheme.bodySmall.copyWith(
-                      color: colors.onSurface.withOpacity(0.6),
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-          ),
-        ),
-        gridData: const FlGridData(show: false),
-        borderData: FlBorderData(show: false),
-        barGroups: data.asMap().entries.map((entry) {
-          final candle = entry.value;
-          final isBullish = candle.isBullish;
-          final color = isBullish ? bullColor : bearColor;
-
-          return BarChartGroupData(
-            x: entry.key,
-            barRods: [
-              BarChartRodData(
-                fromY: candle.low,
-                toY: candle.high,
-                width: 5.5, // Increased to make candles clearly visible
-                color: color.withOpacity(0.95),
-                rodStackItems: [
-                  BarChartRodStackItem(
-                    candle.low,
-                    candle.open < candle.close ? candle.open : candle.close,
-                    color.withOpacity(0.4),
-                  ),
-                  BarChartRodStackItem(
-                    candle.open < candle.close ? candle.open : candle.close,
-                    candle.open > candle.close ? candle.open : candle.close,
-                    color.withOpacity(0.95),
-                  ),
-                  BarChartRodStackItem(
-                    candle.open > candle.close ? candle.open : candle.close,
-                    candle.high,
-                    color.withOpacity(0.4),
-                  ),
-                ],
-              ),
-            ],
-          );
-        }).toList(),
       ),
+      // Primary X-Axis (candle index)
+      primaryXAxis: NumericAxis(
+        isVisible: false,
+        majorGridLines: const MajorGridLines(width: 0),
+      ),
+      // Primary Y-Axis (price)
+      primaryYAxis: NumericAxis(
+        opposedPosition: false,
+        // Let Syncfusion auto-calculate optimal intervals to prevent crowding
+        desiredIntervals: 5,
+        labelStyle: TextStyle(
+          color: colors.onSurface.withOpacity(0.6),
+          fontSize: 10,
+          fontFamily: 'monospace',
+        ),
+        majorGridLines: MajorGridLines(
+          width: 0.5,
+          color: colors.onSurface.withOpacity(0.1),
+          dashArray: const [5, 5],
+        ),
+        axisLine: const AxisLine(width: 0),
+        labelAlignment: LabelAlignment.end,
+        // Custom label formatting with correct currency and decimals
+        axisLabelFormatter: (AxisLabelRenderDetails details) {
+          final double value = details.value.toDouble();
+          final int decimals = _getDecimals(value);
+          return ChartAxisLabel(
+            '$currencyPrefix${value.toStringAsFixed(decimals)}',
+            TextStyle(
+              color: colors.onSurface.withOpacity(0.6),
+              fontSize: 10,
+              fontFamily: 'monospace',
+            ),
+          );
+        },
+      ),
+      // Candlestick series
+      series: <CandleSeries<CandleData, num>>[
+        CandleSeries<CandleData, num>(
+          dataSource: data,
+          xValueMapper: (CandleData candle, _) => candle.x,
+          lowValueMapper: (CandleData candle, _) => candle.low,
+          highValueMapper: (CandleData candle, _) => candle.high,
+          openValueMapper: (CandleData candle, _) => candle.open,
+          closeValueMapper: (CandleData candle, _) => candle.close,
+          // Candle colors
+          bullColor: bullColor,
+          bearColor: bearColor,
+          enableSolidCandles: true,
+          // Candle width - Syncfusion auto-optimizes based on data points
+          spacing: 0.1, // 10% spacing = fatter candles (more visible!)
+          borderWidth: 2, // Thicker borders for better visibility
+          // Show indication for same values (makes wicks more visible!)
+          showIndicationForSameValues: true,
+          // Show current value indicator (price line on right side)
+          dataLabelSettings: const DataLabelSettings(
+            isVisible: false,
+          ),
+        ),
+      ],
+      // Plot area customization
+      margin: const EdgeInsets.only(right: 10, top: 10, bottom: 5),
+      // Zooming and panning
+      zoomPanBehavior: ZoomPanBehavior(
+        enablePinching: true,
+        enablePanning: true,
+        zoomMode: ZoomMode.x,
+      ),
+      // Annotations for current price line
+      annotations: <CartesianChartAnnotation>[
+        CartesianChartAnnotation(
+          widget: Container(
+            decoration: BoxDecoration(
+              color: data.last.close > data.last.open ? bullColor : bearColor,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            child: Text(
+              '$currencyPrefix${currentPrice.toStringAsFixed(_getDecimals(currentPrice))}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+          coordinateUnit: CoordinateUnit.point,
+          x: data.length - 1,
+          y: currentPrice,
+          horizontalAlignment: ChartAlignment.far,
+          verticalAlignment: ChartAlignment.center,
+        ),
+        // Horizontal line at current price (like TradingView)
+        CartesianChartAnnotation(
+          widget: Container(
+            height: 1,
+            color: (data.last.close > data.last.open ? bullColor : bearColor).withOpacity(0.5),
+          ),
+          coordinateUnit: CoordinateUnit.point,
+          region: AnnotationRegion.plotArea,
+          x: 0,
+          y: currentPrice,
+        ),
+      ],
     );
   }
 }
