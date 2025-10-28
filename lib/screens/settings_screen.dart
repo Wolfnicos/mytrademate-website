@@ -513,7 +513,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(width: AppTheme.spacing12),
                         Expanded(
                           child: Text(
-                            'MyTradeMate does not execute trades. To trade, use Binance directly.',
+                            'MyTradeMate is a Binance API client. Orders are executed on Binance.com - MyTradeMate never holds your funds.',
                             style: AppTheme.bodySmall.copyWith(
                               color: AppTheme.textSecondary,
                             ),

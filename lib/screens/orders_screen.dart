@@ -443,6 +443,48 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                         ),
                         const SizedBox(height: AppTheme.spacing16),
 
+                        // API Integration Disclaimer - IMPORTANT for Google Play compliance
+                        GlassCard(
+                          padding: const EdgeInsets.all(AppTheme.spacing16),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(AppTheme.spacing8),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primary.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                                  border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+                                ),
+                                child: Icon(Icons.info_outline, color: AppTheme.primary, size: 20),
+                              ),
+                              const SizedBox(width: AppTheme.spacing12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Binance API Integration',
+                                      style: AppTheme.bodyMedium.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Orders are placed on Binance.com via API. MyTradeMate does not hold your funds - all assets remain on Binance.',
+                                      style: AppTheme.bodySmall.copyWith(
+                                        color: AppTheme.textSecondary,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.spacing16),
+
                         // Trading UI - shows when user has Pro/Trial OR API has trading permission
                         Consumer<SubscriptionProvider>(
                           builder: (context, subscription, _) {
