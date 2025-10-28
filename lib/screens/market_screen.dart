@@ -592,7 +592,7 @@ class CandlestickChart extends StatelessWidget {
         alignment: BarChartAlignment.spaceBetween,
         maxY: maxPrice * 1.03,
         minY: minPrice * 0.97,
-        groupsSpace: 6,
+        groupsSpace: 3, // Reduced from 6 to make candles more visible
         barTouchData: BarTouchData(
           enabled: true,
           handleBuiltInTouches: true,
@@ -677,7 +677,7 @@ class CandlestickChart extends StatelessWidget {
               BarChartRodData(
                 fromY: candle.low,
                 toY: candle.high,
-                width: 2.4,
+                width: 4.0, // Increased from 2.4 to make candles more visible
                 color: color.withOpacity(0.9),
                 rodStackItems: [
                   BarChartRodStackItem(
