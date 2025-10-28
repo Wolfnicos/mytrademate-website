@@ -7,6 +7,10 @@ class AppSettingsService extends ChangeNotifier {
   factory AppSettingsService() => _instance;
   AppSettingsService._internal();
 
+  // BETA MODE: Set to false before production release!
+  // When true, all users have unlimited premium access for testing
+  static const bool IS_BETA_BUILD = true;
+
   static const String _kQuoteKey = 'quote_currency';
   static const String _kPermissionKey = 'api_permission_level';
   static const String _kTrialStartKey = 'trial_start_timestamp';
@@ -23,7 +27,12 @@ class AppSettingsService extends ChangeNotifier {
   bool get isTradingEnabled => _permissionLevel.toLowerCase() == 'trading';
 
   /// Check if user is in 48-hour free trial period
+  /// In BETA mode (IS_BETA_BUILD = true), always returns true for unlimited access
   bool get isInTrial {
+    // BETA MODE: Grant unlimited premium access for testing
+    if (IS_BETA_BUILD) return true;
+
+    // PRODUCTION MODE: Check actual trial period
     if (_trialStartTime == null || _trialDeclined) return false;
     final now = DateTime.now();
     final diff = now.difference(_trialStartTime!);
@@ -37,7 +46,12 @@ class AppSettingsService extends ChangeNotifier {
   }
 
   /// Get remaining trial time in hours (null if not in trial)
+  /// In BETA mode, returns null to hide trial banner
   int? get trialHoursRemaining {
+    // BETA MODE: Don't show trial countdown
+    if (IS_BETA_BUILD) return null;
+
+    // PRODUCTION MODE: Calculate remaining hours
     if (!isInTrial) return null;
     final now = DateTime.now();
     final diff = now.difference(_trialStartTime!);

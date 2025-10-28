@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/subscription_provider.dart';
+import '../services/app_settings_service.dart';
 import '../theme/app_theme.dart';
 
 /// Banner showing trial period remaining time
 /// Only shows if user is in trial (not if they have paid subscription)
+/// Hidden in BETA mode
 class TrialBanner extends StatelessWidget {
   const TrialBanner({super.key});
 
@@ -12,6 +14,11 @@ class TrialBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<SubscriptionProvider>(
       builder: (context, subscription, _) {
+        // BETA MODE: Hide trial banner completely
+        if (AppSettingsService.IS_BETA_BUILD) {
+          return const SizedBox.shrink();
+        }
+
         // Don't show if user has paid subscription or trial expired
         if (subscription.hasProSubscription || !subscription.isInTrial) {
           return const SizedBox.shrink();

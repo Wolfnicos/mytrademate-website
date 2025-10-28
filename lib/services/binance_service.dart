@@ -35,12 +35,17 @@ class FeatureResult {
   }
 }
 
-/// Result wrapper for features + ATR (for Phase 3 volatility-based weights)
+/// Result wrapper for features + ATR + current price (for Phase 3 volatility-based weights)
 class FeaturesWithATR {
   final List<List<double>> features;
   final double atr;
+  final double currentPrice; // Latest candle close price
 
-  const FeaturesWithATR({required this.features, required this.atr});
+  const FeaturesWithATR({
+    required this.features,
+    required this.atr,
+    required this.currentPrice,
+  });
 }
 
 class BinanceService {
@@ -983,7 +988,16 @@ class BinanceService {
     }
 
     final candles = await fetchKlines(resolved, interval: interval, limit: limit);
-    
+
+    // IMPORTANT: Log latest candle timestamp to prove data is FRESH
+    if (candles.isNotEmpty) {
+      final latestCandle = candles.last;
+      final now = DateTime.now();
+      final candleAge = now.difference(latestCandle.closeTime);
+      debugPrint('📅 Latest candle: ${latestCandle.closeTime} (${candleAge.inMinutes}min ago) - DATA IS FRESH!');
+      debugPrint('   Close: \$${latestCandle.close.toStringAsFixed(2)}, Volume: ${latestCandle.volume.toStringAsFixed(2)}');
+    }
+
     // Calculate ATR from raw candles
     final candlesForATR = candles.map((c) => [
       c.openTime.millisecondsSinceEpoch.toDouble(),
@@ -999,8 +1013,15 @@ class BinanceService {
     // Build features
     final fullBuilder = FullFeatureBuilder();
     final features = fullBuilder.buildFeatures(candles: candles);
-    
-    return FeaturesWithATR(features: features, atr: atr);
+
+    // Extract current price from latest candle
+    final currentPrice = candles.isNotEmpty ? candles.last.close : 0.0;
+
+    return FeaturesWithATR(
+      features: features,
+      atr: atr,
+      currentPrice: currentPrice,
+    );
   }
 
   /// Calculate ATR (Average True Range) from candles

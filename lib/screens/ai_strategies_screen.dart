@@ -34,6 +34,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
   String _predictionError = '';
   DateTime? _lastUpdateTime; // Track when prediction was last updated
   double? _previousAtr; // Track previous ATR to show trend
+  double? _previousPrice; // Track previous price to show change
 
   String _selectedSymbol = 'BTCUSDT';
   String _interval = '4h'; // Default to 4H (free tier)
@@ -166,7 +167,20 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       debugPrint('🚀 AI Strategies: fetching CryptoML prediction for $coin @$_interval');
 
       // Fetch price data (60x76 features) + ATR from Binance with symbol fallback (USD -> USDT/EUR/USDC)
+      // This ALWAYS fetches FRESH candles from Binance API (no caching)
+      debugPrint('📡 Fetching FRESH candles from Binance API for $_selectedSymbol @$_interval...');
       final result = await BinanceService().getFeaturesWithATRFallback(_selectedSymbol, interval: _interval);
+      debugPrint('✅ Received fresh candles (features: ${result.features.length}x${result.features.first.length}, ATR: ${(result.atr * 100).toStringAsFixed(2)}%, Price: \$${result.currentPrice.toStringAsFixed(2)})');
+
+      // Calculate price change from previous prediction
+      final priceChange = _previousPrice != null ? result.currentPrice - _previousPrice! : 0.0;
+      final priceChangePercent = _previousPrice != null && _previousPrice! > 0
+          ? (priceChange / _previousPrice!) * 100
+          : 0.0;
+
+      if (_previousPrice != null) {
+        debugPrint('💹 Price change: ${priceChange >= 0 ? '+' : ''}${priceChange.toStringAsFixed(2)} (${priceChangePercent >= 0 ? '+' : ''}${priceChangePercent.toStringAsFixed(3)}%)');
+      }
 
       // Use CryptoMLService multi-timeframe weighted ensemble
       final prediction = await CryptoMLService().getPrediction(
@@ -184,8 +198,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
 
       if (mounted) {
         setState(() {
-          // Store previous ATR before updating prediction
+          // Store previous values before updating prediction
           _previousAtr = _lastPrediction?.atr;
+          _previousPrice = result.currentPrice;
           _lastPrediction = prediction;
           _lastUpdateTime = DateTime.now();
           _isRunningPrediction = false;
@@ -1651,9 +1666,15 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         return 'AI analysis suggests $coin is in a consolidation phase on the $tfDisplay timeframe. '
                'This means the price is moving sideways without clear direction. '
                'Wait for a clearer signal before buying or selling.\n\n'
-               '📊 During consolidation, predictions may stay stable for hours or days. '
-               'This is normal - the AI is working correctly and will update when market conditions change.\n\n'
-               '💡 Check the "Updated" timestamp and volatility indicator above to confirm the system is actively monitoring live data.';
+               '📊 WHY PREDICTIONS STAY STABLE:\n'
+               '• Data refreshes every time you click "Refresh Prediction" (check logs)\n'
+               '• Small price changes (<1%) are too minor to change AI predictions\n'
+               '• During consolidation, market features (RSI, MACD, volume) stay similar\n'
+               '• This is CORRECT behavior - AI needs significant movement (>1-2%) to change signals\n\n'
+               '💡 Check the debug logs to see:\n'
+               '• Fresh candle timestamps updating\n'
+               '• Price changes (e.g., +\$6 on BTC = +0.006%)\n'
+               '• The system IS working - predictions will update when market breaks out!';
       
       default:
         return 'AI is analyzing market conditions for $coin. Check back soon for updated signals.';

@@ -1,4 +1,4 @@
-package com.mytrademate.app
+package app.mytrademate.trading
 
 import io.flutter.embedding.android.FlutterActivity
 
