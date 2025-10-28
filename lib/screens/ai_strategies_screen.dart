@@ -782,8 +782,8 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
             const SizedBox(width: AppTheme.spacing8),
             Container(
               padding: const EdgeInsets.symmetric(
-                horizontal: AppTheme.spacing6,
-                vertical: AppTheme.spacing2,
+                horizontal: AppTheme.spacing8,
+                vertical: AppTheme.spacing4,
               ),
               decoration: BoxDecoration(
                 color: atrTrendColor!.withOpacity(0.15),
@@ -794,7 +794,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(atrTrendIcon, size: 12, color: atrTrendColor),
-                  const SizedBox(width: AppTheme.spacing2),
+                  const SizedBox(width: AppTheme.spacing4),
                   Text(
                     'Vol $atrTrend',
                     style: AppTheme.bodySmall.copyWith(
@@ -838,8 +838,8 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
 
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacing6,
-        vertical: AppTheme.spacing2,
+        horizontal: AppTheme.spacing8,
+        vertical: AppTheme.spacing4,
       ),
       decoration: BoxDecoration(
         color: activityColor.withOpacity(0.15),
