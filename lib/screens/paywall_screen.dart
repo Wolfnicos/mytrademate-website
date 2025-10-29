@@ -98,7 +98,7 @@ class PaywallScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      '€9.99/month',
+                      '€5.99/month',
                       style: AppTheme.headingLarge.copyWith(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -116,7 +116,7 @@ class PaywallScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          '€84.99/year',
+                          '€57.50/year',
                           style: AppTheme.headingLarge.copyWith(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -134,7 +134,7 @@ class PaywallScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                           ),
                           child: Text(
-                            'Save 30%',
+                            'Save 20%',
                             style: AppTheme.labelSmall.copyWith(
                               color: AppTheme.success,
                               fontWeight: FontWeight.bold,

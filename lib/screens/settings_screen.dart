@@ -367,129 +367,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
                   ),
                   const SizedBox(height: AppTheme.spacing16),
-                  // Trading mode indicator (changes based on trial/Pro status)
-                  Consumer<SubscriptionProvider>(
-                    builder: (context, subscription, _) {
-                      final isProUser = subscription.isProUser;
-
-                      if (isProUser) {
-                        // Show TRADING ENABLED during trial or Pro
-                        return Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(AppTheme.spacing16),
+                  // Portfolio Tracker - Read-Only API
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppTheme.spacing16),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                      border: Border.all(
+                        color: AppTheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(AppTheme.spacing8),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF00C853), Color(0xFF00E676)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                            border: Border.all(
-                              color: const Color(0xFF00C853),
-                              width: 2,
-                            ),
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                           ),
-                          child: Row(
+                          child: const Icon(
+                            Icons.visibility,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: AppTheme.spacing12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(AppTheme.spacing8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                                ),
-                                child: const Icon(
-                                  Icons.check_circle,
+                              Text(
+                                'READ-ONLY MODE',
+                                style: AppTheme.labelLarge.copyWith(
                                   color: Colors.white,
-                                  size: 20,
                                 ),
                               ),
-                              const SizedBox(width: AppTheme.spacing12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'TRADING ENABLED',
-                                      style: AppTheme.labelLarge.copyWith(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    const SizedBox(height: AppTheme.spacing4),
-                                    Text(
-                                      'Full access • Execute trades',
-                                      style: AppTheme.bodySmall.copyWith(
-                                        color: Colors.white.withOpacity(0.8),
-                                      ),
-                                    ),
-                                  ],
+                              const SizedBox(height: AppTheme.spacing4),
+                              Text(
+                                'Portfolio tracking only',
+                                style: AppTheme.bodySmall.copyWith(
+                                  color: Colors.white.withOpacity(0.8),
                                 ),
-                              ),
-                              Icon(
-                                Icons.rocket_launch,
-                                color: Colors.white.withOpacity(0.6),
-                                size: 20,
                               ),
                             ],
                           ),
-                        );
-                      } else {
-                        // Show READ-ONLY MODE for free users
-                        return Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(AppTheme.spacing16),
-                          decoration: BoxDecoration(
-                            gradient: AppTheme.primaryGradient,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                            border: Border.all(
-                              color: AppTheme.primary,
-                              width: 2,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(AppTheme.spacing8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                                ),
-                                child: const Icon(
-                                  Icons.visibility,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                              const SizedBox(width: AppTheme.spacing12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'READ-ONLY MODE',
-                                      style: AppTheme.labelLarge.copyWith(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    const SizedBox(height: AppTheme.spacing4),
-                                    Text(
-                                      'View portfolio only • No trade execution',
-                                      style: AppTheme.bodySmall.copyWith(
-                                        color: Colors.white.withOpacity(0.8),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Icon(
-                                Icons.lock_outline,
-                                color: Colors.white.withOpacity(0.6),
-                                size: 20,
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                    },
+                        ),
+                        Icon(
+                          Icons.account_balance_wallet,
+                          color: Colors.white.withOpacity(0.6),
+                          size: 20,
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: AppTheme.spacing12),
                   // Info Card
@@ -513,7 +444,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(width: AppTheme.spacing12),
                         Expanded(
                           child: Text(
-                            'MyTradeMate is a Binance API client. Orders are executed on Binance.com - MyTradeMate never holds your funds.',
+                            'MyTradeMate connects to Binance via read-only API to track your portfolio. We never hold your funds or access your private keys.',
                             style: AppTheme.bodySmall.copyWith(
                               color: AppTheme.textSecondary,
                             ),
@@ -882,7 +813,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   title: Text('MyTradeMate', style: AppTheme.headingMedium),
                   subtitle: Text(
-                    'Version 1.0.0 - Premium AI Trading',
+                    'Version 1.0.0 - Portfolio Tracker',
                     style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
                   ),
                 ),
@@ -1002,7 +933,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'AI-Powered Crypto Trading Assistant',
+                'AI-Powered Portfolio Tracker',
                 style: AppTheme.bodyLarge.copyWith(
                   color: AppTheme.primary,
                   fontWeight: FontWeight.w600,
@@ -1018,11 +949,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: AppTheme.labelLarge.copyWith(color: AppTheme.textSecondary),
               ),
               const SizedBox(height: AppTheme.spacing8),
-              _buildFeatureRow('🤖', 'AI predictions on 6 timeframes'),
-              _buildFeatureRow('📊', '4 order types (Market, Limit, Stop)'),
+              _buildFeatureRow('🤖', 'AI market insights (educational)'),
               _buildFeatureRow('💼', 'Real-time portfolio tracking'),
+              _buildFeatureRow('📊', 'Advanced charts & analytics'),
               _buildFeatureRow('🔒', 'Bank-level security'),
-              _buildFeatureRow('📈', 'Professional charts'),
+              _buildFeatureRow('📈', 'Multi-timeframe analysis'),
               const SizedBox(height: AppTheme.spacing16),
               Container(
                 padding: const EdgeInsets.all(AppTheme.spacing12),
@@ -1049,7 +980,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: AppTheme.spacing8),
                     Text(
-                      'Cryptocurrency trading involves substantial risk. This app provides tools and information but does NOT constitute financial advice. Trade responsibly.',
+                      'Cryptocurrency markets are highly volatile. This app provides portfolio tracking and educational insights only. Not financial advice. Always do your own research.',
                       style: AppTheme.bodySmall.copyWith(
                         color: AppTheme.textSecondary,
                         height: 1.4,
