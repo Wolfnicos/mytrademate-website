@@ -29,8 +29,8 @@ import 'widgets/risk_disclaimer_dialog.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Register Syncfusion license (7-day temporary, will be replaced with permanent Community License)
-  SyncfusionLicense.registerLicense('Ngo9BigBOggjHTQxAR8/V1JFaF1cX2hIf0xyWmFZfVtgfV9FYlZTTGYuP1ZhSXxWd0VhUX9Xc3ZXTmlaVkx9XEM=');
+  // Register Syncfusion Community License (valid for 1 year for individual developers)
+  SyncfusionLicense.registerLicense('Ngo9BigBOggjHTQxAR8/V1JFaF5cXGRCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdmWH9ceXVVRmBZVUZxXEBWYEg=');
 
   // Initialize ONLY fast, essential services in main()
   // This allows the app to start in <1 second
