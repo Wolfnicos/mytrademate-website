@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MyTradeMate Support & FAQ - Get help with setup, trading, AI predictions, and troubleshooting.">
-    <title>Support & FAQ - MyTradeMate</title>
+    <meta name="description" content="MyTradeMate Portfolio Support & FAQ - Get help with setup, portfolio tracking, AI insights, and troubleshooting.">
+    <title>Support & FAQ - MyTradeMate Portfolio</title>
     <style>
         * {
             margin: 0;
@@ -228,7 +228,7 @@
         <header>
             <a href="index.html" class="back-link">← Back to Home</a>
             <h1>💬 Support & FAQ</h1>
-            <p class="subtitle">Get Help with MyTradeMate</p>
+            <p class="subtitle">Get Help with MyTradeMate Portfolio</p>
         </header>
 
         <div class="contact-box">
@@ -241,17 +241,17 @@
         <h2>🚀 Getting Started</h2>
 
         <div class="faq-item">
-            <div class="faq-question">Q: How do I get started with MyTradeMate?</div>
+            <div class="faq-question">Q: How do I get started with MyTradeMate Portfolio?</div>
             <div class="faq-answer">
                 <p><strong>A:</strong> Follow these steps:</p>
                 <ol>
-                    <li>Download the app from App Store or Google Play</li>
-                    <li>Complete the onboarding (48h FREE TRIAL starts automatically)</li>
-                    <li>Accept the risk disclaimer</li>
+                    <li>Download the app from Google Play Store</li>
+                    <li>Complete the onboarding (2-day FREE TRIAL starts automatically)</li>
+                    <li>Accept the disclaimer</li>
                     <li>Create a Binance account (if you don't have one)</li>
-                    <li>Create Binance API keys</li>
+                    <li>Create read-only Binance API keys</li>
                     <li>Add your API keys in Settings → API Configuration</li>
-                    <li>Start trading!</li>
+                    <li>Start tracking your portfolio!</li>
                 </ol>
             </div>
         </div>
@@ -259,10 +259,10 @@
         <div class="faq-item">
             <div class="faq-question">Q: Do I need a Binance account?</div>
             <div class="faq-answer">
-                <p><strong>A:</strong> Yes, MyTradeMate connects to Binance API to fetch market data and execute trades. We use Binance because it's the world's largest crypto exchange with:</p>
+                <p><strong>A:</strong> Yes, MyTradeMate Portfolio connects to Binance API to fetch portfolio balances and market data. We use Binance because it's the world's largest crypto exchange with:</p>
                 <ul>
-                    <li>High liquidity and low fees</li>
-                    <li>Wide selection of trading pairs</li>
+                    <li>High liquidity and reliable data</li>
+                    <li>Wide selection of cryptocurrencies</li>
                     <li>Reliable API infrastructure</li>
                 </ul>
                 <p>Create a free account at: <a href="https://www.binance.com" target="_blank" style="color: var(--gold);">https://www.binance.com</a></p>
@@ -270,24 +270,26 @@
         </div>
 
         <div class="faq-item">
-            <div class="faq-question">Q: How do I create Binance API keys?</div>
+            <div class="faq-question">Q: How do I create read-only Binance API keys?</div>
             <div class="faq-answer">
-                <p><strong>A:</strong> Step-by-step guide:</p>
+                <p><strong>A:</strong> Step-by-step guide for READ-ONLY keys:</p>
                 <ol>
                     <li>Log in to Binance</li>
                     <li>Go to Profile (top right) → API Management</li>
                     <li>Click "Create API"</li>
                     <li>Choose "System Generated" (recommended)</li>
-                    <li>Set permissions:
+                    <li>Set permissions (CRITICAL):
                         <ul>
-                            <li><strong>Enable "Read Info"</strong> (view portfolio)</li>
-                            <li><strong>Enable "Spot & Margin Trading"</strong> (for PREMIUM trading)</li>
-                            <li><strong>⚠️ DO NOT enable "Enable Withdrawals"</strong> (CRITICAL for security!)</li>
+                            <li><strong>✅ Enable "Read Info"</strong> (view portfolio ONLY)</li>
+                            <li><strong>❌ DO NOT enable "Spot & Margin Trading"</strong></li>
+                            <li><strong>❌ DO NOT enable "Futures"</strong></li>
+                            <li><strong>❌ DO NOT enable "Enable Withdrawals"</strong></li>
                         </ul>
                     </li>
                     <li>Copy API Key and Secret Key</li>
-                    <li>Paste them into MyTradeMate Settings → API Configuration</li>
+                    <li>Paste them into MyTradeMate Portfolio Settings → API Configuration</li>
                 </ol>
+                <p><strong>⚠️ IMPORTANT:</strong> Only enable "Read Info" permission. This app is for portfolio tracking only - we cannot execute any transactions.</p>
             </div>
         </div>
 
@@ -304,7 +306,7 @@
                         <th>PREMIUM</th>
                     </tr>
                     <tr>
-                        <td>Portfolio Viewing</td>
+                        <td>Portfolio Tracking</td>
                         <td>✅</td>
                         <td>✅</td>
                     </tr>
@@ -319,17 +321,12 @@
                         <td>✅</td>
                     </tr>
                     <tr>
-                        <td>AI Predictions (4h)</td>
+                        <td>AI Insights (1d timeframe)</td>
                         <td>✅</td>
                         <td>✅</td>
                     </tr>
                     <tr>
-                        <td>AI Predictions (5m, 15m, 1h, 4h)</td>
-                        <td>❌</td>
-                        <td>✅</td>
-                    </tr>
-                    <tr>
-                        <td>Trading Orders (4 Order Types)</td>
+                        <td>AI Insights (5m, 15m, 1h, 4h)</td>
                         <td>❌</td>
                         <td>✅</td>
                     </tr>
@@ -344,12 +341,12 @@
                         <td>✅</td>
                     </tr>
                 </table>
-                <p style="margin-top: 20px;"><strong>48h FREE TRIAL:</strong> All new users get full PREMIUM access for 48 hours, starting from first app launch!</p>
-                <p><strong>Upgrade to PREMIUM:</strong> €9.99/month or €84.99/year (save 30%)</p>
+                <p style="margin-top: 20px;"><strong>2-day FREE TRIAL:</strong> All new users get full PREMIUM access for 2 days, starting from first app launch!</p>
+                <p><strong>Upgrade to PREMIUM:</strong> €5.99/month or €57.50/year (save 20%)</p>
             </div>
         </div>
 
-        <h2>🤖 AI Predictions</h2>
+        <h2>🤖 AI Market Insights</h2>
 
         <div class="faq-item">
             <div class="faq-question">Q: How accurate are AI predictions?</div>
@@ -365,42 +362,29 @@
                     <li>Past performance ≠ future results</li>
                     <li>AI is not 100% accurate (no model is!)</li>
                     <li>Markets are unpredictable (black swan events, news, regulations)</li>
+                    <li>AI insights are for educational purposes ONLY, NOT financial advice</li>
                     <li>Always do your own research (DYOR)</li>
                     <li>Only invest what you can afford to lose</li>
                 </ul>
-                <p><strong>Use AI as ONE tool in your decision-making, not the only tool.</strong></p>
+                <p><strong>Use AI insights as ONE tool for learning about markets, not the only tool.</strong></p>
             </div>
         </div>
 
         <div class="faq-item">
-            <div class="faq-question">Q: What do BUY/SELL/HOLD signals mean?</div>
+            <div class="faq-question">Q: What do BULLISH/BEARISH/NEUTRAL signals mean?</div>
             <div class="faq-answer">
-                <p><strong>A:</strong> Signal meanings:</p>
+                <p><strong>A:</strong> Market sentiment signals (educational purposes only):</p>
                 <ul>
-                    <li><strong>🟢 BUY:</strong> AI predicts price will go UP. Consider entering a long position.</li>
-                    <li><strong>🔴 SELL:</strong> AI predicts price will go DOWN. Consider exiting positions or shorting.</li>
-                    <li><strong>🟡 HOLD:</strong> AI predicts sideways movement. Wait for clearer signals.</li>
+                    <li><strong>🟢 BULLISH:</strong> AI predicts upward price movement. Market sentiment is positive.</li>
+                    <li><strong>🔴 BEARISH:</strong> AI predicts downward price movement. Market sentiment is negative.</li>
+                    <li><strong>🟡 NEUTRAL:</strong> AI predicts sideways movement. Market sentiment is unclear.</li>
                 </ul>
-                <p><strong>Important:</strong> These are suggestions, not commands. YOU decide! Always combine AI signals with:</p>
+                <p><strong>Important:</strong> These are educational insights, NOT trading recommendations. This app is for portfolio tracking only - we cannot execute any transactions. Always combine AI insights with:</p>
                 <ul>
-                    <li>Your own technical analysis</li>
+                    <li>Your own technical analysis and research</li>
                     <li>Fundamental research (news, project updates)</li>
-                    <li>Risk management (stop-losses, position sizing)</li>
-                </ul>
-            </div>
-        </div>
-
-        <h2>📊 Trading</h2>
-
-        <div class="faq-item">
-            <div class="faq-question">Q: What order types are supported?</div>
-            <div class="faq-answer">
-                <p><strong>A:</strong> MyTradeMate supports 4 order types:</p>
-                <ul>
-                    <li><strong>Market Order:</strong> Executes immediately at current market price. Fast but may slip on volatile markets.</li>
-                    <li><strong>Limit Order:</strong> Executes only at your specified price (or better). Waits for your price, may not fill.</li>
-                    <li><strong>Stop-Limit Order:</strong> Triggers a limit order when price hits stop price. Good for taking profits or cutting losses.</li>
-                    <li><strong>Stop-Market Order:</strong> Triggers a market order when price hits stop price. Guaranteed execution at stop trigger.</li>
+                    <li>Risk management principles</li>
+                    <li>Consultation with qualified financial advisors</li>
                 </ul>
             </div>
         </div>
@@ -424,34 +408,36 @@
         <h2>🔒 Security</h2>
 
         <div class="faq-item">
-            <div class="faq-question">Q: Is MyTradeMate safe?</div>
+            <div class="faq-question">Q: Is MyTradeMate Portfolio safe?</div>
             <div class="faq-answer">
                 <p><strong>A:</strong> Yes! We take security seriously:</p>
                 <ul>
+                    <li>✅ <strong>Read-only access:</strong> We can ONLY view your portfolio, cannot access your funds</li>
                     <li>✅ <strong>No data collection:</strong> Everything stays on your device</li>
-                    <li>✅ <strong>AES-256 encryption:</strong> API keys encrypted with iOS Keychain or Android Keystore</li>
+                    <li>✅ <strong>AES-256 encryption:</strong> API keys encrypted with Android KeyStore</li>
                     <li>✅ <strong>No passwords:</strong> We don't store passwords (biometric auth only)</li>
-                    <li>✅ <strong>Biometric authentication:</strong> Face ID, Touch ID, or fingerprint</li>
-                    <li>✅ <strong>Order confirmation dialogs:</strong> Prevent accidental trades</li>
-                    <li>✅ <strong>Open-source security:</strong> Transparent codebase (coming soon to GitHub)</li>
+                    <li>✅ <strong>Biometric authentication:</strong> Fingerprint or face unlock</li>
+                    <li>✅ <strong>No transaction capability:</strong> App cannot execute any trades or withdrawals</li>
                 </ul>
             </div>
         </div>
 
         <div class="faq-item">
-            <div class="faq-question">Q: Can MyTradeMate withdraw my funds?</div>
+            <div class="faq-question">Q: Can MyTradeMate Portfolio access my funds?</div>
             <div class="faq-answer">
-                <p><strong>A:</strong> <strong>NO!</strong> We CANNOT and NEVER will withdraw your funds. Here's why:</p>
+                <p><strong>A:</strong> <strong>NO!</strong> We CANNOT and NEVER will access your funds. Here's why:</p>
                 <ul>
-                    <li>❌ Our app code does NOT have withdrawal functions</li>
+                    <li>❌ Our app uses READ-ONLY API access</li>
+                    <li>❌ Our app code does NOT have trading or withdrawal functions</li>
                     <li>❌ We CANNOT access your API keys (they're encrypted on your device)</li>
                     <li>✅ You control the API key permissions in Binance</li>
-                    <li>✅ <strong>ALWAYS disable "Enable Withdrawals" permission</strong> when creating your API key</li>
+                    <li>✅ <strong>ALWAYS use read-only API keys (disable ALL trading and withdrawal permissions)</strong></li>
                 </ul>
-                <p><strong>Recommended API Permissions:</strong></p>
+                <p><strong>Required API Permissions:</strong></p>
                 <ul>
-                    <li>✅ Enable "Read Info"</li>
-                    <li>✅ Enable "Spot & Margin Trading" (for PREMIUM)</li>
+                    <li>✅ Enable "Read Info" ONLY</li>
+                    <li>❌ DO NOT enable "Spot & Margin Trading"</li>
+                    <li>❌ DO NOT enable "Futures"</li>
                     <li>❌ DO NOT enable "Enable Withdrawals"</li>
                 </ul>
             </div>
@@ -464,10 +450,10 @@
             <div class="faq-answer">
                 <p><strong>A:</strong> Try these solutions in order:</p>
                 <ol>
-                    <li>Check your internet connection (Wi-Fi or cellular data)</li>
+                    <li>Check your internet connection (Wi-Fi or mobile data)</li>
                     <li>Verify API keys are correct (no extra spaces, copy/paste carefully)</li>
                     <li>Check if API keys are still active in Binance (they can be revoked or expired)</li>
-                    <li>Verify API permissions are enabled in Binance</li>
+                    <li>Verify "Read Info" permission is enabled in Binance</li>
                     <li>Restart the app (force close and reopen)</li>
                     <li>Check Binance server status: <a href="https://www.binance.com/en/support/announcement" target="_blank" style="color: var(--gold);">Binance Status</a></li>
                     <li>If still failing, contact us at mytrademate.app@gmail.com</li>
@@ -476,15 +462,28 @@
         </div>
 
         <div class="faq-item">
-            <div class="faq-question">Q: Orders not executing</div>
+            <div class="faq-question">Q: Portfolio balances not showing</div>
             <div class="faq-answer">
                 <p><strong>A:</strong> Common causes and fixes:</p>
                 <ul>
-                    <li><strong>FREE mode (READ ONLY):</strong> Cannot place orders. Upgrade to PREMIUM or use trial period.</li>
-                    <li><strong>Insufficient funds:</strong> Check if you have enough balance for the trade.</li>
-                    <li><strong>Minimum order size:</strong> Binance requires minimum ~$10-20 USD per order.</li>
-                    <li><strong>API permission missing:</strong> Verify your API key has "Spot & Margin Trading" enabled.</li>
-                    <li><strong>Limit order not filling:</strong> Your limit price may be too far from market price. Use Market order for immediate execution.</li>
+                    <li><strong>API permission missing:</strong> Verify your API key has "Read Info" enabled in Binance.</li>
+                    <li><strong>No holdings:</strong> Make sure you have cryptocurrency in your Binance Spot Wallet.</li>
+                    <li><strong>Minimum display threshold:</strong> The app hides holdings below $5 value.</li>
+                    <li><strong>API keys incorrect:</strong> Double-check that you copied both API Key and Secret Key correctly.</li>
+                    <li><strong>Refresh:</strong> Tap the refresh button on the Portfolio screen to reload data.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Q: AI predictions not available</div>
+            <div class="faq-answer">
+                <p><strong>A:</strong> Possible reasons:</p>
+                <ul>
+                    <li><strong>FREE mode:</strong> Only 1-day timeframe is available in FREE mode. Upgrade to PREMIUM for 5m, 15m, 1h, 4h timeframes.</li>
+                    <li><strong>Trial expired:</strong> Your 2-day trial has ended. Upgrade to PREMIUM to continue.</li>
+                    <li><strong>No data available:</strong> Some trading pairs may not have sufficient historical data for AI predictions.</li>
+                    <li><strong>App needs update:</strong> Check Google Play Store for app updates.</li>
                 </ul>
             </div>
         </div>
@@ -492,17 +491,17 @@
         <h2>💰 Pricing & Subscription</h2>
 
         <div class="faq-item">
-            <div class="faq-question">Q: How does the 48h FREE TRIAL work?</div>
+            <div class="faq-question">Q: How does the 2-day FREE TRIAL work?</div>
             <div class="faq-answer">
                 <p><strong>A:</strong> Simple and automatic:</p>
                 <ul>
                     <li>✅ Starts automatically when you first launch the app</li>
-                    <li>✅ Full PREMIUM access for 48 hours (not 2 calendar days, exactly 48 hours)</li>
+                    <li>✅ Full PREMIUM access for 2 days (exactly 48 hours)</li>
                     <li>✅ No credit card required</li>
-                    <li>✅ Trading enabled (if you add API keys with trading permissions)</li>
-                    <li>✅ All AI predictions unlocked (5m, 15m, 1h, 4h, 1d)</li>
+                    <li>✅ All AI insights unlocked (5m, 15m, 1h, 4h, 1d timeframes)</li>
+                    <li>✅ Advanced technical indicators enabled</li>
                 </ul>
-                <p>After 48 hours, the app reverts to FREE mode (view-only, 4h AI predictions). Upgrade to PREMIUM to continue trading.</p>
+                <p>After 2 days, the app reverts to FREE mode (1-day AI insights only). Upgrade to PREMIUM to access all timeframes.</p>
             </div>
         </div>
 
@@ -511,10 +510,24 @@
             <div class="faq-answer">
                 <p><strong>A:</strong> Two subscription options:</p>
                 <ul>
-                    <li><strong>Monthly:</strong> €9.99/month (charged monthly)</li>
-                    <li><strong>Annual:</strong> €84.99/year (save 30%, ~€7/month)</li>
+                    <li><strong>Monthly:</strong> €5.99/month (charged monthly)</li>
+                    <li><strong>Annual:</strong> €57.50/year (save 20%, ~€4.79/month)</li>
                 </ul>
-                <p>Billing is handled by Apple App Store or Google Play Store. Subscriptions auto-renew unless cancelled.</p>
+                <p>Billing is handled by Google Play Store. Subscriptions auto-renew unless cancelled.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Q: Can I cancel my subscription?</div>
+            <div class="faq-answer">
+                <p><strong>A:</strong> Yes, anytime! To cancel:</p>
+                <ol>
+                    <li>Open Google Play Store app</li>
+                    <li>Tap Menu → Subscriptions</li>
+                    <li>Select MyTradeMate Portfolio</li>
+                    <li>Tap "Cancel subscription"</li>
+                </ol>
+                <p>You'll continue to have PREMIUM access until the end of your current billing period.</p>
             </div>
         </div>
 
@@ -530,22 +543,12 @@
             </p>
             <p style="margin-top: 20px; opacity: 0.85; font-size: 15px;">
                 <strong>When contacting support, include:</strong><br>
-                • Device model and OS version<br>
+                • Device model and Android version<br>
                 • App version (found in Settings)<br>
                 • Detailed description of issue<br>
                 • Screenshots (if applicable)
             </p>
         </div>
-
-        <!-- Placeholder for future social media links -->
-        <!--
-        <div style="text-align: center; margin-top: 40px;">
-            <h3 style="font-size: 24px; margin-bottom: 20px;">Follow Us</h3>
-            <p>Instagram: @mytrademate</p>
-            <p>TikTok: @mytrademate</p>
-            <p>Twitter/X: @mytrademate</p>
-        </div>
-        -->
 
         <footer>
             <div class="footer-links">
@@ -555,7 +558,7 @@
                 <a href="support.html">Support & FAQ</a>
                 <a href="contact.html">Contact Us</a>
             </div>
-            <p style="opacity: 0.7; font-size: 14px;">© 2025 MyTradeMate. All rights reserved.</p>
+            <p style="opacity: 0.7; font-size: 14px;">© 2025 MyTradeMate Portfolio. All rights reserved.<br>Not affiliated with Binance or any cryptocurrency exchange.</p>
         </footer>
     </div>
 </body>

@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MyTradeMate - AI-Powered Crypto Trading Assistant. Get real-time BUY/SELL signals, track your portfolio, and trade with confidence. 48h FREE TRIAL with full trading access.">
-    <meta name="keywords" content="crypto trading, AI trading, binance trading bot, cryptocurrency, machine learning trading, crypto signals">
-    <title>MyTradeMate - AI-Powered Crypto Trading Assistant</title>
+    <meta name="description" content="MyTradeMate Portfolio - AI-Powered Crypto Portfolio Tracker. Track your crypto holdings, get educational market insights, and monitor your investments. Read-only Binance integration for secure portfolio tracking.">
+    <meta name="keywords" content="crypto portfolio tracker, portfolio tracking, cryptocurrency monitor, binance portfolio, crypto holdings, AI market insights">
+    <title>MyTradeMate Portfolio - AI-Powered Crypto Portfolio Tracker</title>
     <style>
         * {
             margin: 0;
@@ -29,7 +29,6 @@
             line-height: 1.6;
         }
 
-        /* Hero Section */
         .hero {
             min-height: 100vh;
             display: flex;
@@ -38,565 +37,339 @@
             justify-content: center;
             text-align: center;
             padding: 60px 20px;
-            position: relative;
-            overflow: hidden;
         }
 
-        .hero::before {
-            content: '';
-            position: absolute;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
-            background-size: 50px 50px;
-            animation: moveBackground 20s linear infinite;
-            opacity: 0.3;
-        }
-
-        @keyframes moveBackground {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(50px, 50px); }
-        }
-
-        .logo {
-            font-size: 100px;
-            animation: float 3s ease-in-out infinite;
-            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
-            margin-bottom: 20px;
-            position: relative;
-            z-index: 1;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-        }
-
-        h1 {
-            font-size: 72px;
+        .hero h1 {
+            font-size: 3.5rem;
             font-weight: 800;
             margin-bottom: 20px;
-            background: linear-gradient(to right, #fff, #f0f0f0, #fff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            position: relative;
-            z-index: 1;
-            animation: shimmer 3s infinite;
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.3);
         }
 
-        @keyframes shimmer {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.9; }
-        }
-
-        .tagline {
-            font-size: 32px;
-            margin-bottom: 15px;
+        .hero .subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 40px;
             opacity: 0.95;
-            font-weight: 600;
-            position: relative;
-            z-index: 1;
         }
 
-        .description {
-            font-size: 20px;
-            margin-bottom: 40px;
-            opacity: 0.9;
-            max-width: 700px;
-            line-height: 1.8;
-            position: relative;
-            z-index: 1;
-        }
-
-        /* Trial Banner */
-        .trial-banner {
-            background: linear-gradient(135deg, #00C853 0%, #00E676 100%);
-            padding: 15px 30px;
-            border-radius: 50px;
-            font-size: 18px;
-            font-weight: 700;
-            display: inline-block;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0, 200, 83, 0.4);
-            animation: pulse 2s infinite;
-            position: relative;
-            z-index: 1;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        /* Badges */
-        .badges {
+        .hero .cta-buttons {
             display: flex;
-            gap: 15px;
-            justify-content: center;
+            gap: 20px;
             flex-wrap: wrap;
-            margin-bottom: 50px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .badge {
-            background: var(--card-glass);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--card-border);
-            padding: 12px 24px;
-            border-radius: 30px;
-            font-weight: 700;
-            font-size: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-            transition: all 0.3s ease;
-        }
-
-        .badge:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 30px rgba(0,0,0,0.3);
-        }
-
-        /* CTA Buttons */
-        .cta-section {
-            text-align: center;
-            padding: 80px 20px;
-            background: rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(10px);
-        }
-
-        .cta-section h2 {
-            font-size: 48px;
-            margin-bottom: 40px;
-            font-weight: 700;
-        }
-
-        .cta-buttons {
-            display: flex;
-            gap: 25px;
             justify-content: center;
-            flex-wrap: wrap;
+            margin-top: 30px;
         }
 
         .btn {
-            padding: 20px 50px;
-            border-radius: 60px;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            border-radius: 50px;
             text-decoration: none;
-            font-weight: 700;
-            font-size: 20px;
+            font-weight: 600;
             transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            cursor: pointer;
-        }
-
-        .btn:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+            display: inline-block;
         }
 
         .btn-primary {
             background: white;
             color: #667eea;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
         }
 
         .btn-secondary {
-            background: rgba(255,255,255,0.2);
+            background: transparent;
             color: white;
-            border: 2px solid rgba(255,255,255,0.5);
+            border: 2px solid white;
         }
 
-        /* Features Grid */
-        .features-section {
-            padding: 100px 20px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .section-title {
-            text-align: center;
-            font-size: 52px;
-            margin-bottom: 70px;
-            font-weight: 800;
+        .btn-secondary:hover {
+            background: white;
+            color: #667eea;
         }
 
         .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 35px;
-        }
-
-        .feature {
-            background: var(--card-glass);
-            backdrop-filter: blur(30px);
-            padding: 45px 35px;
-            border-radius: 25px;
-            border: 1px solid var(--card-border);
-            transition: all 0.4s ease;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .feature::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
-            opacity: 0;
-            transition: opacity 0.4s ease;
-        }
-
-        .feature:hover::before {
-            opacity: 1;
-        }
-
-        .feature:hover {
-            transform: translateY(-15px) scale(1.02);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-            border-color: rgba(255,255,255,0.5);
-        }
-
-        .feature-icon {
-            font-size: 72px;
-            margin-bottom: 25px;
-            display: block;
-            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.3));
-        }
-
-        .feature h3 {
-            font-size: 26px;
-            margin-bottom: 15px;
-            font-weight: 700;
-        }
-
-        .feature p {
-            font-size: 17px;
-            opacity: 0.95;
-            line-height: 1.7;
-        }
-
-        /* Pricing Section */
-        .pricing-section {
-            padding: 100px 20px;
+            padding: 80px 20px;
             max-width: 1200px;
             margin: 0 auto;
         }
 
-        .pricing-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-            gap: 50px;
-            margin-top: 60px;
-        }
-
-        .plan {
-            background: var(--card-glass);
-            backdrop-filter: blur(30px);
-            padding: 55px 45px;
-            border-radius: 30px;
-            border: 2px solid var(--card-border);
+        .features h2 {
             text-align: center;
-            transition: all 0.4s ease;
-            box-shadow: 0 15px 50px rgba(0,0,0,0.3);
-            position: relative;
-            overflow: hidden;
+            font-size: 2.5rem;
+            margin-bottom: 60px;
         }
 
-        .plan::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 100%);
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
         }
 
-        .plan.premium {
-            background: var(--premium-gradient);
-            border: 3px solid var(--gold);
-            transform: scale(1.08);
-            box-shadow: 0 20px 70px rgba(255, 215, 0, 0.4);
+        .feature-card {
+            background: var(--card-glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            transition: transform 0.3s ease;
         }
 
-        .plan:hover {
+        .feature-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .feature-card .icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+
+        .pricing {
+            padding: 80px 20px;
+            text-align: center;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .pricing h2 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+
+        .pricing .trial-badge {
+            display: inline-block;
+            background: var(--gold);
+            color: #333;
+            padding: 10px 30px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+        }
+
+        .price-cards {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .price-card {
+            background: var(--card-glass);
+            backdrop-filter: blur(10px);
+            border: 2px solid var(--card-border);
+            border-radius: 20px;
+            padding: 40px;
+            min-width: 280px;
+            flex: 1;
+        }
+
+        .price-card.popular {
+            border-color: var(--gold);
             transform: scale(1.05);
         }
 
-        .plan.premium:hover {
-            transform: scale(1.12);
-        }
-
-        .plan-badge {
-            display: inline-block;
-            padding: 10px 25px;
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 25px;
-            font-size: 15px;
-            font-weight: 800;
-            margin-bottom: 25px;
-            letter-spacing: 1px;
-        }
-
-        .plan.premium .plan-badge {
-            background: var(--gold);
-            color: #764ba2;
-            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.5);
-        }
-
-        .plan h3 {
-            font-size: 42px;
+        .price-card h3 {
+            font-size: 1.8rem;
             margin-bottom: 20px;
+        }
+
+        .price-card .price {
+            font-size: 3rem;
             font-weight: 800;
+            margin: 20px 0;
         }
 
-        .plan .price {
-            font-size: 36px;
-            margin-bottom: 35px;
-            font-weight: 700;
-            opacity: 0.95;
+        .price-card .discount {
+            background: #00e676;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 20px;
         }
 
-        .plan ul {
-            list-style: none;
-            text-align: left;
-            margin-bottom: 35px;
-        }
-
-        .plan li {
-            padding: 14px 0;
-            font-size: 17px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .plan li::before {
-            content: "✅";
-            font-size: 20px;
-            flex-shrink: 0;
-        }
-
-        /* Footer */
-        footer {
+        .footer {
+            padding: 40px 20px;
             text-align: center;
-            padding: 60px 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0,0,0,0.3);
         }
 
         .footer-links {
             display: flex;
-            gap: 40px;
+            gap: 30px;
             justify-content: center;
             flex-wrap: wrap;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .footer-links a {
             color: white;
             text-decoration: none;
-            opacity: 0.9;
-            transition: all 0.3s;
-            font-size: 17px;
-            font-weight: 500;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
         }
 
         .footer-links a:hover {
             opacity: 1;
-            text-decoration: underline;
-            transform: translateY(-2px);
         }
 
         .disclaimer {
-            max-width: 900px;
+            max-width: 800px;
             margin: 40px auto;
-            padding: 35px;
-            background: rgba(255, 215, 0, 0.15);
-            border: 2px solid var(--gold);
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            font-size: 0.9rem;
+            line-height: 1.6;
         }
 
-        .disclaimer-title {
-            color: var(--gold);
-            font-size: 22px;
-            font-weight: 800;
-            margin-bottom: 18px;
-        }
-
-        .disclaimer-text {
-            font-size: 16px;
-            line-height: 1.8;
-            opacity: 0.95;
-        }
-
-        .copyright {
-            opacity: 0.7;
-            font-size: 15px;
-            margin-top: 30px;
-        }
-
-        /* Responsive */
         @media (max-width: 768px) {
-            h1 { font-size: 48px; }
-            .tagline { font-size: 24px; }
-            .description { font-size: 18px; }
-            .logo { font-size: 70px; }
-            .section-title { font-size: 38px; }
-            .features { grid-template-columns: 1fr; }
-            .pricing-grid { grid-template-columns: 1fr; }
-            .plan.premium { transform: scale(1); }
-            .cta-section h2 { font-size: 32px; }
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            .hero .subtitle {
+                font-size: 1.2rem;
+            }
+            .price-card.popular {
+                transform: scale(1);
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="trial-banner">🎉 48h FREE TRIAL - Full Trading Access!</div>
-        <div class="logo">🤖</div>
-        <h1>MyTradeMate</h1>
-        <p class="tagline">AI-Powered Crypto Trading Assistant</p>
-        <p class="description">
-            Get real-time BUY/SELL signals powered by machine learning.<br>
-            Track your portfolio and trade with confidence.
+    <div class="hero">
+        <h1>📊 MyTradeMate Portfolio</h1>
+        <p class="subtitle">AI-Powered Crypto Portfolio Tracker</p>
+        <p style="font-size: 1.2rem; max-width: 700px; margin: 0 auto 30px;">
+            Track your cryptocurrency holdings with AI-powered market insights.
+            Connect your Binance account via read-only API for secure portfolio monitoring.
         </p>
 
-        <div class="badges">
-            <div class="badge">🔒 Bank-Level Security</div>
-            <div class="badge">🤖 76 AI Indicators</div>
-            <div class="badge">📊 4 Order Types</div>
-            <div class="badge">💼 Real-Time Portfolio</div>
-        </div>
-    </section>
-
-    <!-- CTA Section -->
-    <section class="cta-section">
-        <h2>📱 Coming Soon to App Store & Google Play</h2>
         <div class="cta-buttons">
-            <a href="#" class="btn btn-primary">
-                <span>📱</span>
-                <span>Download on App Store</span>
+            <a href="https://play.google.com/store/apps/details?id=app.mytrademate.portfolio" class="btn btn-primary">
+                📲 Download on Google Play
             </a>
-            <a href="#" class="btn btn-primary">
-                <span>🤖</span>
-                <span>Get it on Google Play</span>
+            <a href="#features" class="btn btn-secondary">
+                Learn More
             </a>
-        </div>
-    </section>
-
-    <!-- Features Section -->
-    <section class="features-section">
-        <h2 class="section-title">🚀 Powerful Features</h2>
-        <div class="features">
-            <div class="feature">
-                <div class="feature-icon">🤖</div>
-                <h3>AI Neural Engine</h3>
-                <p>Multi-timeframe predictions (5m to 1d) powered by ensemble ML models trained on millions of data points. Transformer, LSTM, and Random Forest models working together.</p>
-            </div>
-
-            <div class="feature">
-                <div class="feature-icon">📊</div>
-                <h3>4 Order Types</h3>
-                <p>Market, Limit, Stop-Limit, and Stop-Market orders. Full control over your trading strategy with professional-grade execution.</p>
-            </div>
-
-            <div class="feature">
-                <div class="feature-icon">💼</div>
-                <h3>Portfolio Tracking</h3>
-                <p>Real-time portfolio valuation, profit/loss tracking, and asset distribution analytics. See your holdings update in real-time.</p>
-            </div>
-
-            <div class="feature">
-                <div class="feature-icon">📈</div>
-                <h3>Professional Charts</h3>
-                <p>Candlestick charts with multiple timeframes and technical indicators for deep market analysis. 76 indicators including RSI, MACD, Bollinger Bands.</p>
-            </div>
-
-            <div class="feature">
-                <div class="feature-icon">🔒</div>
-                <h3>Bank-Level Security</h3>
-                <p>Encrypted API keys stored locally, biometric authentication, and zero data collection. Your keys, your crypto. We never see your credentials.</p>
-            </div>
-
-            <div class="feature">
-                <div class="feature-icon">🎯</div>
-                <h3>FREE 48h Trial + Premium</h3>
-                <p>Start with 48 hours of FREE TRIAL with full trading access. Then choose FREE (read-only) or PREMIUM (full trading) mode.</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- Pricing Section -->
-    <section class="pricing-section">
-        <h2 class="section-title">💎 Choose Your Plan</h2>
-        <div class="pricing-grid">
-            <!-- FREE Plan -->
-            <div class="plan">
-                <span class="plan-badge">FREE</span>
-                <h3>🆓 FREE</h3>
-                <p class="price">$0 Forever</p>
-                <ul>
-                    <li>Portfolio Viewing</li>
-                    <li>Real-time Prices</li>
-                    <li>Charts (All Timeframes)</li>
-                    <li>AI Predictions (4h)</li>
-                    <li>Read-Only API Mode</li>
-                    <li>Basic Analytics</li>
-                </ul>
-            </div>
-
-            <!-- PREMIUM Plan -->
-            <div class="plan premium">
-                <span class="plan-badge">💎 PREMIUM</span>
-                <h3>PREMIUM</h3>
-                <p class="price">Use Your Own API</p>
-                <ul>
-                    <li>✨ 48h FREE TRIAL First!</li>
-                    <li>Everything in FREE</li>
-                    <li>AI Predictions (5m to 1d)</li>
-                    <li>Trading Capabilities</li>
-                    <li>4 Order Types (Market/Limit/Stop)</li>
-                    <li>Advanced Indicators (76 total)</li>
-                    <li>Volatility & Liquidity Analysis</li>
-                    <li>MAX Button (One-Click Trading)</li>
-                    <li>Priority Support</li>
-                </ul>
-            </div>
-        </div>
-    </section>
-
-    <!-- Disclaimer -->
-    <div class="disclaimer">
-        <div class="disclaimer-title">⚠️ Cryptocurrency trading involves substantial risk. Trade responsibly.</div>
-        <div class="disclaimer-text">
-            Cryptocurrency trading involves substantial risk of loss. This application provides tools and information for educational purposes only and does NOT constitute financial, investment, or trading advice. All AI predictions are based on historical data and market patterns - past performance does not guarantee future results. Always conduct your own research (DYOR) and only invest what you can afford to lose. The developers and operators of MyTradeMate are not responsible for any financial losses incurred through the use of this application.
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer>
+    <div class="features" id="features">
+        <h2>✨ Features</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="icon">💼</div>
+                <h3>Portfolio Tracking</h3>
+                <p>Real-time tracking of your crypto holdings with live price updates and performance metrics.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="icon">🤖</div>
+                <h3>AI Market Insights</h3>
+                <p>Educational market analysis powered by machine learning. Understand trends and patterns.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="icon">📊</div>
+                <h3>Advanced Charts</h3>
+                <p>Professional-grade charts with multiple timeframes and technical indicators.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="icon">🔐</div>
+                <h3>Read-Only API</h3>
+                <p>Secure Binance integration via read-only API. We never access your funds.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="icon">🔒</div>
+                <h3>Bank-Level Security</h3>
+                <p>Biometric authentication, encrypted storage, and secure data handling.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="icon">📈</div>
+                <h3>Multi-Timeframe Analysis</h3>
+                <p>Analyze market movements across multiple timeframes (15m, 1h, 4h, 1d).</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="pricing" id="pricing">
+        <h2>💎 Premium Features</h2>
+        <div class="trial-badge">✨ 2 Days FREE TRIAL</div>
+
+        <p style="font-size: 1.2rem; margin-bottom: 40px;">
+            Start with a free 2-day trial, then choose your plan
+        </p>
+
+        <div class="price-cards">
+            <div class="price-card">
+                <h3>Monthly</h3>
+                <div class="price">€5.99<span style="font-size: 1.2rem;">/mo</span></div>
+                <p>Billed monthly</p>
+                <ul style="text-align: left; margin-top: 30px; line-height: 2;">
+                    <li>✅ Multi-timeframe AI insights</li>
+                    <li>✅ Advanced technical indicators</li>
+                    <li>✅ Custom strategy analysis</li>
+                    <li>✅ Priority support</li>
+                </ul>
+            </div>
+
+            <div class="price-card popular">
+                <h3>Yearly</h3>
+                <div class="discount">SAVE 20%</div>
+                <div class="price">€57.50<span style="font-size: 1.2rem;">/yr</span></div>
+                <p>€4.79/month when billed yearly</p>
+                <ul style="text-align: left; margin-top: 30px; line-height: 2;">
+                    <li>✅ Everything in Monthly</li>
+                    <li>✅ Save €14.38 per year</li>
+                    <li>✅ Best value for long-term users</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="disclaimer">
+            <strong>⚠️ Important Disclaimers:</strong><br><br>
+
+            <strong>Educational Purpose:</strong> MyTradeMate Portfolio is designed as an educational tool for portfolio tracking and market analysis. All AI insights are for informational purposes only and do NOT constitute financial advice.<br><br>
+
+            <strong>Read-Only Access:</strong> We connect to Binance via read-only API keys. We can ONLY view your portfolio - we cannot access your funds, execute transactions, or modify your account.<br><br>
+
+            <strong>No Trading:</strong> This is a portfolio tracker, not a trading platform. No trading functionality is included.<br><br>
+
+            <strong>Risk Warning:</strong> Cryptocurrency markets are highly volatile. Past performance does not guarantee future results. Always do your own research (DYOR) before making any investment decisions.<br><br>
+
+            <strong>Not Financial Advice:</strong> Nothing in this app should be considered investment, financial, legal, or tax advice. Consult with qualified professionals before making financial decisions.
+        </div>
+    </div>
+
+    <div class="footer">
         <div class="footer-links">
             <a href="privacy.html">Privacy Policy</a>
             <a href="terms.html">Terms of Service</a>
-            <a href="support.html">Support & FAQ</a>
-            <a href="mailto:mytrademate.app@gmail.com">Contact Us</a>
+            <a href="support.html">Support</a>
+            <a href="contact.html">Contact Us</a>
         </div>
-        <p class="copyright">
-            © 2025 MyTradeMate. All rights reserved.
+        <p style="margin-top: 20px; opacity: 0.7;">
+            © 2024 MyTradeMate Portfolio. All rights reserved.<br>
+            Not affiliated with Binance or any cryptocurrency exchange.
         </p>
-    </footer>
+    </div>
 </body>
 </html>

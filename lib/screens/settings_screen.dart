@@ -705,39 +705,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: AppTheme.spacing24),
 
-          // DEBUG: Reset Trial Button (only for testing)
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: OutlinedButton.icon(
-              onPressed: () async {
-                await AppSettingsService().resetTrialForTesting();
-                // Notify SubscriptionProvider to show upgrade banners again
-                if (mounted) {
-                  Provider.of<SubscriptionProvider>(context, listen: false).notifyListeners();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('🔄 Trial reset! Restart app to see dialog again.'),
-                      backgroundColor: AppTheme.warning,
-                    ),
-                  );
-                }
-              },
-              icon: const Icon(Icons.refresh),
-              label: const Text('🔄 Reset Trial (DEBUG)'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.warning,
-                side: const BorderSide(color: AppTheme.warning),
-                padding: const EdgeInsets.symmetric(vertical: AppTheme.spacing16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: AppTheme.spacing12),
-
           // Sign Out Button
           SizedBox(
             width: double.infinity,
