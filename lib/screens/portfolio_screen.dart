@@ -104,12 +104,9 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        
-        body: SafeArea(
-          child: Responsive.constrainWidth(
+    return Scaffold(
+      body: SafeArea(
+        child: Responsive.constrainWidth(
             context,
             NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) {
@@ -146,113 +143,42 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                 ),
 
                 SliverToBoxAdapter(
-                  child: const SizedBox(height: AppTheme.spacing20),
+                  child: const SizedBox(height: AppTheme.spacing8),
                 ),
 
-                // TabBar - Sticky (Premium)
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _StickyTabBarDelegate(
-                    TabBar(
-                      indicatorSize: TabBarIndicatorSize.label,
-                      indicator: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                // Holdings Section Header
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppTheme.spacing20,
+                      AppTheme.spacing12,
+                      AppTheme.spacing20,
+                      AppTheme.spacing12,
+                    ),
+                    child: Text(
+                      'Holdings',
+                      style: AppTheme.headingLarge.copyWith(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w600,
                       ),
-                      labelColor: AppTheme.textPrimary,
-                      unselectedLabelColor: AppTheme.textSecondary,
-                      labelStyle: AppTheme.labelLarge,
-                      unselectedLabelStyle: AppTheme.labelLarge.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                      dividerColor: Colors.transparent,
-                      tabs: const [
-                        Tab(text: 'Holdings'),
-                        Tab(text: 'History'),
-                      ],
                     ),
                   ),
                 ),
               ];
             },
-            body: TabBarView(
-              children: [
-                _HoldingsList(
-                  isLoading: _isLoading,
-                  balances: _balances,
-                  prices: _prices,
-                  error: _error,
-                  onRefresh: _loadPortfolio,
-                ),
-                _buildHistoryTab(context),
-              ],
+            body: _HoldingsList(
+              isLoading: _isLoading,
+              balances: _balances,
+              prices: _prices,
+              error: _error,
+              onRefresh: _loadPortfolio,
             ),
-          ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHistoryTab(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Premium Icon with Gradient Background
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.primary.withOpacity(0.2),
-                  AppTheme.secondary.withOpacity(0.2),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppTheme.glassBorder,
-                width: 2,
-              ),
-            ),
-            child: const Icon(
-              Icons.history_rounded,
-              size: 40,
-              color: AppTheme.primary,
-            ),
-          ),
-          const SizedBox(height: AppTheme.spacing16),
-
-          // Title
-          Text(
-            'Transaction History',
-            style: AppTheme.headingLarge.copyWith(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppTheme.spacing8),
-
-          // Description
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacing32),
-            child: Text(
-              'Your trading history will appear here',
-              style: AppTheme.bodyMedium.copyWith(
-                color: AppTheme.textTertiary,
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _PortfolioValueCard extends StatelessWidget {
@@ -465,40 +391,6 @@ class _HoldingsList extends StatelessWidget {
         );
       },
     );
-  }
-}
-
-class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar tabBar;
-
-  const _StickyTabBarDelegate(this.tabBar);
-
-  @override
-  double get minExtent => 48;
-
-  @override
-  double get maxExtent => 48;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacing20),
-      decoration: BoxDecoration(
-        color: AppTheme.background,
-        border: Border(
-          bottom: BorderSide(
-            color: AppTheme.glassBorder,
-            width: 1,
-          ),
-        ),
-      ),
-      child: tabBar,
-    );
-  }
-
-  @override
-  bool shouldRebuild(_StickyTabBarDelegate oldDelegate) {
-    return false;
   }
 }
 
