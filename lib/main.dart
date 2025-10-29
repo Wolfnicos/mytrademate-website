@@ -15,7 +15,6 @@ import 'providers/subscription_provider.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/market_screen.dart';
 import 'screens/ai_strategies_screen.dart';
-import 'screens/orders_screen.dart';
 import 'screens/portfolio_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -169,15 +168,13 @@ class _HomePageState extends State<HomePage> {
     DashboardScreen(),
     MarketScreen(),
     AiStrategiesScreen(),
-    OrdersScreen(),
     PortfolioScreen(),
   ];
 
   static const List<_NavItem> _navItems = [
     _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'Dashboard'),
     _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: 'Market'),
-    _NavItem(icon: Icons.smart_toy_outlined, activeIcon: Icons.smart_toy, label: 'AI'),
-    _NavItem(icon: Icons.list_alt, activeIcon: Icons.list_alt, label: 'Trade'),
+    _NavItem(icon: Icons.insights_outlined, activeIcon: Icons.insights, label: 'Insights'),
     _NavItem(icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet, label: 'Portfolio'),
   ];
 

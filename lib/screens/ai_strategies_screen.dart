@@ -579,9 +579,12 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     final prediction = _lastPrediction!;
     final action = prediction.action;
 
-    final isBuy = action == 'BUY';
-    final isSell = action == 'SELL';
-    final signalColor = isBuy ? AppTheme.buyGreen : (isSell ? AppTheme.sellRed : const Color(0xFFFF9500));
+    // Convert trading terminology to educational/market sentiment terminology
+    final displayAction = action == 'BUY' ? 'BULLISH' : (action == 'SELL' ? 'BEARISH' : 'NEUTRAL');
+
+    final isBullish = action == 'BUY';
+    final isBearish = action == 'SELL';
+    final signalColor = isBullish ? AppTheme.buyGreen : (isBearish ? AppTheme.sellRed : const Color(0xFFFF9500));
 
     return GlassCard(
       child: Column(
@@ -596,14 +599,14 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
               border: Border.all(color: signalColor, width: 2),
             ),
             child: Icon(
-              isBuy ? Icons.trending_up : (isSell ? Icons.trending_down : Icons.drag_handle),
+              isBullish ? Icons.trending_up : (isBearish ? Icons.trending_down : Icons.drag_handle),
               color: signalColor,
               size: 40,
             ),
           ),
           const SizedBox(height: AppTheme.spacing16),
           Text(
-            action,
+            displayAction,
             style: AppTheme.displayMedium.copyWith(color: signalColor, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: AppTheme.spacing8),
@@ -613,9 +616,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
               vertical: AppTheme.spacing8,
             ),
             decoration: BoxDecoration(
-              gradient: isBuy
+              gradient: isBullish
                   ? AppTheme.buyGradient
-                  : (isSell
+                  : (isBearish
                       ? AppTheme.sellGradient
                       : const LinearGradient(colors: [Color(0xFFFF9500), Color(0xFFFF7A00)])),
               borderRadius: BorderRadius.circular(AppTheme.radiusSM),
@@ -920,11 +923,11 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     // Signal balance explanation
     final diff = (sellProb - buyProb).abs();
     if (diff < 0.15) {
-      buffer.write('BUY and SELL signals are nearly balanced (${(buyProb * 100).toStringAsFixed(1)}% vs ${(sellProb * 100).toStringAsFixed(1)}%), indicating market indecision. ');
+      buffer.write('Bullish and bearish indicators are nearly balanced (${(buyProb * 100).toStringAsFixed(1)}% vs ${(sellProb * 100).toStringAsFixed(1)}%), indicating market indecision. ');
     } else if (sellProb > buyProb) {
-      buffer.write('Slight bearish bias (${(sellProb * 100).toStringAsFixed(1)}% SELL vs ${(buyProb * 100).toStringAsFixed(1)}% BUY), but not strong enough for action. ');
+      buffer.write('Slight bearish bias observed (${(sellProb * 100).toStringAsFixed(1)}% vs ${(buyProb * 100).toStringAsFixed(1)}% bullish), but not strong enough for clear directional signal. ');
     } else {
-      buffer.write('Slight bullish bias (${(buyProb * 100).toStringAsFixed(1)}% BUY vs ${(sellProb * 100).toStringAsFixed(1)}% SELL), but confidence below threshold. ');
+      buffer.write('Slight bullish bias observed (${(buyProb * 100).toStringAsFixed(1)}% vs ${(sellProb * 100).toStringAsFixed(1)}% bearish), but confidence remains below threshold. ');
     }
     
     // Timeframe-specific advice
@@ -1191,10 +1194,10 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                 const SizedBox(height: AppTheme.spacing12),
                 Text(
                   action == 'BUY'
-                      ? 'Bullish momentum confirmed across multiple timeframes. Technical indicators show oversold recovery, MACD golden cross, and increasing volume. Strong accumulation phase detected with higher lows forming.'
+                      ? 'Technical analysis shows bullish momentum across multiple timeframes. Indicators display oversold recovery, MACD golden cross pattern, and increasing volume. Pattern suggests potential accumulation phase with higher lows forming.'
                       : action == 'SELL'
-                          ? 'Bearish momentum detected with weakening support levels. RSI showing overbought conditions, negative MACD divergence, and declining volume. Distribution phase with lower highs forming.'
-                          : 'Neutral market conditions with consolidation phase. Mixed signals from technical indicators suggest awaiting clear breakout confirmation. Range-bound trading with balanced buy/sell pressure.',
+                          ? 'Technical analysis shows bearish momentum with weakening support levels. RSI displaying overbought conditions, negative MACD divergence, and declining volume patterns. Lower highs pattern suggests potential distribution phase.'
+                          : 'Market analysis shows neutral conditions with consolidation pattern. Mixed signals from technical indicators. Range-bound movement suggests monitoring for clearer directional confirmation.',
                   style: AppTheme.bodyMedium.copyWith(
                     color: AppTheme.textPrimary,
                     height: 1.6,
@@ -1222,7 +1225,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                     Icon(Icons.south, color: AppTheme.sellRed, size: 24),
                     const SizedBox(height: AppTheme.spacing4),
                     Text(
-                      'SELL',
+                      'BEARISH',
                       style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
                     ),
                     Text(
@@ -1244,7 +1247,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                     Icon(Icons.drag_handle, color: const Color(0xFFFF9500), size: 24),
                     const SizedBox(height: AppTheme.spacing4),
                     Text(
-                      'HOLD',
+                      'NEUTRAL',
                       style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
                     ),
                     Text(
@@ -1266,7 +1269,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                     Icon(Icons.north, color: AppTheme.buyGreen, size: 24),
                     const SizedBox(height: AppTheme.spacing4),
                     Text(
-                      'BUY',
+                      'BULLISH',
                       style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
                     ),
                     Text(
@@ -1333,13 +1336,13 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     final prediction = _lastPrediction!;
 
     // Determine which signal to show based on prediction label
-    final isBuy = prediction.action == 'BUY';
-    final isSell = prediction.action == 'SELL';
+    final isBullish = prediction.action == 'BUY';
+    final isBearish = prediction.action == 'SELL';
 
     // CryptoPrediction uses Map<String, double> for probabilities
-    final sellProb = prediction.probabilities['SELL'] ?? 0.0;
-    final holdProb = prediction.probabilities['HOLD'] ?? 0.0;
-    final buyProb = prediction.probabilities['BUY'] ?? 0.0;
+    final bearishProb = prediction.probabilities['SELL'] ?? 0.0;
+    final neutralProb = prediction.probabilities['HOLD'] ?? 0.0;
+    final bullishProb = prediction.probabilities['BUY'] ?? 0.0;
 
     String signalLabel;
     double signalProb;
@@ -1347,21 +1350,21 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     IconData signalIcon;
     String signalDescription;
 
-    if (isBuy) {
-      signalLabel = 'BUY SIGNAL';
-      signalProb = buyProb;
+    if (isBullish) {
+      signalLabel = 'Bullish Momentum';
+      signalProb = bullishProb;
       signalColor = AppTheme.buyGreen;
       signalIcon = Icons.trending_up;
-      signalDescription = 'Bullish momentum confirmed. RSI oversold recovery, MACD golden cross, volume surge. Multiple technical indicators align for upward movement.';
-    } else if (isSell) {
-      signalLabel = 'SELL SIGNAL';
-      signalProb = sellProb;
+      signalDescription = 'Technical analysis shows positive momentum. RSI recovery, MACD golden cross pattern, and volume increase observed. Multiple indicators suggest potential upward movement.';
+    } else if (isBearish) {
+      signalLabel = 'Bearish Momentum';
+      signalProb = bearishProb;
       signalColor = AppTheme.sellRed;
       signalIcon = Icons.trending_down;
-      signalDescription = 'Bearish momentum detected. RSI overbought, MACD divergence, declining volume. Technical indicators suggest downward pressure.';
+      signalDescription = 'Technical analysis shows negative momentum. RSI divergence, MACD downturn, and volume decline observed. Indicators suggest potential downward pressure.';
     } else {
-      signalLabel = 'HOLD SIGNAL';
-      signalProb = holdProb;
+      signalLabel = 'Neutral Market';
+      signalProb = neutralProb;
       signalColor = AppTheme.holdYellow;
       signalIcon = Icons.pause;
       // PHASE 4: Dynamic HOLD explanation based on coin + ATR + volume
@@ -1370,8 +1373,8 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         timeframe: _interval,
         atr: prediction.atr,
         volumePercentile: prediction.volumePercentile,
-        sellProb: sellProb,
-        buyProb: buyProb,
+        sellProb: bearishProb,
+        buyProb: bullishProb,
       );
     }
 
@@ -1484,9 +1487,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
   Widget _buildWhatDoesThisMean() {
     final prediction = _lastPrediction!;
     final action = prediction.action;
-    final isBuy = action == 'BUY';
-    final isSell = action == 'SELL';
-    final signalColor = isBuy ? AppTheme.buyGreen : (isSell ? AppTheme.sellRed : const Color(0xFFFF9500));
+    final isBullish = action == 'BUY';
+    final isBearish = action == 'SELL';
+    final signalColor = isBullish ? AppTheme.buyGreen : (isBearish ? AppTheme.sellRed : const Color(0xFFFF9500));
     
     return GlassCard(
       child: Column(
@@ -1652,21 +1655,21 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     
     switch (action) {
       case 'BUY':
-        return 'AI analysis suggests $coin is in an uptrend on the $tfDisplay timeframe. '
-               'This means the price is likely to increase in the coming ${_getTimeHorizon(timeframe)}. '
-               'Consider buying $coin now and holding for potential gains.\n\n'
-               '⚠️ Always do your own research and only invest what you can afford to lose.';
-      
+        return 'Market analysis indicates $coin shows bullish momentum on the $tfDisplay timeframe. '
+               'Technical indicators suggest potential upward price movement in the coming ${_getTimeHorizon(timeframe)}. '
+               'This is an educational observation based on historical patterns.\n\n'
+               '⚠️ Not financial advice. Always do your own research. Cryptocurrency markets are highly volatile.';
+
       case 'SELL':
-        return 'AI analysis suggests $coin is in a downtrend on the $tfDisplay timeframe. '
-               'This means the price is likely to decrease in the coming ${_getTimeHorizon(timeframe)}. '
-               'If you own $coin, consider selling to protect your capital.\n\n'
-               '⚠️ Always do your own research and only invest what you can afford to lose.';
-      
+        return 'Market analysis indicates $coin shows bearish momentum on the $tfDisplay timeframe. '
+               'Technical indicators suggest potential downward price pressure in the coming ${_getTimeHorizon(timeframe)}. '
+               'This is an educational observation based on historical patterns.\n\n'
+               '⚠️ Not financial advice. Always do your own research. Cryptocurrency markets are highly volatile.';
+
       case 'HOLD':
-        return 'AI analysis suggests $coin is in a consolidation phase on the $tfDisplay timeframe. '
-               'This means the price is moving sideways without clear direction. '
-               'Wait for a clearer signal before buying or selling.\n\n'
+        return 'Market analysis indicates $coin is in a consolidation phase on the $tfDisplay timeframe. '
+               'Price movement appears range-bound without clear directional bias. '
+               'Educational observation: monitor for potential breakout confirmation.\n\n'
                '📊 WHY PREDICTIONS STAY STABLE:\n'
                '• Data refreshes every time you click "Refresh Prediction" (check logs)\n'
                '• Small price changes (<1%) are too minor to change AI predictions\n'
