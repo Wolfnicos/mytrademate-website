@@ -362,6 +362,47 @@ class FullFeatureBuilder {
       row.add(uptrend[i]);
       row.add(downtrend[i]);
 
+      // DEBUG: Comprehensive analysis of feature values before sanitization
+      if (i == actualStartIdx) {
+        final nanCount = row.where((v) => !v.isFinite).length;
+        final zeroCount = row.where((v) => v == 0.0).length;
+        final nonZeroCount = row.where((v) => v.isFinite && v != 0.0).length;
+
+        debugPrint('');
+        debugPrint('🔬 FEATURE DEBUG (first row of 60):');
+        debugPrint('   Total features: ${row.length}');
+        debugPrint('   NaN/Inf: $nanCount');
+        debugPrint('   Zero: $zeroCount');
+        debugPrint('   Non-zero finite: $nonZeroCount');
+
+        // Show patterns (0-24)
+        final patterns = row.sublist(0, 25);
+        final patternNonZero = patterns.where((v) => v.isFinite && v != 0.0).length;
+        debugPrint('   Patterns [0-24]: $patternNonZero non-zero');
+
+        // Show price action (25-29)
+        debugPrint('   Price Action [25-29]: ${row.sublist(25, 30).map((v) => v.toStringAsFixed(4)).join(", ")}');
+
+        // Show RSI (30)
+        debugPrint('   RSI [30]: ${row[30].toStringAsFixed(4)}');
+
+        // Show MACD (31-34)
+        debugPrint('   MACD [31-34]: ${row.sublist(31, 35).map((v) => v.toStringAsFixed(4)).join(", ")}');
+
+        // Show Bollinger (35-37)
+        debugPrint('   Bollinger [35-37]: ${row.sublist(35, 38).map((v) => v.toStringAsFixed(4)).join(", ")}');
+
+        // List all NaN/Inf indices
+        if (nanCount > 0) {
+          final nanIndices = <int>[];
+          for (int j = 0; j < row.length; j++) {
+            if (!row[j].isFinite) nanIndices.add(j);
+          }
+          debugPrint('   NaN/Inf indices: $nanIndices');
+        }
+        debugPrint('');
+      }
+
       // Sanitize: replace NaN/Inf with 0
       final sanitized = row.map((v) => v.isFinite ? v : 0.0).toList();
       output.add(sanitized);

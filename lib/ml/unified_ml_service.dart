@@ -328,19 +328,20 @@ class UnifiedMLService {
   }
 
   Future<Map<String, double>> _predictWithCryptoService({required String modelId, required String coin, required String timeframe, required List<List<double>> features}) async {
-    // CryptoMLService stores interpreters keyed by coin_tf (lowercase)
-    // final String key = modelId.toLowerCase();
-    // If not loaded, try load once via its API
-    if (!CryptoMLService().isModelLoaded(coin.toLowerCase(), timeframe)) {
-      await CryptoMLService().loadModel(coin.toLowerCase(), timeframe);
-    }
-    // Use the public inference to get probabilities as map in [SELL,HOLD,BUY]
-    final pred = await CryptoMLService().getPrediction(
-      coin: coin == '*' ? 'general' : coin.toLowerCase(),
-      priceData: features,
-      timeframe: timeframe,
-    );
-    return pred.probabilities;
+    // DEPRECATED: This method is no longer compatible with new multi-timeframe fetch architecture
+    // CryptoMLService now fetches candles internally for each model's timeframe
+    throw UnimplementedError('_predictWithCryptoService is deprecated. Use CryptoMLService.getPrediction directly with symbol parameter.');
+
+    // OLD CODE (kept for reference):
+    // if (!CryptoMLService().isModelLoaded(coin.toLowerCase(), timeframe)) {
+    //   await CryptoMLService().loadModel(coin.toLowerCase(), timeframe);
+    // }
+    // final pred = await CryptoMLService().getPrediction(
+    //   coin: coin == '*' ? 'general' : coin.toLowerCase(),
+    //   symbol: 'UNKNOWN', // Would need actual symbol here
+    //   timeframe: timeframe,
+    // );
+    // return pred.probabilities;
   }
 
   List<double> _reorderToRegistry(Map<String, double> pMap, List<String> modelLabels, List<String> registryOrder) {

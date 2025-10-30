@@ -297,7 +297,7 @@ class EnsemblePredictor {
 
   /// Try prediction using the new multi-coin/timeframe models (assets/ml)
   /// Returns 5-class probabilities if successful; otherwise null to signal fallback
-  Future<List<double>?> _predictNewModel(List<List<double>> features, String? coinSymbol, String? timeframe) async {
+  Future<List<double>?> _predictNewModel(List<List<double>> features, String? coinSymbol, String? timeframe, {String? symbol}) async {
     try {
       final coin = (coinSymbol ?? 'general').toLowerCase();
       // Normalize timeframe to available ones in assets/ml
@@ -321,9 +321,15 @@ class EnsemblePredictor {
         debugPrint('   ⚠️ Timeframe mapped: $tf → $tfNorm (closest available model)');
       }
 
+      // NEW: Need symbol for multi-timeframe fetch
+      if (symbol == null) {
+        debugPrint('   ⚠️ Symbol not provided, cannot use new multi-timeframe architecture');
+        return null;
+      }
+
       final prediction = await CryptoMLService().getPrediction(
         coin: coin,
-        priceData: features,
+        symbol: symbol,
         timeframe: tfNorm,
       );
 

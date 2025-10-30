@@ -222,7 +222,7 @@ class _WelcomeScreenV2State extends State<WelcomeScreenV2> with SingleTickerProv
 
         // Tagline
         Text(
-          'Trade Smarter with AI',
+          'Track Your Portfolio with AI',
           style: AppTheme.bodyLarge.copyWith(
             fontSize: 16,
             fontWeight: FontWeight.w500,
@@ -249,8 +249,8 @@ class _WelcomeScreenV2State extends State<WelcomeScreenV2> with SingleTickerProv
         const SizedBox(height: 20),
         _buildFeatureItem(
           icon: Icons.trending_up_rounded,
-          title: 'Professional Trading',
-          description: '4 order types with Binance integration',
+          title: 'Portfolio Tracking',
+          description: 'Read-only Binance integration',
         ),
       ],
     );

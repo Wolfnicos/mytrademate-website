@@ -78,8 +78,8 @@ class PaywallScreen extends StatelessWidget {
               const SizedBox(height: AppTheme.spacing12),
               _buildFeatureCard(
                 icon: Icons.check_circle,
-                title: '1D predictions are free forever',
-                description: 'Daily timeframe available to all users',
+                title: 'Portfolio tracking',
+                description: 'Read-only access to your holdings',
                 isHighlighted: false,
               ),
               const SizedBox(height: AppTheme.spacing32),

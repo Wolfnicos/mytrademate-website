@@ -42,12 +42,13 @@ Future<void> main() async {
   final themeProvider = ThemeProvider();
   await themeProvider.init();
 
-  // Initialize RevenueCat SDK
-  await SubscriptionProvider.initializeRevenueCat();
+  // Initialize RevenueCat SDK (DISABLED for LITE version testing)
+  // TODO: Enable after getting real RevenueCat API keys
+  // await SubscriptionProvider.initializeRevenueCat();
 
-  // Initialize subscription provider and check status
+  // Initialize subscription provider (check status disabled for testing)
   final subscriptionProvider = SubscriptionProvider();
-  await subscriptionProvider.checkSubscriptionStatus();
+  // await subscriptionProvider.checkSubscriptionStatus();
 
   // Start the app immediately
   runApp(

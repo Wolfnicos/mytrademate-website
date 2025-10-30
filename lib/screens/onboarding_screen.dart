@@ -171,6 +171,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // PAGE 1: Welcome + All Features
   Widget _buildPage1Welcome() {
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 32.0),
       child: Column(
         children: [
@@ -251,7 +252,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             icon: Icons.show_chart_rounded,
             iconColor: const Color(0xFF34C759),
             title: 'Multi-Timeframe Analysis',
-            description: '5 timeframes • 1D free • Pro unlocks 5m-4h',
+            description: '5 timeframes • 2-day trial, then subscription',
           ),
 
           const SizedBox(height: 12),
@@ -283,13 +284,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // PAGE 2: FREE vs PREMIUM
   Widget _buildPage2FreePremium() {
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 28.0),
       child: Column(
         children: [
           const SizedBox(height: 32),
 
           Text(
-            'Free or Pro?',
+            '2-Day Free Trial',
             style: AppTheme.displayLarge.copyWith(
               fontSize: 32,
               fontWeight: FontWeight.bold,
@@ -300,7 +302,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 16),
 
           Text(
-            '1D predictions free forever. Upgrade for faster signals.',
+            'Full access for 2 days, then €5.99/month or €57.50/year',
             style: AppTheme.bodyLarge.copyWith(
               fontSize: 17,
               color: AppTheme.textSecondary,
@@ -329,7 +331,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     Icon(Icons.check_circle, color: AppTheme.success, size: 28),
                     const SizedBox(width: 12),
                     Text(
-                      'FREE Plan',
+                      'Trial (2 Days)',
                       style: AppTheme.headingLarge.copyWith(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -338,12 +340,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                _buildFeature('✓ AI predictions on 1D timeframe', fontSize: 15),
+                _buildFeature('✓ All AI predictions (5m, 15m, 1h, 4h, 1d)', fontSize: 15),
                 _buildFeature('✓ Portfolio view (read-only)', fontSize: 15),
                 _buildFeature('✓ Real-time price data', fontSize: 15),
                 _buildFeature('✓ Candlestick charts', fontSize: 15),
-                _buildFeature('✗ Short-term AI (5m–4h)', isDisabled: true, fontSize: 15),
-                _buildFeature('✗ Price alerts', isDisabled: true, fontSize: 15),
+                _buildFeature('✓ Full access for 2 days', fontSize: 15),
+                const SizedBox(height: 8),
+                Text(
+                  'Then subscription required',
+                  style: AppTheme.labelSmall.copyWith(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
               ],
             ),
           ),
@@ -391,13 +400,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                _buildFeature('✓ All Free features', fontSize: 15),
-                _buildFeature('✓ AI predictions on 5m, 15m, 1h, 4h timeframes', fontSize: 15),
-                _buildFeature('✓ Price alerts and notifications', fontSize: 15),
-                _buildFeature('✓ Faster signal refresh', fontSize: 15),
+                _buildFeature('✓ All features unlocked', fontSize: 15),
+                _buildFeature('✓ AI predictions on all timeframes', fontSize: 15),
+                _buildFeature('✓ Portfolio tracking', fontSize: 15),
+                _buildFeature('✓ Real-time market data', fontSize: 15),
                 const SizedBox(height: 16),
                 Text(
-                  '€9.99/month or €84.99/year (save 30%)',
+                  '€5.99/month or €57.50/year (save 20%)',
                   style: AppTheme.labelMedium.copyWith(
                     fontSize: 13,
                     color: AppTheme.primary,
@@ -417,6 +426,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // PAGE 3: Disclaimer + Security Setup
   Widget _buildPage3Security() {
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 32.0),
       child: Column(
         children: [

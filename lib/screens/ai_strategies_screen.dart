@@ -155,6 +155,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
   }
 
   Future<void> _runInference() async {
+    if (!mounted) return;
     setState(() {
       _isRunningPrediction = true;
       _predictionError = '';
@@ -166,14 +167,20 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
 
       debugPrint('🚀 AI Strategies: fetching CryptoML prediction for $coin @$_interval');
 
-      // Fetch price data (60x76 features) + ATR from Binance with symbol fallback (USD -> USDT/EUR/USDC)
-      // This ALWAYS fetches FRESH candles from Binance API (no caching)
-      debugPrint('📡 Fetching FRESH candles from Binance API for $_selectedSymbol @$_interval...');
-      final result = await BinanceService().getFeaturesWithATRFallback(_selectedSymbol, interval: _interval);
-      debugPrint('✅ Received fresh candles (features: ${result.features.length}x${result.features.first.length}, ATR: ${(result.atr * 100).toStringAsFixed(2)}%, Price: \$${result.currentPrice.toStringAsFixed(2)})');
+      // NEW: CryptoMLService now fetches candles for EACH model's timeframe!
+      // We just pass the symbol and let the service handle multi-timeframe fetching
+      final prediction = await CryptoMLService().getPrediction(
+        coin: coin,
+        symbol: _selectedSymbol,
+        timeframe: _interval,
+      );
+
+      // Get current price for price change tracking
+      final currentPriceResult = await BinanceService().getFeaturesWithATRFallback(_selectedSymbol, interval: _interval);
+      final currentPrice = currentPriceResult.currentPrice;
 
       // Calculate price change from previous prediction
-      final priceChange = _previousPrice != null ? result.currentPrice - _previousPrice! : 0.0;
+      final priceChange = _previousPrice != null ? currentPrice - _previousPrice! : 0.0;
       final priceChangePercent = _previousPrice != null && _previousPrice! > 0
           ? (priceChange / _previousPrice!) * 100
           : 0.0;
@@ -182,17 +189,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         debugPrint('💹 Price change: ${priceChange >= 0 ? '+' : ''}${priceChange.toStringAsFixed(2)} (${priceChangePercent >= 0 ? '+' : ''}${priceChangePercent.toStringAsFixed(3)}%)');
       }
 
-      // Use CryptoMLService multi-timeframe weighted ensemble
-      final prediction = await CryptoMLService().getPrediction(
-        coin: coin,
-        priceData: result.features,
-        timeframe: _interval,
-        atr: result.atr, // Pass real ATR for Phase 3 volatility weights
-      );
-
       // Debug-only: print final JSON-like summary for QA (no UI impact)
       // ignore: avoid_print
-      print('JSON_AI_STRATEGIES: {"coin":"$coin","timeframe":"$_interval","action":"${prediction.action}","confidence":${prediction.confidence.toStringAsFixed(4)},"atr":${(result.atr * 100).toStringAsFixed(2)}}');
+      print('JSON_AI_STRATEGIES: {"coin":"$coin","timeframe":"$_interval","action":"${prediction.action}","confidence":${prediction.confidence.toStringAsFixed(4)},"atr":${(currentPriceResult.atr * 100).toStringAsFixed(2)}}');
 
       debugPrint('🚀 CryptoML: ${prediction.action} (${(prediction.confidence * 100).toStringAsFixed(1)}%)');
 
@@ -200,7 +199,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         setState(() {
           // Store previous values before updating prediction
           _previousAtr = _lastPrediction?.atr;
-          _previousPrice = result.currentPrice;
+          _previousPrice = currentPrice;
           _lastPrediction = prediction;
           _lastUpdateTime = DateTime.now();
           _isRunningPrediction = false;

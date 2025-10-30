@@ -128,7 +128,7 @@ class _PremiumIntroPageState extends State<_PremiumIntroPage> {
 
           // Tagline
           Text(
-            'AI-Powered Crypto Trading',
+            'AI-Powered Portfolio Tracker',
             style: AppTheme.headingLarge.copyWith(
               fontSize: 24,
               fontWeight: FontWeight.w700,
