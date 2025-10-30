@@ -158,7 +158,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                     child: Text(
                       'Holdings',
                       style: AppTheme.headingLarge.copyWith(
-                        color: AppTheme.textPrimary,
+                        color: AppTheme.getTextPrimary(context),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -221,7 +221,9 @@ class _PortfolioValueCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Total Portfolio Value',
-                  style: AppTheme.headingMedium,
+                  style: AppTheme.headingMedium.copyWith(
+                    color: AppTheme.getTextPrimary(context),
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -229,7 +231,7 @@ class _PortfolioValueCard extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.refresh),
                 onPressed: onRefresh,
-                color: AppTheme.textSecondary,
+                color: AppTheme.getTextSecondary(context),
               ),
             ],
           ),
@@ -248,6 +250,7 @@ class _PortfolioValueCard extends StatelessWidget {
               style: AppTheme.displayLarge.copyWith(
                 fontSize: 40,
                 fontWeight: FontWeight.w700,
+                color: AppTheme.getTextPrimary(context),
               ),
             ),
 
@@ -268,14 +271,14 @@ class _PortfolioValueCard extends StatelessWidget {
               children: [
                 Icon(
                   Icons.info_outline,
-                  color: AppTheme.textTertiary,
+                  color: AppTheme.getTextTertiary(context),
                   size: 16,
                 ),
                 const SizedBox(width: AppTheme.spacing8),
                 Text(
                   'Live portfolio value from Binance',
                   style: AppTheme.bodySmall.copyWith(
-                    color: AppTheme.textTertiary,
+                    color: AppTheme.getTextTertiary(context),
                   ),
                 ),
               ],
@@ -357,12 +360,12 @@ class _HoldingsList extends StatelessWidget {
             const SizedBox(height: AppTheme.spacing16),
             Text(
               'No Holdings',
-              style: AppTheme.headingLarge.copyWith(color: AppTheme.textSecondary),
+              style: AppTheme.headingLarge.copyWith(color: AppTheme.getTextSecondary(context)),
             ),
             const SizedBox(height: AppTheme.spacing8),
             Text(
               'Your crypto holdings will appear here',
-              style: AppTheme.bodyMedium.copyWith(color: AppTheme.textTertiary),
+              style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextTertiary(context)),
             ),
           ],
         ),
@@ -473,12 +476,14 @@ class _HoldingCard extends StatelessWidget {
               children: [
                 Text(
                   _getDisplayName(asset),
-                  style: AppTheme.headingMedium,
+                  style: AppTheme.headingMedium.copyWith(
+                    color: AppTheme.getTextPrimary(context),
+                  ),
                 ),
                 const SizedBox(height: AppTheme.spacing4),
                 Text(
                   '$amount $asset',
-                  style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
+                  style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
                 ),
               ],
             ),
@@ -490,13 +495,16 @@ class _HoldingCard extends StatelessWidget {
             children: [
               Text(
                 '$prefix${value.toStringAsFixed(2)}',
-                style: AppTheme.headingMedium.copyWith(fontWeight: FontWeight.w600),
+                style: AppTheme.headingMedium.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.getTextPrimary(context),
+                ),
               ),
               const SizedBox(height: AppTheme.spacing4),
               Text(
                 price > 0 ? '$prefix${price.toStringAsFixed(2)}' : '-',
                 style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.textTertiary,
+                  color: AppTheme.getTextTertiary(context),
                 ),
               ),
             ],

@@ -73,7 +73,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Responsive.constrainWidth(
           context,
           CustomScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
           slivers: [
             // Header
             SliverToBoxAdapter(

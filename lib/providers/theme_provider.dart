@@ -24,10 +24,10 @@ class ThemeProvider with ChangeNotifier {
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
-    final savedTheme = _prefs.getString('theme_mode') ?? 'dark'; // Default to dark mode
+    final savedTheme = _prefs.getString('theme_mode') ?? 'system'; // Default to system theme
     _themeMode = AppThemeMode.values.firstWhere(
       (e) => e.name == savedTheme,
-      orElse: () => AppThemeMode.dark,
+      orElse: () => AppThemeMode.system,
     );
     _isInitialized = true;
     notifyListeners();

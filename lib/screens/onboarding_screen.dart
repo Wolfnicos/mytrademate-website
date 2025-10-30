@@ -117,7 +117,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: AppTheme.getBackground(context),
       body: SafeArea(
         child: Column(
           children: [
@@ -171,7 +171,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // PAGE 1: Welcome + All Features
   Widget _buildPage1Welcome() {
     return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 32.0),
       child: Column(
         children: [
@@ -221,6 +221,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             'AI-Powered Crypto Tracking',
             style: AppTheme.headingMedium.copyWith(
               fontWeight: FontWeight.w600,
+              color: AppTheme.getTextPrimary(context),
             ),
             textAlign: TextAlign.center,
           ),
@@ -230,7 +231,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Text(
             'Your intelligent portfolio assistant with advanced AI predictions',
             style: AppTheme.bodyMedium.copyWith(
-              color: AppTheme.textSecondary,
+              color: AppTheme.getTextSecondary(context),
             ),
             textAlign: TextAlign.center,
           ),
@@ -284,7 +285,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // PAGE 2: FREE vs PREMIUM
   Widget _buildPage2FreePremium() {
     return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 28.0),
       child: Column(
         children: [
@@ -295,6 +296,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             style: AppTheme.displayLarge.copyWith(
               fontSize: 32,
               fontWeight: FontWeight.bold,
+              color: AppTheme.getTextPrimary(context),
             ),
             textAlign: TextAlign.center,
           ),
@@ -305,7 +307,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             'Full access for 2 days, then €5.99/month or €57.50/year',
             style: AppTheme.bodyLarge.copyWith(
               fontSize: 17,
-              color: AppTheme.textSecondary,
+              color: AppTheme.getTextSecondary(context),
             ),
             textAlign: TextAlign.center,
           ),
@@ -335,6 +337,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       style: AppTheme.headingLarge.copyWith(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
+                        color: AppTheme.getTextPrimary(context),
                       ),
                     ),
                   ],
@@ -350,7 +353,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   'Then subscription required',
                   style: AppTheme.labelSmall.copyWith(
                     fontSize: 12,
-                    color: AppTheme.textSecondary,
+                    color: AppTheme.getTextSecondary(context),
                   ),
                 ),
               ],
@@ -425,12 +428,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   // PAGE 3: Disclaimer + Security Setup
   Widget _buildPage3Security() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 32.0),
-      child: Column(
-        children: [
-          const SizedBox(height: 20),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32.0),
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
 
           // Disclaimer box
           Container(
@@ -536,6 +546,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       'I understand and accept the risks',
                       style: AppTheme.bodyLarge.copyWith(
                         fontWeight: FontWeight.w600,
+                        color: AppTheme.getTextPrimary(context),
                       ),
                     ),
                   ),
@@ -554,6 +565,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               'Secure Your Account',
               style: AppTheme.headingLarge.copyWith(
                 fontWeight: FontWeight.bold,
+                color: AppTheme.getTextPrimary(context),
               ),
               textAlign: TextAlign.center,
             ),
@@ -563,7 +575,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Text(
               'Choose how to protect your trading account',
               style: AppTheme.bodyMedium.copyWith(
-                color: AppTheme.textSecondary,
+                color: AppTheme.getTextSecondary(context),
               ),
               textAlign: TextAlign.center,
             ),
@@ -594,20 +606,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: 12),
 
             // Skip button
-            TextButton(
-              onPressed: _isLoading ? null : _setupPIN,
-              child: Text(
-                'Skip for now',
-                style: AppTheme.labelMedium.copyWith(
-                  color: AppTheme.textSecondary,
+            Builder(
+              builder: (context) => TextButton(
+                onPressed: _isLoading ? null : _setupPIN,
+                child: Text(
+                  'Skip for now',
+                  style: AppTheme.labelMedium.copyWith(
+                    color: AppTheme.getTextSecondary(context),
+                  ),
                 ),
               ),
             ),
           ],
 
-          const SizedBox(height: 40),
-        ],
-      ),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -647,13 +665,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   title,
                   style: AppTheme.bodyLarge.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: AppTheme.getTextPrimary(context),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
                   style: AppTheme.bodySmall.copyWith(
-                    color: AppTheme.textSecondary,
+                    color: AppTheme.getTextSecondary(context),
                   ),
                 ),
               ],
@@ -667,12 +686,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget _buildFeature(String text, {bool isDisabled = false, double fontSize = 14}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10.0),
-      child: Text(
-        text,
-        style: AppTheme.bodyMedium.copyWith(
-          fontSize: fontSize,
-          color: isDisabled ? AppTheme.textTertiary : AppTheme.textSecondary,
-          decoration: isDisabled ? TextDecoration.lineThrough : null,
+      child: Builder(
+        builder: (context) => Text(
+          text,
+          style: AppTheme.bodyMedium.copyWith(
+            fontSize: fontSize,
+            color: isDisabled ? AppTheme.getTextTertiary(context) : AppTheme.getTextSecondary(context),
+            decoration: isDisabled ? TextDecoration.lineThrough : null,
+          ),
         ),
       ),
     );
@@ -684,24 +705,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icon,
-            color: AppTheme.textSecondary,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: AppTheme.bodyMedium.copyWith(
-                color: AppTheme.textSecondary,
+      child: Builder(
+        builder: (context) => Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              icon,
+              color: AppTheme.getTextSecondary(context),
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                text,
+                style: AppTheme.bodyMedium.copyWith(
+                  color: AppTheme.getTextSecondary(context),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -758,13 +781,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     title,
                     style: AppTheme.bodyLarge.copyWith(
                       fontWeight: FontWeight.w600,
+                      color: AppTheme.getTextPrimary(context),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     description,
                     style: AppTheme.bodySmall.copyWith(
-                      color: AppTheme.textSecondary,
+                      color: AppTheme.getTextSecondary(context),
                     ),
                   ),
                 ],

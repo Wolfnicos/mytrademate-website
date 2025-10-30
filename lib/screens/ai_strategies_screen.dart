@@ -287,7 +287,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
   Widget _buildPredictionsTab() {
     final colors = Theme.of(context).colorScheme;
     return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
+      physics: const ClampingScrollPhysics(),
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.all(AppTheme.spacing20),
@@ -1452,7 +1452,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                 child: Text(
                   '${(probability * 100).toStringAsFixed(1)}%',
                   style: AppTheme.bodyMedium.copyWith(
-                    color: Colors.white,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : (color == AppTheme.holdYellow ? Colors.black : Colors.white),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -1473,7 +1475,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           Text(
             description,
             style: AppTheme.bodySmall.copyWith(
-              color: AppTheme.textSecondary,
+              color: AppTheme.getTextSecondary(context),
               height: 1.4,
             ),
           ),
@@ -1514,7 +1516,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           Text(
             _getActionExplanation(action, _selectedSymbol, _interval),
             style: AppTheme.bodyMedium.copyWith(
-              color: AppTheme.textSecondary,
+              color: AppTheme.getTextSecondary(context),
               height: 1.5,
             ),
           ),

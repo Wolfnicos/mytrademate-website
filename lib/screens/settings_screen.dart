@@ -151,20 +151,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _clearCredentials() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.surface,
-        title: Text('Confirm Deletion', style: AppTheme.headingLarge),
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Theme.of(dialogContext).brightness == Brightness.dark
+            ? AppTheme.surface
+            : Colors.white,
+        title: Text('Confirm Deletion', style: AppTheme.headingLarge.copyWith(
+          color: AppTheme.getTextPrimary(dialogContext),
+        )),
         content: Text(
           'Are you sure you want to delete your API credentials?',
-          style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
+          style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(dialogContext)),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text('Cancel', style: TextStyle(color: AppTheme.getTextSecondary(dialogContext))),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             style: TextButton.styleFrom(foregroundColor: AppTheme.error),
             child: const Text('Delete'),
           ),
@@ -195,11 +199,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.surface
+            : Colors.grey[50],
         elevation: 0,
-        title: Text('Settings', style: AppTheme.headingLarge),
+        title: Text('Settings', style: AppTheme.headingLarge.copyWith(
+          color: AppTheme.getTextPrimary(context),
+        )),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+          icon: Icon(Icons.arrow_back, color: AppTheme.getTextPrimary(context)),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -292,7 +300,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   Text(
                                     'You have access to all features',
                                     style: AppTheme.bodySmall.copyWith(
-                                      color: AppTheme.textSecondary,
+                                      color: AppTheme.getTextSecondary(context),
                                     ),
                                   ),
                                 ],
@@ -364,7 +372,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Text(
                     'Connect your Binance account to view your portfolio',
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
+                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
                   ),
                   const SizedBox(height: AppTheme.spacing16),
                   // Portfolio Tracker - Read-Only API
@@ -436,9 +444,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.info_outline,
-                          color: AppTheme.textSecondary,
+                          color: AppTheme.getTextSecondary(context),
                           size: 20,
                         ),
                         const SizedBox(width: AppTheme.spacing12),
@@ -446,7 +454,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: Text(
                             'MyTradeMate connects to Binance via read-only API to track your portfolio. We never hold your funds or access your private keys.',
                             style: AppTheme.bodySmall.copyWith(
-                              color: AppTheme.textSecondary,
+                              color: AppTheme.getTextSecondary(context),
                             ),
                           ),
                         ),
@@ -470,7 +478,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Text(
                     'Select the currency for prices and totals (Binance supported)',
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
+                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
                   ),
                   const SizedBox(height: AppTheme.spacing16),
                   Wrap(
@@ -526,19 +534,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   TextField(
                     controller: _apiKeyController,
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.textPrimary),
+                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextPrimary(context)),
                     decoration: InputDecoration(
                       labelText: 'API Key',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: AppTheme.getTextSecondary(context)),
                       filled: true,
-                      fillColor: AppTheme.surface,
+                      fillColor: Theme.of(context).brightness == Brightness.dark
+                          ? AppTheme.surface
+                          : Colors.grey[100],
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                         borderSide: BorderSide(color: AppTheme.glassBorder),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                        borderSide: BorderSide(color: AppTheme.glassBorder),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppTheme.glassBorder
+                              : Colors.grey[300]!,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
@@ -557,19 +571,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   TextField(
                     controller: _apiSecretController,
                     obscureText: _obscureSecret,
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.textPrimary),
+                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextPrimary(context)),
                     decoration: InputDecoration(
                       labelText: 'Secret Key',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: AppTheme.getTextSecondary(context)),
                       filled: true,
-                      fillColor: AppTheme.surface,
+                      fillColor: Theme.of(context).brightness == Brightness.dark
+                          ? AppTheme.surface
+                          : Colors.grey[100],
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                         borderSide: BorderSide(color: AppTheme.glassBorder),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                        borderSide: BorderSide(color: AppTheme.glassBorder),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppTheme.glassBorder
+                              : Colors.grey[300]!,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
@@ -579,7 +599,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureSecret ? Icons.visibility : Icons.visibility_off,
-                          color: AppTheme.textSecondary,
+                          color: AppTheme.getTextSecondary(context),
                         ),
                         onPressed: () => setState(() => _obscureSecret = !_obscureSecret),
                       ),
@@ -648,7 +668,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Theme Mode', style: AppTheme.headingSmall),
+                  Text('Theme Mode', style: AppTheme.headingSmall.copyWith(
+                    color: AppTheme.getTextPrimary(context),
+                  )),
                   const SizedBox(height: AppTheme.spacing16),
                   Wrap(
                     spacing: AppTheme.spacing8,
@@ -714,23 +736,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // Show confirmation dialog
                 final confirmed = await showDialog<bool>(
                   context: context,
-                  builder: (context) => AlertDialog(
-                    backgroundColor: AppTheme.surface,
+                  builder: (dialogContext) => AlertDialog(
+                    backgroundColor: Theme.of(dialogContext).brightness == Brightness.dark
+                        ? AppTheme.surface
+                        : Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppTheme.radiusLG),
                     ),
-                    title: Text('Sign Out', style: AppTheme.headingLarge),
+                    title: Text('Sign Out', style: AppTheme.headingLarge.copyWith(
+                      color: AppTheme.getTextPrimary(dialogContext),
+                    )),
                     content: Text(
                       'Are you sure you want to sign out?',
-                      style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
+                      style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(dialogContext)),
                     ),
                     actions: [
                       TextButton(
-                        onPressed: () => Navigator.pop(context, false),
+                        onPressed: () => Navigator.pop(dialogContext, false),
                         child: const Text('Cancel'),
                       ),
                       ElevatedButton(
-                        onPressed: () => Navigator.pop(context, true),
+                        onPressed: () => Navigator.pop(dialogContext, true),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.error,
                           foregroundColor: Colors.white,
@@ -1041,7 +1067,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(width: AppTheme.spacing8),
           Text(
             title,
-            style: AppTheme.headingMedium.copyWith(color: AppTheme.textSecondary),
+            style: AppTheme.headingMedium.copyWith(color: AppTheme.getTextSecondary(context)),
           ),
         ],
       ),

@@ -245,9 +245,9 @@ class _PremiumAppBar extends StatelessWidget implements PreferredSizeWidget {
                     width: 1,
                   ),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.settings_outlined,
-                  color: AppTheme.textSecondary,
+                  color: AppTheme.getTextSecondary(context),
                   size: 20,
                 ),
               ),
@@ -280,21 +280,25 @@ class _PremiumBottomNav extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                AppTheme.surface.withOpacity(0.85),
-                AppTheme.surface.withOpacity(0.75),
+                AppTheme.getSurface(context).withOpacity(0.85),
+                AppTheme.getSurface(context).withOpacity(0.75),
               ],
               begin: Alignment.bottomCenter,
               end: Alignment.topCenter,
             ),
             border: Border(
               top: BorderSide(
-                color: AppTheme.glassBorder,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.glassBorder
+                    : Colors.grey[300]!,
                 width: 1,
               ),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.black.withOpacity(0.1)
+                    : Colors.black.withOpacity(0.05),
                 blurRadius: 20,
                 offset: const Offset(0, -4),
               ),
@@ -384,7 +388,7 @@ class _BottomNavItem extends StatelessWidget {
                 // Icon with gradient glow when active
                 Icon(
                   isActive ? activeIcon : icon,
-                  color: isActive ? AppTheme.primary : AppTheme.textSecondary,
+                  color: isActive ? AppTheme.primary : AppTheme.getTextSecondary(context),
                   size: 22,
                 ),
                 const SizedBox(height: 2),
@@ -392,7 +396,7 @@ class _BottomNavItem extends StatelessWidget {
                 Text(
                   label,
                   style: AppTheme.labelSmall.copyWith(
-                    color: isActive ? AppTheme.textPrimary : AppTheme.textTertiary,
+                    color: isActive ? AppTheme.getTextPrimary(context) : AppTheme.getTextTertiary(context),
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                     fontSize: 11, // Increased from 9px for accessibility (WCAG 2.1 AA)
                   ),
