@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'dart:convert';
-import 'dart:math' show exp, log, max;
+import 'dart:math' show exp, log;
 import 'package:mytrademate/services/binance_service.dart';
 import 'package:mytrademate/ml/ensemble_weights_v2.dart';
 
@@ -494,31 +494,67 @@ class CryptoMLService {
       volumePercentile: volumePercentile,
     );
 
-    // PHASE 4: ANTI-CHOP FILTER
-    // If low volatility + high liquidity + low confidence → Force HOLD
-    final atrPercent = (volatility ?? 0.0) * 100;
-    final volPercentile = volumePercentile ?? 0.0;
-    final confidence = ensemble.confidence;
+    // PHASE 4: FINAL DECISION ENGINE
+    // Anti-chop filter + Trend boost + Micro-trend confirmation
+    final atrPercent = volatility * 100;
+    final volPercentile = volumePercentile;
+    var finalAction = ensemble.action;
+    var finalConfidence = ensemble.confidence;
+    String decisionReason = 'Normal market conditions';
 
-    if (atrPercent < 0.15 && volPercentile > 85.0 && confidence < 0.55) {
+    // 1. ANTI-CHOP FILTER: Low volatility + High liquidity + Low confidence → HOLD
+    if (atrPercent < 0.15 && volPercentile > 85.0 && finalConfidence < 0.55) {
       if (!silent) {
         // ignore: avoid_print
-        print('🚫 PHASE 4 ANTI-CHOP: Detected chop zone (ATR=${atrPercent.toStringAsFixed(2)}%, Vol=${volPercentile.toStringAsFixed(0)}%, Conf=${(confidence*100).toStringAsFixed(1)}%)');
+        print('🚫 ANTI-CHOP TRIGGERED: ATR=${atrPercent.toStringAsFixed(2)}%, Vol=${volPercentile.toStringAsFixed(0)}%, Conf=${(finalConfidence*100).toStringAsFixed(1)}%');
         // ignore: avoid_print
         print('   → Forcing HOLD to avoid whipsaw');
       }
 
-      ensemble = CryptoPrediction(
-        action: 'HOLD',
-        confidence: 0.35,
-        probabilities: {'SELL': 0.325, 'HOLD': 0.35, 'BUY': 0.325},
-        signalStrength: 0.0,
-        modelAccuracy: ensemble.modelAccuracy,
-        timestamp: ensemble.timestamp,
-        atr: ensemble.atr,
-        volumePercentile: ensemble.volumePercentile,
-      );
+      finalAction = 'HOLD';
+      finalConfidence = 0.38;
+      decisionReason = 'Chop zone: low ATR + high liquidity → avoid false signal';
     }
+    // 2. TREND BOOST: High volatility → Increase confidence
+    else if (atrPercent > 0.30) {
+      final boost = 1.20; // +20% confidence in strong trends
+      finalConfidence = (finalConfidence * boost).clamp(0.0, 0.95);
+      decisionReason = 'High volatility - strong trend detected';
+
+      if (!silent) {
+        // ignore: avoid_print
+        print('📈 TREND BOOST: ATR=${atrPercent.toStringAsFixed(2)}% → +20% confidence');
+      }
+    }
+    // 3. MICRO-TREND CONFIRMATION: Moderate volatility + Good confidence → Small boost
+    else if (atrPercent > 0.18 && finalConfidence > 0.48) {
+      final boost = 1.08; // +8% confidence for confirmed micro-trends
+      finalConfidence = (finalConfidence * boost).clamp(0.0, 0.90);
+      decisionReason = 'Micro-trend confirmed - moderate volatility';
+
+      if (!silent) {
+        // ignore: avoid_print
+        print('📊 MICRO-TREND CONFIRMED: ATR=${atrPercent.toStringAsFixed(2)}% → +8% confidence');
+      }
+    }
+    else {
+      decisionReason = atrPercent < 0.20
+          ? 'Low volatility - moderate confidence'
+          : 'Normal market conditions';
+    }
+
+    // Update ensemble with final decision
+    ensemble = CryptoPrediction(
+      action: finalAction,
+      confidence: finalConfidence,
+      probabilities: ensemble.probabilities,
+      signalStrength: ensemble.signalStrength,
+      modelAccuracy: ensemble.modelAccuracy,
+      timestamp: ensemble.timestamp,
+      atr: ensemble.atr,
+      volumePercentile: ensemble.volumePercentile,
+      isEnsemble: ensemble.isEnsemble,
+    );
 
     // ignore: avoid_print
     print('');
@@ -548,16 +584,8 @@ class CryptoMLService {
       print('');
 
       // FINAL DECISION SUMMARY
-      final reason = atrPercent < 0.15 && volPercentile > 85.0 && ensemble.confidence < 0.55
-          ? 'Anti-chop triggered'
-          : atrPercent < 0.20
-              ? 'Low volatility - moderate confidence'
-              : atrPercent > 0.30
-                  ? 'High volatility - strong trend'
-                  : 'Normal market conditions';
-
       // ignore: avoid_print
-      print('📊 FINAL DECISION: ${ensemble.action} (${(ensemble.confidence * 100).toStringAsFixed(1)}%) | Reason: $reason');
+      print('📊 FINAL DECISION: ${ensemble.action} (${(ensemble.confidence * 100).toStringAsFixed(1)}%) | Reason: $decisionReason');
       // ignore: avoid_print
       print('   Signal Strength: ${(ensemble.signalStrength * 100).toStringAsFixed(1)}%');
       // ignore: avoid_print
