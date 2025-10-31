@@ -21,7 +21,7 @@ class _MLDebugScreenState extends State<MLDebugScreen> {
   String _selectedTimeframe = '5m';
 
   final List<String> _coins = ['BTC', 'ETH', 'BNB', 'SOL', 'WLFI', 'TRUMP'];
-  final List<String> _timeframes = ['5m', '15m', '1h', '1d', '7d'];
+  final List<String> _timeframes = ['5m', '15m', '1h', '4h', '1d'];
 
   bool _isLoading = false;
   String? _predictionResult;
