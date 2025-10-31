@@ -36,35 +36,43 @@ class FullFeatureBuilder {
     // Sort by time ascending
     final sorted = List<Candle>.from(candles)..sort((a, b) => a.closeTime.compareTo(b.closeTime));
 
-    debugPrint('🔍 FullFeatureBuilder: Processing ${sorted.length} candles with SLIDING WINDOW');
-    debugPrint('   Each of $timesteps timesteps uses a unique $lookback-candle window');
+    debugPrint('🔍 FullFeatureBuilder: Processing ${sorted.length} candles');
+    debugPrint('   Using 2-PASS approach: pre-calculate all indicators, then extract last 60 timesteps');
+
+    // === PASS 1: Pre-calculate ALL indicators on entire 1000-candle array ===
+    final allFeatures = _calculateAllFeatures(sorted);
+
+    // === PASS 2: Extract last 60 timesteps ===
+    final n = sorted.length;
+    final startIdx = n - timesteps;
+
+    if (startIdx < 0) {
+      throw ArgumentError('Need at least $timesteps candles, got $n');
+    }
 
     final output = <List<double>>[];
+    for (int i = startIdx; i < n; i++) {
+      output.add(allFeatures[i]);
+    }
 
-    // SLIDING WINDOW: Each timestep gets a unique 60-candle window
-    for (int t = 0; t < timesteps; t++) {
-      final windowEnd = sorted.length - timesteps + t;
-      final windowStart = windowEnd - lookback + 1;
-      final window = sorted.sublist(windowStart, windowEnd + 1);
+    // DEBUG: Log first and last timestep
+    if (output.isNotEmpty) {
+      final firstRow = output.first;
+      final lastRow = output.last;
 
-      assert(window.length == lookback, 'Window size mismatch: expected $lookback, got ${window.length}');
+      debugPrint('');
+      debugPrint('🔬 FEATURE DEBUG | First timestep (t=0, candle index=$startIdx)');
+      final priceAction0 = firstRow.sublist(25, 30).map((f) => f.toStringAsFixed(4)).join(', ');
+      debugPrint('   Features[25:30] (price action): [$priceAction0]');
+      final patterns0 = firstRow.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
+      debugPrint('   Features[0:6] (patterns): [$patterns0]');
 
-      // Calculate ALL 76 features using ONLY this window
-      final features = _extractFeaturesFromWindow(window);
-
-      // DEBUG: Log first and last timestep
-      if (t == 0 || t == timesteps - 1) {
-        debugPrint('');
-        debugPrint('🔬 SLIDING WINDOW DEBUG | t=$t | window[$windowStart..$windowEnd]');
-        final closePrices = window.take(5).map((c) => c.close.toStringAsFixed(2)).join(', ');
-        debugPrint('   Close progression: [$closePrices...]');
-        final priceAction = features.sublist(25, 30).map((f) => f.toStringAsFixed(4)).join(', ');
-        debugPrint('   Features[25:30] (price action): [$priceAction]');
-        final patterns = features.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
-        debugPrint('   Features[0:6] (patterns): [$patterns]');
-      }
-
-      output.add(features);
+      debugPrint('');
+      debugPrint('🔬 FEATURE DEBUG | Last timestep (t=59, candle index=${n-1})');
+      final priceAction59 = lastRow.sublist(25, 30).map((f) => f.toStringAsFixed(4)).join(', ');
+      debugPrint('   Features[25:30] (price action): [$priceAction59]');
+      final patterns59 = lastRow.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
+      debugPrint('   Features[0:6] (patterns): [$patterns59]');
     }
 
     debugPrint('🔍 FullFeatureBuilder: Generated ${output.length} timesteps × ${output.first.length} features');
@@ -72,18 +80,15 @@ class FullFeatureBuilder {
     return output;
   }
 
-  /// Extract all 76 features from a single 60-candle window
-  /// This method is called once per timestep with a unique sliding window
-  /// Returns features for the LAST candle in the window (most recent state)
-  List<double> _extractFeaturesFromWindow(List<Candle> window) {
-    assert(window.length == 60, 'Window must have exactly 60 candles');
-
-    // Extract OHLCV arrays from window
-    final opens = window.map((c) => c.open).toList();
-    final highs = window.map((c) => c.high).toList();
-    final lows = window.map((c) => c.low).toList();
-    final closes = window.map((c) => c.close).toList();
-    final volumes = window.map((c) => c.volume).toList();
+  /// Pre-calculate ALL features for ALL candles (PASS 1)
+  /// Returns [n, 76] array where each row is the feature vector for that candle
+  List<List<double>> _calculateAllFeatures(List<Candle> candles) {
+    // Extract OHLCV arrays from ALL candles
+    final opens = candles.map((c) => c.open).toList();
+    final highs = candles.map((c) => c.high).toList();
+    final lows = candles.map((c) => c.low).toList();
+    final closes = candles.map((c) => c.close).toList();
+    final volumes = candles.map((c) => c.volume).toList();
     final n = closes.length; // 60
 
     // Pattern order MUST match Python exactly
@@ -210,94 +215,99 @@ class FullFeatureBuilder {
       (i) => (closes[i] < sma20[i] && sma20[i] < sma50[i]) ? 1.0 : 0.0,
     );
 
-    // === BUILD FEATURE VECTOR FOR LAST CANDLE (index n-1) ===
-    final row = <double>[];
-    final i = n - 1; // Last candle in window (most recent state)
+    // === BUILD FEATURE VECTORS FOR ALL CANDLES ===
+    final output = <List<double>>[];
 
-    // Candle patterns (0-24)
-    for (final patternName in patternOrder) {
-      row.add(patterns[patternName]![i]);
+    for (int i = 0; i < n; i++) {
+      final row = <double>[];
+
+      // Candle patterns (0-24)
+      for (final patternName in patternOrder) {
+        row.add(patterns[patternName]![i]);
+      }
+
+      // Price action (25-29)
+      row.add(returns[i]);
+      row.add(logReturns[i]);
+      row.add(volatility[i]);
+      row.add(hlRange[i]);
+      row.add(closePosition[i]);
+
+      // RSI (30-32)
+      row.add(rsi[i]);
+      row.add(rsiOversold[i]);
+      row.add(rsiOverbought[i]);
+
+      // MACD (33-37)
+      row.add(macdLine[i]);
+      row.add(macdSignal[i]);
+      row.add(macdHistogram[i]);
+      row.add(macdCrossAbove[i]);
+      row.add(macdCrossBelow[i]);
+
+      // Bollinger Bands (38-43)
+      row.add(bbUpper[i]);
+      row.add(bbMiddle[i]);
+      row.add(bbLower[i]);
+      row.add(bbWidth[i]);
+      row.add(bbPosition[i]);
+      row.add(bbSqueeze[i]);
+
+      // ATR (44-45)
+      row.add(atr[i]);
+      row.add(atrPct[i]);
+
+      // ADX (46-47)
+      row.add(adx[i]);
+      row.add(trending[i]);
+
+      // Stochastic (48-51)
+      row.add(stochK[i]);
+      row.add(stochD[i]);
+      row.add(stochOversold[i]);
+      row.add(stochOverbought[i]);
+
+      // Ichimoku (52-58)
+      row.add(ichimokuTenkan[i]);
+      row.add(ichimokuKijun[i]);
+      row.add(ichimokuSenkouA[i]);
+      row.add(ichimokuSenkouB[i]);
+      row.add(ichimokuCloudGreen[i]);
+      row.add(ichimokuAboveCloud[i]);
+      row.add(ichimokuBelowCloud[i]);
+
+      // Volume (59-63)
+      row.add(volumes[i]);
+      row.add(volSMA[i]);
+      row.add(volRatio[i]);
+      row.add(obv[i]);
+      row.add(highVolume[i]);
+
+      // Moving Averages (64-72)
+      row.add(sma20[i]);
+      row.add(sma50[i]);
+      row.add(sma200[i]);
+      row.add(priceAboveSma20[i]);
+      row.add(priceAboveSma50[i]);
+      row.add(priceAboveSma200[i]);
+      row.add(goldenCross[i]);
+      row.add(deathCross[i]);
+
+      // Trend indicators (73-76)
+      row.add(higherHigh[i]);
+      row.add(lowerLow[i]);
+      row.add(uptrend[i]);
+      row.add(downtrend[i]);
+
+      // Sanitize: replace NaN/Inf with 0
+      final sanitized = row.map((v) => v.isFinite ? v : 0.0).toList();
+
+      assert(sanitized.length == 76, 'Expected 76 features, got ${sanitized.length}');
+
+      output.add(sanitized);
     }
 
-    // Price action (25-29)
-    row.add(returns[i]);
-    row.add(logReturns[i]);
-    row.add(volatility[i]);
-    row.add(hlRange[i]);
-    row.add(closePosition[i]);
-
-    // RSI (30-32)
-    row.add(rsi[i]);
-    row.add(rsiOversold[i]);
-    row.add(rsiOverbought[i]);
-
-    // MACD (33-37)
-    row.add(macdLine[i]);
-    row.add(macdSignal[i]);
-    row.add(macdHistogram[i]);
-    row.add(macdCrossAbove[i]);
-    row.add(macdCrossBelow[i]);
-
-    // Bollinger Bands (38-43)
-    row.add(bbUpper[i]);
-    row.add(bbMiddle[i]);
-    row.add(bbLower[i]);
-    row.add(bbWidth[i]);
-    row.add(bbPosition[i]);
-    row.add(bbSqueeze[i]);
-
-    // ATR (44-45)
-    row.add(atr[i]);
-    row.add(atrPct[i]);
-
-    // ADX (46-47)
-    row.add(adx[i]);
-    row.add(trending[i]);
-
-    // Stochastic (48-51)
-    row.add(stochK[i]);
-    row.add(stochD[i]);
-    row.add(stochOversold[i]);
-    row.add(stochOverbought[i]);
-
-    // Ichimoku (52-58)
-    row.add(ichimokuTenkan[i]);
-    row.add(ichimokuKijun[i]);
-    row.add(ichimokuSenkouA[i]);
-    row.add(ichimokuSenkouB[i]);
-    row.add(ichimokuCloudGreen[i]);
-    row.add(ichimokuAboveCloud[i]);
-    row.add(ichimokuBelowCloud[i]);
-
-    // Volume (59-63)
-    row.add(volumes[i]);
-    row.add(volSMA[i]);
-    row.add(volRatio[i]);
-    row.add(obv[i]);
-    row.add(highVolume[i]);
-
-    // Moving Averages (64-72)
-    row.add(sma20[i]);
-    row.add(sma50[i]);
-    row.add(sma200[i]);
-    row.add(priceAboveSma20[i]);
-    row.add(priceAboveSma50[i]);
-    row.add(priceAboveSma200[i]);
-    row.add(goldenCross[i]);
-    row.add(deathCross[i]);
-
-    // Trend indicators (73-76)
-    row.add(higherHigh[i]);
-    row.add(lowerLow[i]);
-    row.add(uptrend[i]);
-    row.add(downtrend[i]);
-
-    // Sanitize: replace NaN/Inf with 0
-    final sanitized = row.map((v) => v.isFinite ? v : 0.0).toList();
-
-    assert(sanitized.length == 76, 'Expected 76 features, got ${sanitized.length}');
-
-    return sanitized;
+    return output; // [n, 76]
   }
 
   /// Deterministic training signature (features order + scalers + lookbacks)
