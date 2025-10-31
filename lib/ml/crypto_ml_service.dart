@@ -546,6 +546,24 @@ class CryptoMLService {
       print('🔮 Phase 4 preview: ATR=${(volatility * 100).toStringAsFixed(2)}%, liquidity=${(volumePercentile * 100).toStringAsFixed(0)}%');
       // ignore: avoid_print
       print('');
+
+      // FINAL DECISION SUMMARY
+      final reason = atrPercent < 0.15 && volPercentile > 85.0 && ensemble.confidence < 0.55
+          ? 'Anti-chop triggered'
+          : atrPercent < 0.20
+              ? 'Low volatility - moderate confidence'
+              : atrPercent > 0.30
+                  ? 'High volatility - strong trend'
+                  : 'Normal market conditions';
+
+      // ignore: avoid_print
+      print('📊 FINAL DECISION: ${ensemble.action} (${(ensemble.confidence * 100).toStringAsFixed(1)}%) | Reason: $reason');
+      // ignore: avoid_print
+      print('   Signal Strength: ${(ensemble.signalStrength * 100).toStringAsFixed(1)}%');
+      // ignore: avoid_print
+      print('   ATR: ${(volatility * 100).toStringAsFixed(2)}% | Volume Percentile: ${(volumePercentile * 100).toStringAsFixed(0)}%');
+      // ignore: avoid_print
+      print('');
     }
 
     // PHASE 4: Return prediction with market context (ATR + volume)
