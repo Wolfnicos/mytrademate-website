@@ -488,11 +488,37 @@ class CryptoMLService {
     }
 
     // STEP 4: Combine using WEIGHTED ENSEMBLE
-    final ensemble = getWeightedEnsemblePrediction(
+    var ensemble = getWeightedEnsemblePrediction(
       weightedPredictions,
       atr: volatility,
       volumePercentile: volumePercentile,
     );
+
+    // PHASE 4: ANTI-CHOP FILTER
+    // If low volatility + high liquidity + low confidence → Force HOLD
+    final atrPercent = (volatility ?? 0.0) * 100;
+    final volPercentile = volumePercentile ?? 0.0;
+    final confidence = ensemble.confidence;
+
+    if (atrPercent < 0.15 && volPercentile > 85.0 && confidence < 0.55) {
+      if (!silent) {
+        // ignore: avoid_print
+        print('🚫 PHASE 4 ANTI-CHOP: Detected chop zone (ATR=${atrPercent.toStringAsFixed(2)}%, Vol=${volPercentile.toStringAsFixed(0)}%, Conf=${(confidence*100).toStringAsFixed(1)}%)');
+        // ignore: avoid_print
+        print('   → Forcing HOLD to avoid whipsaw');
+      }
+
+      ensemble = CryptoPrediction(
+        action: 'HOLD',
+        confidence: 0.35,
+        probabilities: {'SELL': 0.325, 'HOLD': 0.35, 'BUY': 0.325},
+        signalStrength: 0.0,
+        modelAccuracy: ensemble.modelAccuracy,
+        timestamp: ensemble.timestamp,
+        atr: ensemble.atr,
+        volumePercentile: ensemble.volumePercentile,
+      );
+    }
 
     // ignore: avoid_print
     print('');
@@ -577,6 +603,17 @@ class CryptoMLService {
       throw Exception('Need exactly $expectedFeatures features per timestep, got ${priceData[0].length}');
     }
 
+    // Calculate signal strength (% of non-zero features) BEFORE normalization
+    int nonZeroCount = 0;
+    int totalFeatures = 0;
+    for (final row in priceData) {
+      for (final val in row) {
+        if (val.abs() > 1e-6) nonZeroCount++;
+        totalFeatures++;
+      }
+    }
+    final signalStrength = totalFeatures > 0 ? nonZeroCount / totalFeatures : 0.0;
+
     // DEBUG RAW INPUT (before normalization)
     if (!silent && priceData.isNotEmpty) {
       final firstRowRaw = priceData.first;
@@ -585,6 +622,8 @@ class CryptoMLService {
       print('🔬 DEBUG RAW INPUT: First row [0-5]: [${firstRowRaw.take(6).map((v) => v.toStringAsFixed(4)).join(', ')}]');
       // ignore: avoid_print
       print('🔬 DEBUG RAW INPUT: Last row [0-5]: [${lastRowRaw.take(6).map((v) => v.toStringAsFixed(4)).join(', ')}]');
+      // ignore: avoid_print
+      print('🎯 SIGNAL STRENGTH: ${(signalStrength * 100).toStringAsFixed(1)}% features active ($nonZeroCount / $totalFeatures)');
     }
 
     // Normalizare
@@ -618,27 +657,34 @@ class CryptoMLService {
       print('🔬 DEBUG OUTPUT ($modelKey): RAW probabilities = [${output[0].map((v) => v.toStringAsFixed(6)).join(', ')}]');
     }
 
-    // Apply temperature scaling to reduce overconfident predictions
-    // Temperature > 1.0 makes distribution more uniform (less extreme)
+    // Apply DYNAMIC temperature scaling based on signal strength
+    // More active features → lower T (trust model more)
+    // Fewer active features → higher T (model less reliable)
     var probabilities = output[0];
 
-    // Check if prediction is extremely confident (>90% for any class)
-    // Lower threshold to catch more overconfident predictions
+    // Calculate dynamic temperature: T = 1.0 + 14.0 * (1 - signalStrength)
+    // Examples:
+    //   - 100% features active → T = 1.0 (no scaling)
+    //   - 50% features active → T = 8.0 (moderate scaling)
+    //   - 10% features active → T = 13.6 (aggressive scaling)
+    const double minT = 1.0;
+    const double maxT = 15.0;
+    final temperature = minT + maxT * (1.0 - signalStrength);
+
     final maxProb = probabilities.reduce((a, b) => a > b ? a : b);
-    if (maxProb > 0.90) {
+
+    // Always apply temperature scaling if confidence > 75% OR signal strength < 50%
+    if (maxProb > 0.75 || signalStrength < 0.50) {
       if (!silent) {
         // ignore: avoid_print
         print('   🔥 BEFORE scaling: [${probabilities.map((p) => p.toStringAsFixed(4)).join(", ")}]');
       }
 
-      // Apply EXTREMELY aggressive temperature scaling (T=10.0) for extreme predictions
-      // T=10 transforms [0, 0, 1] → [0.09, 0.18, 0.73] (much more balanced)
-      const temperature = 10.0;
       probabilities = _applyTemperatureScaling(probabilities, temperature);
 
       if (!silent) {
         // ignore: avoid_print
-        print('   🌡️  Temperature scaling applied (T=$temperature) - was ${(maxProb * 100).toStringAsFixed(1)}% confident');
+        print('   🌡️  Dynamic T=${temperature.toStringAsFixed(1)} (signal=${(signalStrength*100).toStringAsFixed(1)}%) - was ${(maxProb * 100).toStringAsFixed(1)}% confident');
         // ignore: avoid_print
         print('   ✅ AFTER scaling: [${probabilities.map((p) => p.toStringAsFixed(4)).join(", ")}]');
       }
