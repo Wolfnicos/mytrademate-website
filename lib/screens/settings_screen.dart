@@ -856,7 +856,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const Divider(color: AppTheme.glassBorder),
                 ListTile(
-                  leading: const Icon(Icons.bug_report, color: AppTheme.accent),
+                  leading: const Icon(Icons.bug_report, color: AppTheme.primary),
                   title: Text('ML Debug & Testing', style: AppTheme.bodyMedium),
                   subtitle: Text('Test AI models accuracy', style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary)),
                   trailing: const Icon(Icons.chevron_right, color: AppTheme.textTertiary),

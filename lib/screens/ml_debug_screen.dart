@@ -79,8 +79,14 @@ class _MLDebugScreenState extends State<MLDebugScreen> {
         result.writeln('  $key: ${(value * 100).toStringAsFixed(1)}%');
       });
       result.writeln('');
-      result.writeln('Models used: ${prediction.modelsUsed}');
-      result.writeln('ATR: ${prediction.atr.toStringAsFixed(2)}%');
+      result.writeln('Signal Strength: ${prediction.signalStrength.toStringAsFixed(1)}');
+      result.writeln('Model Accuracy: ${(prediction.modelAccuracy * 100).toStringAsFixed(1)}%');
+      if (prediction.atr != null) {
+        result.writeln('ATR: ${prediction.atr!.toStringAsFixed(2)}%');
+      }
+      if (prediction.volumePercentile != null) {
+        result.writeln('Volume Percentile: ${(prediction.volumePercentile! * 100).toStringAsFixed(1)}%');
+      }
 
       setState(() => _predictionResult = result.toString());
 
@@ -172,7 +178,7 @@ class _MLDebugScreenState extends State<MLDebugScreen> {
                   setState(() => _selectedCoin = coin);
                   _loadStats();
                 },
-                selectedColor: AppTheme.accent,
+                selectedColor: AppTheme.primary,
                 backgroundColor: isDark ? AppTheme.surface : Colors.grey[200],
               );
             }).toList(),
@@ -199,7 +205,7 @@ class _MLDebugScreenState extends State<MLDebugScreen> {
                   setState(() => _selectedTimeframe = tf);
                   _loadStats();
                 },
-                selectedColor: AppTheme.accent,
+                selectedColor: AppTheme.primary,
                 backgroundColor: isDark ? AppTheme.surface : Colors.grey[200],
               );
             }).toList(),
@@ -215,7 +221,7 @@ class _MLDebugScreenState extends State<MLDebugScreen> {
               icon: const Icon(Icons.play_arrow),
               label: const Text('Run Prediction Test'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accent,
+                backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -245,7 +251,7 @@ class _MLDebugScreenState extends State<MLDebugScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.analytics, color: AppTheme.accent),
+              const Icon(Icons.analytics, color: AppTheme.primary),
               const SizedBox(width: 8),
               Text(
                 'Prediction Result',
@@ -296,7 +302,7 @@ class _MLDebugScreenState extends State<MLDebugScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.show_chart, color: AppTheme.accent),
+              const Icon(Icons.show_chart, color: AppTheme.primary),
               const SizedBox(width: 8),
               Text(
                 'Statistics: $_selectedCoin @ $_selectedTimeframe',
@@ -376,7 +382,7 @@ class _MLDebugScreenState extends State<MLDebugScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.assessment, color: AppTheme.accent),
+              const Icon(Icons.assessment, color: AppTheme.primary),
               const SizedBox(width: 8),
               Text(
                 'Accuracy Summary (All Models)',
