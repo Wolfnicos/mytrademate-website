@@ -72,6 +72,10 @@ dependencies:
   # Subscriptions
   purchases_flutter: ^8.2.2
 
+  # Local Notifications & Background Tasks (NO CLOUD!)
+  flutter_local_notifications: ^17.0.0
+  workmanager: ^0.5.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -8,6 +8,9 @@ import '../providers/subscription_provider.dart';
 import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
 import '../services/auth_service.dart';
+import '../services/background_ai_monitor.dart';
+import '../services/user_coins_service.dart';
+import '../services/local_notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import 'paywall_screen.dart';
@@ -33,6 +36,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _obscureSecret = true;
   String _permissionLevel = 'read';
   String _quote = 'USDT';
+
+  // AI Alerts settings
+  bool _aiAlertsEnabled = false;
+  double _confidenceThreshold = 0.58; // 58%
+  String _alertTimeframe = '4h';
+  int _userCoinsCount = 0;
+  String _coinsSource = 'default';
 
   @override
   void initState() {
@@ -68,9 +78,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final results = await Future.wait([
       SharedPreferences.getInstance(),
       _binanceService.loadCredentials(),
+      BackgroundAIMonitor.getSettings(),
+      UserCoinsService().getUserCoins(),
+      UserCoinsService().getCoinsSource(),
     ]);
 
     final prefs = results[0] as SharedPreferences;
+    final aiSettings = results[2] as Map<String, dynamic>;
+    final userCoins = results[3] as List<String>;
+    final coinsSource = results[4] as String;
 
     // Single setState to avoid multiple rebuilds
     if (mounted) {
@@ -80,6 +96,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _quote = AppSettingsService().quoteCurrency;
         _apiKeyController.text = _binanceService.apiKey ?? '';
         _apiSecretController.text = _binanceService.apiSecret ?? '';
+
+        // AI Alerts settings
+        _aiAlertsEnabled = aiSettings['enabled'] as bool;
+        _confidenceThreshold = aiSettings['threshold'] as double;
+        _alertTimeframe = aiSettings['timeframe'] as String;
+        _userCoinsCount = userCoins.length;
+        _coinsSource = coinsSource;
       });
     }
   }
