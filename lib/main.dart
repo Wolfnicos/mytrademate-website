@@ -20,6 +20,9 @@ import 'screens/settings_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/app_settings_service.dart';
 import 'services/auth_service.dart';
+import 'services/local_notification_service.dart';
+import 'services/background_ai_monitor.dart';
+import 'services/user_coins_service.dart';
 import 'theme/app_theme.dart';
 import 'providers/navigation_provider.dart';
 import 'services/achievement_service.dart';
@@ -37,6 +40,11 @@ Future<void> main() async {
   await AppSettingsService().load();
   await AuthService().load();
   await AchievementService().load();
+
+  // Initialize LOCAL notification services (NO CLOUD!)
+  await LocalNotificationService.initialize();
+  await BackgroundAIMonitor.initialize();
+  await UserCoinsService().initialize();
 
   // Initialize theme provider
   final themeProvider = ThemeProvider();
