@@ -11,7 +11,7 @@ import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import 'paywall_screen.dart';
-import 'ml_debug_screen.dart';
+// import 'ml_debug_screen.dart'; // Hidden for production
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -854,17 +854,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: const Icon(Icons.open_in_new, color: AppTheme.textTertiary),
                   onTap: () => _openWebsite(),
                 ),
-                const Divider(color: AppTheme.glassBorder),
-                ListTile(
-                  leading: const Icon(Icons.bug_report, color: AppTheme.primary),
-                  title: Text('ML Debug & Testing', style: AppTheme.bodyMedium),
-                  subtitle: Text('Test AI models accuracy', style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary)),
-                  trailing: const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const MLDebugScreen()),
-                  ),
-                ),
+                // ML Debug & Testing - Hidden for production
+                // const Divider(color: AppTheme.glassBorder),
+                // ListTile(
+                //   leading: const Icon(Icons.bug_report, color: AppTheme.primary),
+                //   title: Text('ML Debug & Testing', style: AppTheme.bodyMedium),
+                //   subtitle: Text('Test AI models accuracy', style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary)),
+                //   trailing: const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
+                //   onTap: () => Navigator.push(
+                //     context,
+                //     MaterialPageRoute(builder: (context) => const MLDebugScreen()),
+                //   ),
+                // ),
               ],
             ),
           ),
