@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'dart:convert';
-import 'dart:math' show exp, log;
+import 'dart:math' show exp, log, sqrt;
 import 'package:mytrademate/services/binance_service.dart';
 import 'package:mytrademate/ml/ensemble_weights_v2.dart';
 
@@ -652,15 +652,25 @@ class CryptoMLService {
     }
 
     // Calculate signal strength (% of non-zero features) BEFORE normalization
-    int nonZeroCount = 0;
+    // PATCH 3: Dynamic Signal Strength - doar ultimele 15 timesteps (mai sensibil la schimbări recente)
+    const threshold = 0.1; // Threshold mai ridicat pentru features "active"
+    const recentWindow = 15; // Doar ultimele 15 timesteps
+
+    int activeCount = 0;
     int totalFeatures = 0;
-    for (final row in priceData) {
+    final recentData = priceData.length > recentWindow
+        ? priceData.sublist(priceData.length - recentWindow)
+        : priceData;
+
+    for (final row in recentData) {
       for (final val in row) {
-        if (val.abs() > 1e-6) nonZeroCount++;
+        if (val.abs() > threshold) activeCount++;
         totalFeatures++;
       }
     }
-    final signalStrength = totalFeatures > 0 ? nonZeroCount / totalFeatures : 0.0;
+    final signalStrength = totalFeatures > 0
+        ? (activeCount / totalFeatures * 100).clamp(0.0, 100.0) / 100.0
+        : 0.0;
 
     // DEBUG RAW INPUT (before normalization)
     if (!silent && priceData.isNotEmpty) {
@@ -671,7 +681,7 @@ class CryptoMLService {
       // ignore: avoid_print
       print('🔬 DEBUG RAW INPUT: Last row [0-5]: [${lastRowRaw.take(6).map((v) => v.toStringAsFixed(4)).join(', ')}]');
       // ignore: avoid_print
-      print('🎯 SIGNAL STRENGTH: ${(signalStrength * 100).toStringAsFixed(1)}% features active ($nonZeroCount / $totalFeatures)');
+      print('🎯 SIGNAL STRENGTH (last $recentWindow timesteps): ${(signalStrength * 100).toStringAsFixed(1)}% features active ($activeCount / $totalFeatures)');
     }
 
     // Normalizare
@@ -793,17 +803,31 @@ class CryptoMLService {
     );
   }
 
-  /// Normalizează datele folosind StandardScaler
+  /// PATCH 2: Rolling normalization - normalizează pe fereastră glisantă (ultimele 30 candles)
+  /// Mai rapid și mai sensibil la schimbările recente de preț
   List<List<double>> _normalizeData(
     List<List<double>> data,
     Map<String, dynamic> scaler,
   ) {
-    final mean = (scaler['mean'] as List).cast<double>();
-    final std = (scaler['std'] as List).cast<double>();
+    const lookback = 30; // Rolling window de 30 candles
+    final normalized = <List<double>>[];
 
-    return data
-        .map((row) => List<double>.generate(row.length, (i) => (row[i] - mean[i]) / (std[i] + 1e-8)))
-        .toList();
+    for (int t = 0; t < data.length; t++) {
+      final start = t >= lookback ? t - lookback + 1 : 0;
+      final window = data.sublist(start, t + 1);
+
+      final row = <double>[];
+      for (int f = 0; f < data[0].length; f++) {
+        final col = window.map((r) => r[f]).toList();
+        final mean = col.reduce((a, b) => a + b) / col.length;
+        final variance = col.map((x) => (x - mean) * (x - mean)).reduce((a, b) => a + b) / col.length;
+        final std = variance > 0 ? sqrt(variance) : 0.0;
+        final value = std > 1e-8 ? (data[t][f] - mean) / std : 0.0;
+        row.add(double.parse(value.toStringAsFixed(6)));
+      }
+      normalized.add(row);
+    }
+    return normalized;
   }
 
   /// Găsește indexul valorii maxime
@@ -1011,32 +1035,54 @@ class CryptoMLService {
       avgProb['BUY'] = avgProb['BUY']! + (wp.prediction.probabilities['BUY']! * weight);
     }
 
-    // Find action with highest weighted probability
-    var finalAction = 'HOLD';
-    var maxProb = 0.0;
-    avgProb.forEach((action, prob) {
-      if (prob > maxProb) {
-        maxProb = prob;
-        finalAction = action;
-      }
-    });
+    // PATCH 1: Dynamic confidence cu micro-boost bazat pe ATR și volum
+    final sell = avgProb['SELL']!;
+    final hold = avgProb['HOLD']!;
+    final buy = avgProb['BUY']!;
 
-    // Weighted average confidence and signal strength
-    var avgConfidence = 0.0;
+    // Aplicăm micro-boost doar pentru BUY când ATR < 0.5% (piață calmă dar cu trend)
+    double microBoost = 0.0;
+    final atrPercent = (atr ?? 0.02) * 100; // Convert to percentage
+    final volPercent = (volumePercentile ?? 0.5) * 100;
+
+    if (atrPercent < 0.5 && volPercent > 90.0) {
+      // Market foarte calm cu lichiditate foarte mare → micro-boost
+      microBoost = 0.08 + (0.5 - atrPercent) * 0.2; // 8% → 10%
+      microBoost = microBoost.clamp(0.0, 0.10);
+    }
+
+    // Calculăm confidence-ul dinamic
+    var dynamicConfidence = buy + microBoost;
+    dynamicConfidence = dynamicConfidence.clamp(0.0, 1.0);
+
+    // Determinăm acțiunea bazată pe confidence dinamic
+    var finalAction = 'HOLD';
+    var finalConfidence = dynamicConfidence;
+
+    if (dynamicConfidence > 0.55) {
+      finalAction = 'BUY';
+    } else if (dynamicConfidence < 0.45) {
+      finalAction = 'SELL';
+      finalConfidence = sell;
+    } else {
+      finalAction = 'HOLD';
+      finalConfidence = hold;
+    }
+
+    // Weighted average signal strength
     var avgSignalStrength = 0.0;
     for (var i = 0; i < weightedPredictions.length; i++) {
       final wp = weightedPredictions[i];
       final weight = normalizedWeights[i];
-      avgConfidence += wp.prediction.confidence * weight;
       avgSignalStrength += wp.prediction.signalStrength * weight;
     }
 
     return CryptoPrediction(
       action: finalAction,
-      confidence: maxProb,
+      confidence: finalConfidence,
       probabilities: avgProb,
       signalStrength: avgSignalStrength,
-      modelAccuracy: avgConfidence,
+      modelAccuracy: finalConfidence, // Use final confidence as accuracy
       timestamp: DateTime.now(),
       isEnsemble: true,
       atr: atr,
