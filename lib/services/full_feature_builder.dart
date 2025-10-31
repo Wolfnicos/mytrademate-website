@@ -285,7 +285,6 @@ class FullFeatureBuilder {
     row.add(priceAboveSma200[i]);
     row.add(goldenCross[i]);
     row.add(deathCross[i]);
-    row.add(0.0); // Extra MA feature (was sma100 cross)
 
     // Trend indicators (73-76)
     row.add(higherHigh[i]);
