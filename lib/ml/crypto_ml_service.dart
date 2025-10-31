@@ -488,7 +488,11 @@ class CryptoMLService {
     }
 
     // STEP 4: Combine using WEIGHTED ENSEMBLE
-    final ensemble = getWeightedEnsemblePrediction(weightedPredictions);
+    final ensemble = getWeightedEnsemblePrediction(
+      weightedPredictions,
+      atr: volatility,
+      volumePercentile: volumePercentile,
+    );
 
     // ignore: avoid_print
     print('');
@@ -890,7 +894,11 @@ class CryptoMLService {
   }
 
   /// WEIGHTED ENSEMBLE - combines predictions with timeframe-based weights
-  CryptoPrediction getWeightedEnsemblePrediction(List<_WeightedPrediction> weightedPredictions) {
+  CryptoPrediction getWeightedEnsemblePrediction(
+    List<_WeightedPrediction> weightedPredictions, {
+    double? atr,
+    double? volumePercentile,
+  }) {
     if (weightedPredictions.isEmpty) {
       throw Exception('No predictions to ensemble');
     }
@@ -937,6 +945,8 @@ class CryptoMLService {
       modelAccuracy: avgConfidence,
       timestamp: DateTime.now(),
       isEnsemble: true,
+      atr: atr,
+      volumePercentile: volumePercentile,
     );
   }
 
