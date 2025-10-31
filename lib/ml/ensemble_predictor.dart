@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'crypto_ml_service.dart';
@@ -66,6 +67,14 @@ class EnsemblePredictor {
   /// Loads per-coin specialized models.
   /// Falls back gracefully if some models are missing.
   Future<void> loadModels() async {
+    // Skip ML initialization on Windows (TFLite not supported without manual setup)
+    if (Platform.isWindows) {
+      debugPrint('⚠️ ML disabled on Windows - TensorFlow Lite not available');
+      debugPrint('   Portfolio tracking, charts, and all other features will work normally');
+      _isLoaded = true; // Mark as loaded to prevent errors
+      return;
+    }
+
     debugPrint('🤖 Loading ensemble models...');
 
     // Legacy models commented out for potential future use
