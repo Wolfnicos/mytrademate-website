@@ -82,7 +82,7 @@ class _MLDebugScreenState extends State<MLDebugScreen> {
       result.writeln('Signal Strength: ${prediction.signalStrength.toStringAsFixed(1)}');
       result.writeln('Model Accuracy: ${(prediction.modelAccuracy * 100).toStringAsFixed(1)}%');
       if (prediction.atr != null) {
-        result.writeln('ATR: ${prediction.atr!.toStringAsFixed(2)}%');
+        result.writeln('ATR: ${(prediction.atr! * 100).toStringAsFixed(2)}%');
       }
       if (prediction.volumePercentile != null) {
         result.writeln('Volume Percentile: ${(prediction.volumePercentile! * 100).toStringAsFixed(1)}%');
