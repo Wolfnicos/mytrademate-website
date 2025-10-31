@@ -12,49 +12,79 @@ import 'candle_pattern_detector.dart';
 class FullFeatureBuilder {
   final _patternDetector = CandlePatternDetector();
 
-  /// Build complete 76-feature vector for 60 timesteps
+  /// Build complete 76-feature vector for 60 timesteps using SLIDING WINDOW
   /// Returns List<List<double>> of shape (60, 76)
-  /// Minimum 50 candles required (for new coins like WLFI with 54 days history)
+  ///
+  /// CRITICAL FIX: Each timestep uses a unique 60-candle window for feature calculation
+  /// - Timestep 0: uses candles[candles.length - 119 : candles.length - 59]
+  /// - Timestep 1: uses candles[candles.length - 118 : candles.length - 58]
+  /// - ...
+  /// - Timestep 59: uses candles[candles.length - 60 : candles.length]
+  ///
+  /// This ensures First row ≠ Last row and model sees temporal evolution, not static data.
   List<List<double>> buildFeatures({
     required List<Candle> candles,
   }) {
-    // Minimum 50 for sequence (WLFI has 54 days, TRUMP has more)
-    if (candles.length < 50) {
-      throw ArgumentError('Need at least 50 candles for sequence, got ${candles.length}');
-    }
+    const int lookback = 60; // Candles per window for feature calculation
+    const int timesteps = 60; // Output sequence length
+    const int minCandles = lookback + timesteps - 1; // 119
 
-    // Warning for coins with < 120 candles (SMA100 will be less accurate)
-    if (candles.length < 120) {
-      debugPrint('⚠️ Only ${candles.length} candles available (< 120). SMA100 and long-term indicators may be less accurate.');
+    if (candles.length < minCandles) {
+      throw ArgumentError('Need at least $minCandles candles for sliding window, got ${candles.length}');
     }
 
     // Sort by time ascending
     final sorted = List<Candle>.from(candles)..sort((a, b) => a.closeTime.compareTo(b.closeTime));
 
-    debugPrint('🔍 FullFeatureBuilder: Processing ${sorted.length} candles');
+    debugPrint('🔍 FullFeatureBuilder: Processing ${sorted.length} candles with SLIDING WINDOW');
+    debugPrint('   Each of $timesteps timesteps uses a unique $lookback-candle window');
 
-    // Extract OHLCV arrays - check for nulls
-    final opens = sorted.map((c) => c.open).toList();
-    final highs = sorted.map((c) => c.high).toList();
-    final lows = sorted.map((c) => c.low).toList();
-    final closes = sorted.map((c) => c.close).toList();
-    final volumes = sorted.map((c) => c.volume).toList();
+    final output = <List<double>>[];
 
-    debugPrint('🔍 FullFeatureBuilder: Extracted OHLCV (${opens.length} values each)');
+    // SLIDING WINDOW: Each timestep gets a unique 60-candle window
+    for (int t = 0; t < timesteps; t++) {
+      final windowEnd = sorted.length - timesteps + t;
+      final windowStart = windowEnd - lookback + 1;
+      final window = sorted.sublist(windowStart, windowEnd + 1);
 
-    final n = closes.length;
+      assert(window.length == lookback, 'Window size mismatch: expected $lookback, got ${window.length}');
 
-    debugPrint('🔍 FullFeatureBuilder: Detecting candle patterns...');
-    // === CANDLE PATTERNS (25 features, indices 0-24) ===
-    final patterns = _patternDetector.detectAllPatterns(
-      opens: opens,
-      highs: highs,
-      lows: lows,
-      closes: closes,
-      volumes: volumes,
-    );
+      // Calculate ALL 76 features using ONLY this window
+      final features = _extractFeaturesFromWindow(window);
 
-    debugPrint('🔍 FullFeatureBuilder: Detected ${patterns.length} patterns');
+      // DEBUG: Log first and last timestep
+      if (t == 0 || t == timesteps - 1) {
+        debugPrint('');
+        debugPrint('🔬 SLIDING WINDOW DEBUG | t=$t | window[$windowStart..$windowEnd]');
+        final closePrices = window.take(5).map((c) => c.close.toStringAsFixed(2)).join(', ');
+        debugPrint('   Close progression: [$closePrices...]');
+        final priceAction = features.sublist(25, 30).map((f) => f.toStringAsFixed(4)).join(', ');
+        debugPrint('   Features[25:30] (price action): [$priceAction]');
+        final patterns = features.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
+        debugPrint('   Features[0:6] (patterns): [$patterns]');
+      }
+
+      output.add(features);
+    }
+
+    debugPrint('🔍 FullFeatureBuilder: Generated ${output.length} timesteps × ${output.first.length} features');
+
+    return output;
+  }
+
+  /// Extract all 76 features from a single 60-candle window
+  /// This method is called once per timestep with a unique sliding window
+  /// Returns features for the LAST candle in the window (most recent state)
+  List<double> _extractFeaturesFromWindow(List<Candle> window) {
+    assert(window.length == 60, 'Window must have exactly 60 candles');
+
+    // Extract OHLCV arrays from window
+    final opens = window.map((c) => c.open).toList();
+    final highs = window.map((c) => c.high).toList();
+    final lows = window.map((c) => c.low).toList();
+    final closes = window.map((c) => c.close).toList();
+    final volumes = window.map((c) => c.volume).toList();
+    final n = closes.length; // 60
 
     // Pattern order MUST match Python exactly
     final patternOrder = [
@@ -67,7 +97,15 @@ class FullFeatureBuilder {
       'three_white_soldiers', 'three_black_crows', 'rising_three', 'falling_three'
     ];
 
-    // === PRICE ACTION (5 features, indices 25-29) ===
+    // === CALCULATE ALL INDICATORS OVER THIS WINDOW ===
+    final patterns = _patternDetector.detectAllPatterns(
+      opens: opens,
+      highs: highs,
+      lows: lows,
+      closes: closes,
+      volumes: volumes,
+    );
+
     final returns = _calculateReturns(closes);
     final logReturns = _calculateLogReturns(closes);
     final volatility = _calculateVolatility(returns);
@@ -77,12 +115,10 @@ class FullFeatureBuilder {
       (i) => (closes[i] - lows[i]) / ((highs[i] - lows[i]) + 1e-10),
     );
 
-    // === RSI (3 features, indices 30-32) ===
     final rsi = _calculateRSI(closes, 14);
     final rsiOversold = rsi.map((v) => v < 30 ? 1.0 : 0.0).toList();
     final rsiOverbought = rsi.map((v) => v > 70 ? 1.0 : 0.0).toList();
 
-    // === MACD (5 features, indices 33-37) ===
     final macdData = _calculateMACD(closes);
     final macdLine = macdData['macd']!;
     final macdSignal = macdData['signal']!;
@@ -96,7 +132,6 @@ class FullFeatureBuilder {
       return (macdLine[i] < macdSignal[i] && macdLine[i - 1] >= macdSignal[i - 1]) ? 1.0 : 0.0;
     });
 
-    // === BOLLINGER BANDS (6 features, indices 38-43) ===
     final bbData = _calculateBollingerBands(closes, 20, 2.0);
     final bbUpper = bbData['upper']!;
     final bbMiddle = bbData['middle']!;
@@ -108,22 +143,18 @@ class FullFeatureBuilder {
     );
     final bbSqueeze = bbWidth.map((v) => v < 0.1 ? 1.0 : 0.0).toList();
 
-    // === ATR (2 features, indices 44-45) ===
     final atr = _calculateATR(highs, lows, closes, 14);
     final atrPct = List<double>.generate(n, (i) => atr[i] / closes[i]);
 
-    // === ADX (2 features, indices 46-47) ===
     final adx = _calculateADX(highs, lows, closes, 14);
     final trending = adx.map((v) => v > 25 ? 1.0 : 0.0).toList();
 
-    // === STOCHASTIC (4 features, indices 48-51) ===
     final stochData = _calculateStochastic(highs, lows, closes, 14);
     final stochK = stochData['k']!;
     final stochD = stochData['d']!;
     final stochOversold = stochK.map((v) => v < 20 ? 1.0 : 0.0).toList();
     final stochOverbought = stochK.map((v) => v > 80 ? 1.0 : 0.0).toList();
 
-    // === ICHIMOKU (7 features, indices 52-58) ===
     final ichimoku = _calculateIchimoku(highs, lows, closes);
     final ichimokuTenkan = ichimoku['tenkan']!;
     final ichimokuKijun = ichimoku['kijun']!;
@@ -142,13 +173,11 @@ class FullFeatureBuilder {
       (i) => (closes[i] < ichimokuSenkouA[i] && closes[i] < ichimokuSenkouB[i]) ? 1.0 : 0.0,
     );
 
-    // === VOLUME METRICS (5 features, indices 59-63) ===
     final volSMA = _calculateSMA(volumes, 20);
     final volRatio = List<double>.generate(n, (i) => volumes[i] / (volSMA[i] + 1e-10));
     final obv = _calculateOBV(closes, volumes);
     final highVolume = volRatio.map((v) => v > 1.5 ? 1.0 : 0.0).toList();
 
-    // === MOVING AVERAGES (9 features, indices 64-72) ===
     final sma20 = _calculateSMA(closes, 20);
     final sma50 = _calculateSMA(closes, 50);
     final sma200 = _calculateSMA(closes, 200);
@@ -164,7 +193,6 @@ class FullFeatureBuilder {
       return (sma50[i] < sma200[i] && sma50[i - 1] >= sma200[i - 1]) ? 1.0 : 0.0;
     });
 
-    // === TREND INDICATORS (4 features, indices 73-76) ===
     final higherHigh = List<double>.generate(n, (i) {
       if (i == 0) return 0.0;
       return highs[i] > highs[i - 1] ? 1.0 : 0.0;
@@ -182,233 +210,95 @@ class FullFeatureBuilder {
       (i) => (closes[i] < sma20[i] && sma20[i] < sma50[i]) ? 1.0 : 0.0,
     );
 
-    // === BUILD 76-FEATURE ROWS FOR LAST 60 TIMESTEPS ===
-    final output = <List<double>>[];
-    final startIdx = n - 60;
+    // === BUILD FEATURE VECTOR FOR LAST CANDLE (index n-1) ===
+    final row = <double>[];
+    final i = n - 1; // Last candle in window (most recent state)
 
-    // If we don't have 60 candles, pad with first candle data or use what we have
-    if (startIdx < 0) {
-      debugPrint('⚠️ WARNING: Only $n candles available, need 60. Padding sequence with earliest data.');
-      // For coins with < 60 candles, take all available and pad at the beginning
-      final paddingNeeded = -startIdx;
-
-      // Pad with copies of the first candle's features
-      for (int p = 0; p < paddingNeeded; p++) {
-        final row = <double>[];
-        final firstIdx = 0;
-
-        // Candle patterns (0-24)
-        for (final patternName in patternOrder) {
-          row.add(patterns[patternName]![firstIdx]);
-        }
-
-        // Price action (25-29)
-        row.add(returns[firstIdx]);
-        row.add(logReturns[firstIdx]);
-        row.add(volatility[firstIdx]);
-        row.add(hlRange[firstIdx]);
-        row.add(closePosition[firstIdx]);
-
-        // RSI (30-32)
-        row.add(rsi[firstIdx]);
-        row.add(rsiOversold[firstIdx]);
-        row.add(rsiOverbought[firstIdx]);
-
-        // MACD (33-37)
-        row.add(macdLine[firstIdx]);
-        row.add(macdSignal[firstIdx]);
-        row.add(macdHistogram[firstIdx]);
-        row.add(macdCrossAbove[firstIdx]);
-        row.add(macdCrossBelow[firstIdx]);
-
-        // Bollinger Bands (38-43)
-        row.add(bbUpper[firstIdx]);
-        row.add(bbMiddle[firstIdx]);
-        row.add(bbLower[firstIdx]);
-        row.add(bbWidth[firstIdx]);
-        row.add(bbPosition[firstIdx]);
-        row.add(bbSqueeze[firstIdx]);
-
-        // ATR (44-45)
-        row.add(atr[firstIdx]);
-        row.add(atrPct[firstIdx]);
-
-        // ADX (46-47)
-        row.add(adx[firstIdx]);
-        row.add(trending[firstIdx]);
-
-        // Stochastic (48-51)
-        row.add(stochK[firstIdx]);
-        row.add(stochD[firstIdx]);
-        row.add(stochOversold[firstIdx]);
-        row.add(stochOverbought[firstIdx]);
-
-        // Ichimoku (52-58)
-        row.add(ichimokuTenkan[firstIdx]);
-        row.add(ichimokuKijun[firstIdx]);
-        row.add(ichimokuSenkouA[firstIdx]);
-        row.add(ichimokuSenkouB[firstIdx]);
-        row.add(ichimokuCloudGreen[firstIdx]);
-        row.add(ichimokuAboveCloud[firstIdx]);
-        row.add(ichimokuBelowCloud[firstIdx]);
-
-        // Volume (59-63)
-        row.add(volumes[firstIdx]);
-        row.add(volSMA[firstIdx]);
-        row.add(volRatio[firstIdx]);
-        row.add(obv[firstIdx]);
-        row.add(highVolume[firstIdx]);
-
-        // Moving averages (64-71)
-        row.add(sma20[firstIdx]);
-        row.add(sma50[firstIdx]);
-        row.add(sma200[firstIdx]);
-        row.add(priceAboveSma20[firstIdx]);
-        row.add(priceAboveSma50[firstIdx]);
-        row.add(priceAboveSma200[firstIdx]);
-        row.add(goldenCross[firstIdx]);
-        row.add(deathCross[firstIdx]);
-
-        // Trend (73-76)
-        row.add(higherHigh[firstIdx]);
-        row.add(lowerLow[firstIdx]);
-        row.add(uptrend[firstIdx]);
-        row.add(downtrend[firstIdx]);
-
-        output.add(row);
-      }
+    // Candle patterns (0-24)
+    for (final patternName in patternOrder) {
+      row.add(patterns[patternName]![i]);
     }
 
-    final actualStartIdx = startIdx < 0 ? 0 : startIdx;
+    // Price action (25-29)
+    row.add(returns[i]);
+    row.add(logReturns[i]);
+    row.add(volatility[i]);
+    row.add(hlRange[i]);
+    row.add(closePosition[i]);
 
-    for (int i = actualStartIdx; i < n; i++) {
-      final row = <double>[];
+    // RSI (30-32)
+    row.add(rsi[i]);
+    row.add(rsiOversold[i]);
+    row.add(rsiOverbought[i]);
 
-      // Candle patterns (0-24)
-      for (final patternName in patternOrder) {
-        row.add(patterns[patternName]![i]);
-      }
+    // MACD (33-37)
+    row.add(macdLine[i]);
+    row.add(macdSignal[i]);
+    row.add(macdHistogram[i]);
+    row.add(macdCrossAbove[i]);
+    row.add(macdCrossBelow[i]);
 
-      // Price action (25-29)
-      row.add(returns[i]);
-      row.add(logReturns[i]);
-      row.add(volatility[i]);
-      row.add(hlRange[i]);
-      row.add(closePosition[i]);
+    // Bollinger Bands (38-43)
+    row.add(bbUpper[i]);
+    row.add(bbMiddle[i]);
+    row.add(bbLower[i]);
+    row.add(bbWidth[i]);
+    row.add(bbPosition[i]);
+    row.add(bbSqueeze[i]);
 
-      // RSI (30-32)
-      row.add(rsi[i]);
-      row.add(rsiOversold[i]);
-      row.add(rsiOverbought[i]);
+    // ATR (44-45)
+    row.add(atr[i]);
+    row.add(atrPct[i]);
 
-      // MACD (33-37)
-      row.add(macdLine[i]);
-      row.add(macdSignal[i]);
-      row.add(macdHistogram[i]);
-      row.add(macdCrossAbove[i]);
-      row.add(macdCrossBelow[i]);
+    // ADX (46-47)
+    row.add(adx[i]);
+    row.add(trending[i]);
 
-      // Bollinger Bands (38-43)
-      row.add(bbUpper[i]);
-      row.add(bbMiddle[i]);
-      row.add(bbLower[i]);
-      row.add(bbWidth[i]);
-      row.add(bbPosition[i]);
-      row.add(bbSqueeze[i]);
+    // Stochastic (48-51)
+    row.add(stochK[i]);
+    row.add(stochD[i]);
+    row.add(stochOversold[i]);
+    row.add(stochOverbought[i]);
 
-      // ATR (44-45)
-      row.add(atr[i]);
-      row.add(atrPct[i]);
+    // Ichimoku (52-58)
+    row.add(ichimokuTenkan[i]);
+    row.add(ichimokuKijun[i]);
+    row.add(ichimokuSenkouA[i]);
+    row.add(ichimokuSenkouB[i]);
+    row.add(ichimokuCloudGreen[i]);
+    row.add(ichimokuAboveCloud[i]);
+    row.add(ichimokuBelowCloud[i]);
 
-      // ADX (46-47)
-      row.add(adx[i]);
-      row.add(trending[i]);
+    // Volume (59-63)
+    row.add(volumes[i]);
+    row.add(volSMA[i]);
+    row.add(volRatio[i]);
+    row.add(obv[i]);
+    row.add(highVolume[i]);
 
-      // Stochastic (48-51)
-      row.add(stochK[i]);
-      row.add(stochD[i]);
-      row.add(stochOversold[i]);
-      row.add(stochOverbought[i]);
+    // Moving Averages (64-72)
+    row.add(sma20[i]);
+    row.add(sma50[i]);
+    row.add(sma200[i]);
+    row.add(priceAboveSma20[i]);
+    row.add(priceAboveSma50[i]);
+    row.add(priceAboveSma200[i]);
+    row.add(goldenCross[i]);
+    row.add(deathCross[i]);
+    row.add(0.0); // Extra MA feature (was sma100 cross)
 
-      // Ichimoku (52-58)
-      row.add(ichimokuTenkan[i]);
-      row.add(ichimokuKijun[i]);
-      row.add(ichimokuSenkouA[i]);
-      row.add(ichimokuSenkouB[i]);
-      row.add(ichimokuCloudGreen[i]);
-      row.add(ichimokuAboveCloud[i]);
-      row.add(ichimokuBelowCloud[i]);
+    // Trend indicators (73-76)
+    row.add(higherHigh[i]);
+    row.add(lowerLow[i]);
+    row.add(uptrend[i]);
+    row.add(downtrend[i]);
 
-      // Volume (59-63)
-      row.add(volumes[i]);
-      row.add(volSMA[i]);
-      row.add(volRatio[i]);
-      row.add(obv[i]);
-      row.add(highVolume[i]);
+    // Sanitize: replace NaN/Inf with 0
+    final sanitized = row.map((v) => v.isFinite ? v : 0.0).toList();
 
-      // Moving Averages (64-72)
-      row.add(sma20[i]);
-      row.add(sma50[i]);
-      row.add(sma200[i]);
-      row.add(priceAboveSma20[i]);
-      row.add(priceAboveSma50[i]);
-      row.add(priceAboveSma200[i]);
-      row.add(goldenCross[i]);
-      row.add(deathCross[i]);
+    assert(sanitized.length == 76, 'Expected 76 features, got ${sanitized.length}');
 
-      // Trend indicators (73-75)
-      row.add(higherHigh[i]);
-      row.add(lowerLow[i]);
-      row.add(uptrend[i]);
-      row.add(downtrend[i]);
-
-      // DEBUG: Comprehensive analysis of feature values before sanitization
-      if (i == actualStartIdx) {
-        final nanCount = row.where((v) => !v.isFinite).length;
-        final zeroCount = row.where((v) => v == 0.0).length;
-        final nonZeroCount = row.where((v) => v.isFinite && v != 0.0).length;
-
-        debugPrint('');
-        debugPrint('🔬 FEATURE DEBUG (first row of 60):');
-        debugPrint('   Total features: ${row.length}');
-        debugPrint('   NaN/Inf: $nanCount');
-        debugPrint('   Zero: $zeroCount');
-        debugPrint('   Non-zero finite: $nonZeroCount');
-
-        // Show patterns (0-24)
-        final patterns = row.sublist(0, 25);
-        final patternNonZero = patterns.where((v) => v.isFinite && v != 0.0).length;
-        debugPrint('   Patterns [0-24]: $patternNonZero non-zero');
-
-        // Show price action (25-29)
-        debugPrint('   Price Action [25-29]: ${row.sublist(25, 30).map((v) => v.toStringAsFixed(4)).join(", ")}');
-
-        // Show RSI (30)
-        debugPrint('   RSI [30]: ${row[30].toStringAsFixed(4)}');
-
-        // Show MACD (31-34)
-        debugPrint('   MACD [31-34]: ${row.sublist(31, 35).map((v) => v.toStringAsFixed(4)).join(", ")}');
-
-        // Show Bollinger (35-37)
-        debugPrint('   Bollinger [35-37]: ${row.sublist(35, 38).map((v) => v.toStringAsFixed(4)).join(", ")}');
-
-        // List all NaN/Inf indices
-        if (nanCount > 0) {
-          final nanIndices = <int>[];
-          for (int j = 0; j < row.length; j++) {
-            if (!row[j].isFinite) nanIndices.add(j);
-          }
-          debugPrint('   NaN/Inf indices: $nanIndices');
-        }
-        debugPrint('');
-      }
-
-      // Sanitize: replace NaN/Inf with 0
-      final sanitized = row.map((v) => v.isFinite ? v : 0.0).toList();
-      output.add(sanitized);
-    }
-
-    return output;
+    return sanitized;
   }
 
   /// Deterministic training signature (features order + scalers + lookbacks)
