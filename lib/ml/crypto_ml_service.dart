@@ -732,14 +732,14 @@ class CryptoMLService {
       };
     }
 
-    final signalStrength = _calculateSignalStrength(probabilities);
+    final predictionEntropy = _calculateSignalStrength(probabilities);
     final accuracy = (metadata['test_accuracy'] as num?)?.toDouble() ?? 0.0;
 
     return CryptoPrediction(
       action: action,
       confidence: confidence,
       probabilities: probMap,
-      signalStrength: signalStrength,
+      signalStrength: predictionEntropy,
       modelAccuracy: accuracy,
       timestamp: DateTime.now(),
     );
