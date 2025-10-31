@@ -554,6 +554,7 @@ class CryptoMLService {
       atr: ensemble.atr,
       volumePercentile: ensemble.volumePercentile,
       isEnsemble: ensemble.isEnsemble,
+      decisionReason: decisionReason, // Pass decision reason from Phase 4
     );
 
     // ignore: avoid_print
@@ -594,7 +595,7 @@ class CryptoMLService {
       print('');
     }
 
-    // PHASE 4: Return prediction with market context (ATR + volume)
+    // PHASE 4: Return prediction with market context (ATR + volume + decision reason)
     return CryptoPrediction(
       action: ensemble.action,
       confidence: ensemble.confidence,
@@ -605,6 +606,7 @@ class CryptoMLService {
       isEnsemble: ensemble.isEnsemble,
       atr: volatility,
       volumePercentile: volumePercentile,
+      decisionReason: ensemble.decisionReason, // Already set in Phase 4
     );
   }
 
@@ -1133,6 +1135,7 @@ class CryptoPrediction {
   // PHASE 4: Market context for UI display
   final double? atr; // Average True Range (volatility)
   final double? volumePercentile; // 0.0-1.0 (market liquidity rank)
+  final String? decisionReason; // Reason for the final decision (Phase 4)
 
   CryptoPrediction({
     required this.action,
@@ -1144,6 +1147,7 @@ class CryptoPrediction {
     this.isEnsemble = false,
     this.atr,
     this.volumePercentile,
+    this.decisionReason,
   });
 
   bool get isStrongSignal => confidence > 0.70;

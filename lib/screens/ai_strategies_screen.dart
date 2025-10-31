@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -43,6 +44,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
   List<String> _availableCoins = [];
   // bool _loadingCoins = true;
 
+  // Auto-refresh timer (Phase 4 Quick Win)
+  Timer? _autoRefreshTimer;
+
   @override
   void initState() {
     super.initState();
@@ -53,10 +57,30 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     Future.delayed(const Duration(milliseconds: 500), _runInference);
     // Listen to quote currency changes
     AppSettingsService().addListener(_onQuoteCurrencyChanged);
+    // Start auto-refresh timer (30 seconds)
+    _startAutoRefresh();
+  }
+
+  /// Start auto-refresh timer to update predictions every 30 seconds
+  void _startAutoRefresh() {
+    _autoRefreshTimer?.cancel(); // Cancel existing timer if any
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      debugPrint('🔄 Auto-refresh triggered for $_selectedSymbol @ $_interval');
+      if (mounted && !_isRunningPrediction) {
+        _runInference();
+      }
+    });
+  }
+
+  /// Stop auto-refresh timer
+  void _stopAutoRefresh() {
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = null;
   }
 
   @override
   void dispose() {
+    _stopAutoRefresh(); // Cancel timer before disposing
     AppSettingsService().removeListener(_onQuoteCurrencyChanged);
     super.dispose();
   }
@@ -693,7 +717,47 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
               ),
             ),
           ],
-          
+
+          // Decision Reason (Phase 4)
+          if (prediction.decisionReason != null) ...[
+            const SizedBox(height: AppTheme.spacing16),
+            Container(
+              padding: const EdgeInsets.all(AppTheme.spacing12),
+              decoration: BoxDecoration(
+                color: (Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.glassWhite
+                    : Colors.grey[100]),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppTheme.glassBorder
+                      : Colors.grey[300]!,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.lightbulb_outline,
+                    size: 16,
+                    color: AppTheme.primary.withOpacity(0.8),
+                  ),
+                  const SizedBox(width: AppTheme.spacing8),
+                  Expanded(
+                    child: Text(
+                      prediction.decisionReason!,
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.textSecondary,
+                        fontStyle: FontStyle.italic,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           const SizedBox(height: AppTheme.spacing16),
           ElevatedButton.icon(
             onPressed: _runInference,
