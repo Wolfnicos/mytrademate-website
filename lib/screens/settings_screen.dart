@@ -143,6 +143,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  // AI Alerts Methods
+  Future<void> _toggleAIAlerts(bool value) async {
+    if (value) {
+      // Request notification permissions first
+      final granted = await LocalNotificationService.requestPermissions();
+      if (!granted) {
+        if (mounted) {
+          _showSnackBar('Notification permission denied', isError: true);
+        }
+        return;
+      }
+
+      // Start background monitoring
+      await BackgroundAIMonitor.startMonitoring(
+        frequency: const Duration(minutes: 30),
+      );
+
+      // Update coins from Binance if API connected
+      await UserCoinsService().updateCoinsFromBinance();
+
+      // Get updated coin count
+      final coins = await UserCoinsService().getUserCoins();
+
+      if (mounted) {
+        setState(() {
+          _aiAlertsEnabled = true;
+          _userCoinsCount = coins.length;
+        });
+        _showSnackBar('AI Alerts enabled - monitoring ${coins.length} coins', isError: false);
+      }
+    } else {
+      // Stop background monitoring
+      await BackgroundAIMonitor.stopMonitoring();
+
+      if (mounted) {
+        setState(() => _aiAlertsEnabled = false);
+        _showSnackBar('AI Alerts disabled', isError: false);
+      }
+    }
+  }
+
+  Future<void> _updateConfidenceThreshold(double value) async {
+    await BackgroundAIMonitor.setConfidenceThreshold(value);
+    setState(() => _confidenceThreshold = value);
+  }
+
+  Future<void> _updateAlertTimeframe(String? value) async {
+    if (value == null) return;
+    await BackgroundAIMonitor.setAlertTimeframe(value);
+    setState(() => _alertTimeframe = value);
+  }
+
   Future<void> _saveApiCredentials() async {
     final apiKey = _apiKeyController.text.trim();
     final apiSecret = _apiSecretController.text.trim();
@@ -285,6 +337,160 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
                     ),
                   ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: AppTheme.spacing24),
+
+          // AI Alerts Section
+          _buildSectionHeader('AI Opportunity Alerts', Icons.notifications_active),
+          GlassCard(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: Text('Enable AI Alerts', style: AppTheme.bodyLarge),
+                  subtitle: Text(
+                    _aiAlertsEnabled
+                        ? 'Monitoring $_userCoinsCount ${_coinsSource == "api" ? "portfolio" : "popular"} coins'
+                        : 'Get notified when AI detects opportunities',
+                    style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
+                  ),
+                  value: _aiAlertsEnabled,
+                  onChanged: _toggleAIAlerts,
+                  activeThumbColor: AppTheme.primary,
+                  secondary: Container(
+                    padding: const EdgeInsets.all(AppTheme.spacing8),
+                    decoration: BoxDecoration(
+                      color: _aiAlertsEnabled
+                          ? AppTheme.primary.withValues(alpha: 0.1)
+                          : AppTheme.holdYellow.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                    ),
+                    child: Icon(
+                      _aiAlertsEnabled ? Icons.notifications_active : Icons.notifications_off,
+                      color: _aiAlertsEnabled ? AppTheme.primary : AppTheme.holdYellow,
+                    ),
+                  ),
+                ),
+
+                // Expandable options when enabled
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  child: _aiAlertsEnabled
+                      ? Column(
+                          children: [
+                            const Divider(height: 1),
+                            Padding(
+                              padding: const EdgeInsets.all(AppTheme.spacing16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Confidence Threshold Slider
+                                  Text(
+                                    'Confidence Threshold',
+                                    style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  const SizedBox(height: AppTheme.spacing8),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Slider(
+                                          value: _confidenceThreshold,
+                                          min: 0.50,
+                                          max: 0.70,
+                                          divisions: 20,
+                                          label: '${(_confidenceThreshold * 100).toStringAsFixed(0)}%',
+                                          onChanged: _updateConfidenceThreshold,
+                                          activeColor: AppTheme.primary,
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AppTheme.spacing12,
+                                          vertical: AppTheme.spacing8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primary.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                                        ),
+                                        child: Text(
+                                          '${(_confidenceThreshold * 100).toStringAsFixed(0)}%',
+                                          style: AppTheme.bodyMedium.copyWith(
+                                            color: AppTheme.primary,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    'Alert when confidence exceeds this threshold',
+                                    style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
+                                  ),
+
+                                  const SizedBox(height: AppTheme.spacing20),
+
+                                  // Timeframe Dropdown
+                                  Text(
+                                    'Timeframe',
+                                    style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  const SizedBox(height: AppTheme.spacing8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacing12),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.glassWhite,
+                                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                                      border: Border.all(color: AppTheme.glassBorder),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: _alertTimeframe,
+                                        isExpanded: true,
+                                        items: const [
+                                          DropdownMenuItem(value: '15m', child: Text('15 Minutes')),
+                                          DropdownMenuItem(value: '1h', child: Text('1 Hour')),
+                                          DropdownMenuItem(value: '4h', child: Text('4 Hours (Recommended)')),
+                                        ],
+                                        onChanged: _updateAlertTimeframe,
+                                      ),
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: AppTheme.spacing20),
+
+                                  // Coins Info
+                                  Container(
+                                    padding: const EdgeInsets.all(AppTheme.spacing12),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primary.withValues(alpha: 0.05),
+                                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                                      border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.info_outline, color: AppTheme.primary, size: 20),
+                                        const SizedBox(width: AppTheme.spacing8),
+                                        Expanded(
+                                          child: Text(
+                                            _coinsSource == 'api'
+                                                ? 'Monitoring your portfolio coins from Binance API'
+                                                : 'Monitoring TOP 10 popular coins (connect Binance API to track your portfolio)',
+                                            style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      : const SizedBox.shrink(),
+                ),
               ],
             ),
           ),
