@@ -82,8 +82,8 @@ class EnsembleExample {
       print('🔮 Running ML ensemble prediction...');
       final prediction = await _mlService.getPrediction(
         coin: coin,
+        symbol: symbol, // Required parameter
         timeframe: timeframe,
-        priceData: candles, // Pass the candle data we just fetched
       );
 
       print('✅ Raw prediction: ${prediction.action} '

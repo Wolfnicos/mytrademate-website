@@ -234,12 +234,26 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       if (mounted) {
         // Check if error is due to insufficient historical data
         String userFriendlyError = e.toString();
-        if (userFriendlyError.contains('Insufficient') && userFriendlyError.contains('candles')) {
+
+        // Handle various "not enough data" errors
+        if ((userFriendlyError.contains('Insufficient') && userFriendlyError.contains('candles')) ||
+            (userFriendlyError.contains('Need at least') && userFriendlyError.contains('candles')) ||
+            userFriendlyError.contains('sliding window')) {
           // Extract coin name from symbol
           final coin = _selectedSymbol.replaceAll(RegExp(r'(USDT|EUR|USDC)$'), '');
-          userFriendlyError = '⏰ $coin is a new cryptocurrency with limited history.\n\n'
-              '📊 For $_interval predictions, we need at least 120 days of data.\n\n'
-              '💡 Try a shorter timeframe (15m, 1h, or 4h) for newer coins.';
+
+          // Friendly message for new coins with limited history
+          if (_interval == '1d') {
+            userFriendlyError = '🪙 $coin is a new cryptocurrency!\n\n'
+                '📊 Daily (1D) predictions need at least 4 months of data.\n\n'
+                '✅ Try a shorter timeframe:\n'
+                '   • 4H (most recommended)\n'
+                '   • 1H or 15M (for scalping)';
+          } else {
+            userFriendlyError = '⏰ $coin is a new cryptocurrency with limited history.\n\n'
+                '📊 For $_interval predictions, we need more historical data.\n\n'
+                '💡 Try a shorter timeframe (15m, 1h, or 4h) for newer coins.';
+          }
         }
         setState(() {
           _predictionError = userFriendlyError;
@@ -282,7 +296,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                   Text(
                     'AI Prediction',
                     style: AppTheme.displayLarge.copyWith(
-                      color: Theme.of(context).colorScheme.onBackground,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   Icon(
@@ -320,9 +334,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
               // Risk Disclaimer
               Container(
                 decoration: BoxDecoration(
-                  color: colors.surfaceVariant.withOpacity(0.6),
+                  color: colors.surfaceContainerHighest.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-                  border: Border.all(color: colors.outlineVariant.withOpacity(0.5)),
+                  border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.5)),
                 ),
                 child: const RiskDisclaimer(),
               ),
@@ -503,9 +517,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                   Container(
                     padding: const EdgeInsets.all(AppTheme.spacing12),
                     decoration: BoxDecoration(
-                      color: AppTheme.warning.withOpacity(0.1),
+                      color: AppTheme.warning.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                      border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
+                      border: Border.all(color: AppTheme.warning.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
@@ -617,7 +631,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: signalColor.withOpacity(0.2),
+              color: signalColor.withValues(alpha: 0.2),
               shape: BoxShape.circle,
               border: Border.all(color: signalColor, width: 2),
             ),
@@ -740,7 +754,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                   Icon(
                     Icons.lightbulb_outline,
                     size: 16,
-                    color: AppTheme.primary.withOpacity(0.8),
+                    color: AppTheme.primary.withValues(alpha: 0.8),
                   ),
                   const SizedBox(width: AppTheme.spacing8),
                   Expanded(
@@ -841,7 +855,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.success.withOpacity(0.5),
+                        color: AppTheme.success.withValues(alpha: 0.5),
                         blurRadius: 4,
                         spreadRadius: 1,
                       ),
@@ -877,9 +891,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                 vertical: AppTheme.spacing4,
               ),
               decoration: BoxDecoration(
-                color: atrTrendColor!.withOpacity(0.15),
+                color: atrTrendColor!.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                border: Border.all(color: atrTrendColor.withOpacity(0.3)),
+                border: Border.all(color: atrTrendColor.withValues(alpha: 0.3)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -933,9 +947,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         vertical: AppTheme.spacing4,
       ),
       decoration: BoxDecoration(
-        color: activityColor.withOpacity(0.15),
+        color: activityColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-        border: Border.all(color: activityColor.withOpacity(0.3)),
+        border: Border.all(color: activityColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1017,7 +1031,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     // Parse value to get numeric part
     String displayLabel = value;
     Color color = AppTheme.textSecondary;
-    Color bgColor = Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5);
+    Color bgColor = Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5);
     
     // For Volatility badge
     if (label == 'Volatility') {
@@ -1025,19 +1039,19 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       if (atrValue >= 4.0) {
         displayLabel = 'High ($value)';
         color = AppTheme.sellRed;
-        bgColor = AppTheme.sellRed.withOpacity(0.15);
+        bgColor = AppTheme.sellRed.withValues(alpha: 0.15);
       } else if (atrValue >= 2.5) {
         displayLabel = 'Elevated ($value)';
         color = const Color(0xFFFF9500);
-        bgColor = const Color(0xFFFF9500).withOpacity(0.15);
+        bgColor = const Color(0xFFFF9500).withValues(alpha: 0.15);
       } else if (atrValue >= 1.5) {
         displayLabel = 'Normal ($value)';
         color = Colors.blue;
-        bgColor = Colors.blue.withOpacity(0.15);
+        bgColor = Colors.blue.withValues(alpha: 0.15);
       } else {
         displayLabel = 'Calm ($value)';
         color = AppTheme.success;
-        bgColor = AppTheme.success.withOpacity(0.15);
+        bgColor = AppTheme.success.withValues(alpha: 0.15);
       }
     }
     // For Liquidity badge
@@ -1046,19 +1060,19 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       if (volValue >= 70) {
         displayLabel = 'High ($value)';
         color = AppTheme.success;
-        bgColor = AppTheme.success.withOpacity(0.15);
+        bgColor = AppTheme.success.withValues(alpha: 0.15);
       } else if (volValue >= 40) {
         displayLabel = 'Medium ($value)';
         color = Colors.blue;
-        bgColor = Colors.blue.withOpacity(0.15);
+        bgColor = Colors.blue.withValues(alpha: 0.15);
       } else if (volValue >= 15) {
         displayLabel = 'Low ($value)';
         color = AppTheme.textSecondary;
-        bgColor = Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5);
+        bgColor = Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5);
       } else {
         displayLabel = 'Very Low ($value)';
         color = AppTheme.textSecondary;
-        bgColor = Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5);
+        bgColor = Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5);
       }
     }
     
@@ -1068,7 +1082,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
         boxShadow: AppTheme.glassShadow,
       ),
       textStyle: AppTheme.bodySmall.copyWith(color: AppTheme.textPrimary),
@@ -1082,7 +1096,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           color: bgColor,
           borderRadius: BorderRadius.circular(AppTheme.radiusSM),
           border: Border.all(
-            color: color.withOpacity(0.3),
+            color: color.withValues(alpha: 0.3),
           ),
         ),
         child: Row(
@@ -1092,7 +1106,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
             const SizedBox(width: AppTheme.spacing4),
             Text(
               '$label: ',
-              style: AppTheme.bodySmall.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+              style: AppTheme.bodySmall.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
             ),
             Text(
               displayLabel,
@@ -1107,293 +1121,6 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     );
   }
 
-  /// REMOVED - Old long-term function, now using unified style
-  Widget _buildLongTermPrediction_REMOVED() {
-    final prediction = _lastPrediction!;
-
-    // Use the actual action from prediction (BUY/SELL/HOLD)
-    final action = prediction.action;
-
-    // Get colors and gradients based on action
-    Color trendColor;
-    Gradient trendGradient;
-    IconData trendIcon;
-
-    if (action == 'BUY') {
-      trendColor = AppTheme.buyGreen;
-      trendGradient = AppTheme.buyGradient;
-      trendIcon = Icons.north;
-    } else if (action == 'SELL') {
-      trendColor = AppTheme.sellRed;
-      trendGradient = AppTheme.sellGradient;
-      trendIcon = Icons.south;
-    } else {
-      // HOLD
-      trendColor = const Color(0xFFFF9500);
-      trendGradient = const LinearGradient(
-        colors: [Color(0xFFFF9500), Color(0xFFFF7A00)],
-      );
-      trendIcon = Icons.drag_handle;
-    }
-
-    final confidence = prediction.confidence;
-
-    return GlassCard(
-      child: Column(
-        children: [
-          // Title
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.show_chart, color: AppTheme.textSecondary, size: 20),
-              const SizedBox(width: AppTheme.spacing8),
-              Text(
-                'Long-term Trend',
-                style: AppTheme.headingMedium.copyWith(color: AppTheme.textSecondary),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: AppTheme.spacing24),
-
-          // Large Arrow Icon with premium design
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              gradient: trendGradient,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: trendColor.withOpacity(0.3),
-                  blurRadius: 20,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-            child: Icon(
-              trendIcon,
-              color: Colors.white,
-              size: 64,
-            ),
-          ),
-
-          const SizedBox(height: AppTheme.spacing24),
-
-          // Trend Label
-          Text(
-            action.toUpperCase(),
-            style: AppTheme.displayLarge.copyWith(
-              color: trendColor,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 2,
-            ),
-          ),
-
-          const SizedBox(height: AppTheme.spacing12),
-
-          // Confidence Badge
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppTheme.spacing16,
-              vertical: AppTheme.spacing12,
-            ),
-            decoration: BoxDecoration(
-              gradient: trendGradient,
-              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-              boxShadow: [
-                BoxShadow(
-                  color: trendColor.withOpacity(0.2),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.analytics, color: Colors.white, size: 18),
-                const SizedBox(width: AppTheme.spacing8),
-                Flexible(
-                  child: Text(
-                    '${(confidence * 100).toStringAsFixed(1)}% Confidence',
-                    style: AppTheme.headingMedium.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: AppTheme.spacing20),
-
-          // Signal Description (why BUY/HOLD/SELL)
-          Container(
-            padding: const EdgeInsets.all(AppTheme.spacing16),
-            decoration: BoxDecoration(
-              color: trendColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-              border: Border.all(color: trendColor.withOpacity(0.3), width: 2),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.lightbulb_outline, color: trendColor, size: 20),
-                    const SizedBox(width: AppTheme.spacing8),
-                    Text(
-                      'Market Analysis',
-                      style: AppTheme.headingSmall.copyWith(
-                        color: trendColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppTheme.spacing12),
-                Text(
-                  action == 'BUY'
-                      ? 'Technical analysis shows bullish momentum across multiple timeframes. Indicators display oversold recovery, MACD golden cross pattern, and increasing volume. Pattern suggests potential accumulation phase with higher lows forming.'
-                      : action == 'SELL'
-                          ? 'Technical analysis shows bearish momentum with weakening support levels. RSI displaying overbought conditions, negative MACD divergence, and declining volume patterns. Lower highs pattern suggests potential distribution phase.'
-                          : 'Market analysis shows neutral conditions with consolidation pattern. Mixed signals from technical indicators. Range-bound movement suggests monitoring for clearer directional confirmation.',
-                  style: AppTheme.bodyMedium.copyWith(
-                    color: AppTheme.textPrimary,
-                    height: 1.6,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: AppTheme.spacing20),
-
-          // Probabilities
-          Container(
-            padding: const EdgeInsets.all(AppTheme.spacing16),
-            decoration: BoxDecoration(
-              color: AppTheme.glassWhite,
-              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-              border: Border.all(color: AppTheme.glassBorder),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Column(
-                  children: [
-                    Icon(Icons.south, color: AppTheme.sellRed, size: 24),
-                    const SizedBox(height: AppTheme.spacing4),
-                    Text(
-                      'BEARISH',
-                      style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
-                    ),
-                    Text(
-                      '${((prediction.probabilities['SELL'] ?? 0.0) * 100).toStringAsFixed(1)}%',
-                      style: AppTheme.headingMedium.copyWith(
-                        color: AppTheme.sellRed,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                Container(
-                  width: 1,
-                  height: 60,
-                  color: AppTheme.glassBorder,
-                ),
-                Column(
-                  children: [
-                    Icon(Icons.drag_handle, color: const Color(0xFFFF9500), size: 24),
-                    const SizedBox(height: AppTheme.spacing4),
-                    Text(
-                      'NEUTRAL',
-                      style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
-                    ),
-                    Text(
-                      '${((prediction.probabilities['HOLD'] ?? 0.0) * 100).toStringAsFixed(1)}%',
-                      style: AppTheme.headingMedium.copyWith(
-                        color: const Color(0xFFFF9500),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                Container(
-                  width: 1,
-                  height: 60,
-                  color: AppTheme.glassBorder,
-                ),
-                Column(
-                  children: [
-                    Icon(Icons.north, color: AppTheme.buyGreen, size: 24),
-                    const SizedBox(height: AppTheme.spacing4),
-                    Text(
-                      'BULLISH',
-                      style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
-                    ),
-                    Text(
-                      '${((prediction.probabilities['BUY'] ?? 0.0) * 100).toStringAsFixed(1)}%',
-                      style: AppTheme.headingMedium.copyWith(
-                        color: AppTheme.buyGreen,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: AppTheme.spacing20),
-
-          // Timeframe Info
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppTheme.spacing12,
-              vertical: AppTheme.spacing8,
-            ),
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-              border: Border.all(color: AppTheme.glassBorder),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.schedule, color: AppTheme.textTertiary, size: 16),
-                const SizedBox(width: AppTheme.spacing8),
-                Text(
-                  '1-Day Forecast',
-                  style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: AppTheme.spacing16),
-
-          // Refresh Button
-          ElevatedButton.icon(
-            onPressed: _runInference,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Refresh Prediction'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppTheme.spacing20,
-                vertical: AppTheme.spacing12,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildModelContributions() {
     final prediction = _lastPrediction!;
@@ -1407,27 +1134,26 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     final neutralProb = prediction.probabilities['HOLD'] ?? 0.0;
     final bullishProb = prediction.probabilities['BUY'] ?? 0.0;
 
+    // FIXED: Use overall confidence (not individual probability)
+    final overallConfidence = prediction.confidence;
+
     String signalLabel;
-    double signalProb;
     Color signalColor;
     IconData signalIcon;
     String signalDescription;
 
     if (isBullish) {
       signalLabel = 'Bullish Momentum';
-      signalProb = bullishProb;
       signalColor = AppTheme.buyGreen;
       signalIcon = Icons.trending_up;
-      signalDescription = 'Technical analysis shows positive momentum. RSI recovery, MACD golden cross pattern, and volume increase observed. Multiple indicators suggest potential upward movement.';
+      signalDescription = _buildBullishExplanation(bullishProb, bearishProb, neutralProb, overallConfidence);
     } else if (isBearish) {
       signalLabel = 'Bearish Momentum';
-      signalProb = bearishProb;
       signalColor = AppTheme.sellRed;
       signalIcon = Icons.trending_down;
-      signalDescription = 'Technical analysis shows negative momentum. RSI divergence, MACD downturn, and volume decline observed. Indicators suggest potential downward pressure.';
+      signalDescription = _buildBearishExplanation(bearishProb, bullishProb, neutralProb, overallConfidence);
     } else {
       signalLabel = 'Neutral Market';
-      signalProb = neutralProb;
       signalColor = AppTheme.holdYellow;
       signalIcon = Icons.pause;
       // PHASE 4: Dynamic HOLD explanation based on coin + ATR + volume
@@ -1461,10 +1187,10 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           ),
           const SizedBox(height: AppTheme.spacing20),
 
-          // Show only the active signal
+          // Show only the active signal with OVERALL CONFIDENCE
           _buildSignalCard(
             signalLabel,
-            signalProb,
+            overallConfidence, // FIXED: Use overall confidence
             signalColor,
             signalIcon,
             signalDescription,
@@ -1474,14 +1200,38 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     );
   }
 
+  /// Build explanation for BULLISH signal with probability breakdown
+  String _buildBullishExplanation(double bullishProb, double bearishProb, double neutralProb, double confidence) {
+    final buffer = StringBuffer();
+    buffer.write('Technical analysis shows positive momentum. ');
+    buffer.write('AI model assigns ${(bullishProb * 100).toStringAsFixed(1)}% bullish, ');
+    buffer.write('${(bearishProb * 100).toStringAsFixed(1)}% bearish, ');
+    buffer.write('${(neutralProb * 100).toStringAsFixed(1)}% neutral probability. ');
+    buffer.write('After analyzing RSI recovery, MACD golden cross pattern, volume trends, and ${(76 - 3)} other indicators, ');
+    buffer.write('the model reaches ${(confidence * 100).toStringAsFixed(1)}% confidence in this bullish signal.');
+    return buffer.toString();
+  }
+
+  /// Build explanation for BEARISH signal with probability breakdown
+  String _buildBearishExplanation(double bearishProb, double bullishProb, double neutralProb, double confidence) {
+    final buffer = StringBuffer();
+    buffer.write('Technical analysis shows negative momentum. ');
+    buffer.write('AI model assigns ${(bearishProb * 100).toStringAsFixed(1)}% bearish, ');
+    buffer.write('${(bullishProb * 100).toStringAsFixed(1)}% bullish, ');
+    buffer.write('${(neutralProb * 100).toStringAsFixed(1)}% neutral probability. ');
+    buffer.write('After analyzing RSI divergence, MACD downturn, volume decline, and ${(76 - 3)} other indicators, ');
+    buffer.write('the model reaches ${(confidence * 100).toStringAsFixed(1)}% confidence in this bearish signal.');
+    return buffer.toString();
+  }
+
   Widget _buildSignalCard(String label, double probability, Color color, IconData icon, String description) {
     return Container(
       padding: const EdgeInsets.all(AppTheme.spacing12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
         border: Border.all(
-          color: color.withOpacity(0.3),
+          color: color.withValues(alpha: 0.3),
           width: 1.5,
         ),
       ),
@@ -1590,9 +1340,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           Container(
             padding: const EdgeInsets.all(AppTheme.spacing12),
             decoration: BoxDecoration(
-              color: signalColor.withOpacity(0.1),
+              color: signalColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-              border: Border.all(color: signalColor.withOpacity(0.3)),
+              border: Border.all(color: signalColor.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: [
@@ -1623,8 +1373,8 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              AppTheme.primary.withOpacity(0.1),
-              AppTheme.secondary.withOpacity(0.1),
+              AppTheme.primary.withValues(alpha: 0.1),
+              AppTheme.secondary.withValues(alpha: 0.1),
             ],
           ),
           borderRadius: BorderRadius.circular(AppTheme.radiusMD),

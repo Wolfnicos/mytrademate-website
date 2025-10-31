@@ -30,13 +30,13 @@ class CryptoMLService {
   // PHASE 3 PILOT: Feature flag for gradual rollout
   static const Set<String> _phase3EnabledCoins = {'BTC', 'ETH', 'BNB', 'SOL', 'WLFI', 'TRUMP'};
   static const Set<String> _phase3EnabledTimeframes = {'5m', '15m', '1h', '4h'};
-  
+
   // PHASE 3 PILOT: Exclusions (WLFI@1d has insufficient history)
   static bool _isPhase3Enabled(String coin, String timeframe) {
     if (coin.toUpperCase() == 'WLFI' && timeframe == '1d') {
       return false; // WLFI doesn't have enough 1d history
     }
-    return _phase3EnabledCoins.contains(coin.toUpperCase()) && 
+    return _phase3EnabledCoins.contains(coin.toUpperCase()) &&
            _phase3EnabledTimeframes.contains(timeframe);
   }
 
