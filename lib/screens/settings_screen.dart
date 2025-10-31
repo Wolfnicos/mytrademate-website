@@ -90,7 +90,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final authenticated = await _localAuth.authenticate(
           localizedReason: 'Enable biometric authentication',
           options: const AuthenticationOptions(
-            biometricOnly: true,
+            biometricOnly: false, // Allow PIN/password fallback on Android
             stickyAuth: true,
           ),
         );
@@ -98,17 +98,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (authenticated) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setBool('biometric_enabled', true);
-          setState(() => _biometricEnabled = true);
-          _showSnackBar('Biometric authentication enabled', isError: false);
+          if (mounted) {
+            setState(() => _biometricEnabled = true);
+            _showSnackBar('Biometric authentication enabled', isError: false);
+          }
         }
       } catch (e) {
-        _showSnackBar('Error enabling authentication: $e', isError: true);
+        debugPrint('Biometric authentication error: $e');
+        if (mounted) {
+          _showSnackBar('Failed to enable biometric authentication', isError: true);
+        }
       }
     } else {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('biometric_enabled', false);
-      setState(() => _biometricEnabled = false);
-      _showSnackBar('Biometric authentication disabled', isError: false);
+      if (mounted) {
+        setState(() => _biometricEnabled = false);
+        _showSnackBar('Biometric authentication disabled', isError: false);
+      }
     }
   }
 
@@ -223,7 +230,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   SwitchListTile(
                     title: Text('Biometric Authentication', style: AppTheme.bodyLarge),
                     subtitle: Text(
-                      'Lock app with Face ID / Fingerprint',
+                      'Lock app with fingerprint or face unlock',
                       style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
                     ),
                     value: _biometricEnabled,

@@ -23,10 +23,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Show trial dialog after build completes (if needed)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeShowTrialDialog();
-    });
+    // DISABLED: Trial dialog not used in Portfolio Lite edition
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _maybeShowTrialDialog();
+    // });
     // Listen to quote currency changes and rebuild all tiles
     AppSettingsService().addListener(_onSettingsChanged);
   }
