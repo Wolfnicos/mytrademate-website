@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
+import '../services/user_coins_service.dart';
 import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
@@ -692,18 +693,44 @@ class PnLTodaySection extends StatefulWidget {
 
 class _PnLTodaySectionState extends State<PnLTodaySection> {
   final BinanceService _binance = BinanceService();
-  Map<String, double>? _btc;
-  Map<String, double>? _eth;
-  Map<String, double>? _bnb;
-  Map<String, double>? _sol;
-  Map<String, double>? _wif;
-  Map<String, double>? _trump;
+  List<String> _userCoins = []; // Dynamic coins from UserCoinsService
+  Map<String, Map<String, double>> _tickers = {}; // Coin -> ticker data
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _refresh();
+    debugPrint('📍 Dashboard: initState() - adding UserCoinsService listener');
+    _loadUserCoinsAndRefresh();
+
+    // Listen to UserCoinsService changes (when API added/removed in Settings)
+    UserCoinsService().addListener(_onCoinsChanged);
+    debugPrint('✅ Dashboard: UserCoinsService listener added');
+  }
+
+  @override
+  void dispose() {
+    // Remove listener to prevent memory leaks
+    UserCoinsService().removeListener(_onCoinsChanged);
+    super.dispose();
+  }
+
+  /// Called when UserCoinsService notifies that coins changed
+  void _onCoinsChanged() {
+    debugPrint('📢 Dashboard: Coins changed, reloading...');
+    _loadUserCoinsAndRefresh();
+  }
+
+  Future<void> _loadUserCoinsAndRefresh() async {
+    // Clear cache to get fresh coins (in case API was added/removed)
+    UserCoinsService().clearCache();
+
+    // Load user coins first
+    final coins = await UserCoinsService().getUserCoins();
+    if (mounted) {
+      setState(() => _userCoins = coins);
+      _refresh();
+    }
   }
 
   Future<void> _refresh() async {
@@ -711,13 +738,20 @@ class _PnLTodaySectionState extends State<PnLTodaySection> {
     try {
       final quote = AppSettingsService().quoteCurrency.toUpperCase();
 
-      // Use fallback lists for all coins to support EUR, USD, USDT, USDC
-      _btc = await _binance.fetchTicker24hWithFallback(['BTC$quote', 'BTCUSDT', 'BTCEUR', 'BTCUSDC']);
-      _eth = await _binance.fetchTicker24hWithFallback(['ETH$quote', 'ETHUSDT', 'ETHEUR', 'ETHUSDC']);
-      _bnb = await _binance.fetchTicker24hWithFallback(['BNB$quote', 'BNBUSDT', 'BNBEUR', 'BNBUSDC']);
-      _sol = await _binance.fetchTicker24hWithFallback(['SOL$quote', 'SOLUSDT', 'SOLEUR', 'SOLUSDC']);
-      _wif = await _binance.fetchTicker24hWithFallback(['WLFI$quote', 'WLFIUSDT', 'WLFIEUR', 'WLFIUSDC']);
-      _trump = await _binance.fetchTicker24hWithFallback(['TRUMP$quote', 'TRUMPUSDT', 'DJTUSDT']);
+      // Fetch tickers for all user coins dynamically
+      for (final coin in _userCoins) {
+        try {
+          final ticker = await _binance.fetchTicker24hWithFallback([
+            '$coin$quote',
+            '${coin}USDT',
+            '${coin}EUR',
+            '${coin}USDC',
+          ]);
+          _tickers[coin] = ticker;
+        } catch (e) {
+          print('Dashboard: Error fetching $coin: $e');
+        }
+      }
     } catch (e) {
       print('Dashboard: Error fetching market data: $e');
     }
@@ -772,7 +806,7 @@ class _PnLTodaySectionState extends State<PnLTodaySection> {
 
           const SizedBox(height: AppTheme.spacing16),
 
-          // Coin list
+          // Coin list - dynamically display all coins from UserCoinsService
           if (_isLoading)
             const Center(
               child: Padding(
@@ -780,39 +814,29 @@ class _PnLTodaySectionState extends State<PnLTodaySection> {
                 child: CircularProgressIndicator(),
               ),
             )
-          else ...[
-            if (_btc != null) ...[
-              _buildPnLRow('BTC', _btc),
-              if (_eth != null || _bnb != null || _sol != null || _wif != null || _trump != null) _buildDivider(),
-            ],
-            if (_eth != null) ...[
-              _buildPnLRow('ETH', _eth),
-              if (_bnb != null || _sol != null || _wif != null || _trump != null) _buildDivider(),
-            ],
-            if (_bnb != null) ...[
-              _buildPnLRow('BNB', _bnb),
-              if (_sol != null || _wif != null || _trump != null) _buildDivider(),
-            ],
-            if (_sol != null) ...[
-              _buildPnLRow('SOL', _sol),
-              if (_wif != null || _trump != null) _buildDivider(),
-            ],
-            if (_wif != null) ...[
-              _buildPnLRow('WLFI', _wif),
-              if (_trump != null) _buildDivider(),
-            ],
-            if (_trump != null) _buildPnLRow('TRUMP', _trump),
-            if (_btc == null && _eth == null && _bnb == null && _sol == null && _wif == null && _trump == null)
-              Padding(
-                padding: const EdgeInsets.all(AppTheme.spacing20),
-                child: Center(
-                  child: Text(
-                    'No market data available',
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.textTertiary),
-                  ),
+          else if (_tickers.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(AppTheme.spacing20),
+              child: Center(
+                child: Text(
+                  'No market data available',
+                  style: AppTheme.bodyMedium.copyWith(color: AppTheme.textTertiary),
                 ),
               ),
-          ],
+            )
+          else
+            ...() {
+              final entries = _tickers.entries.toList();
+              final widgets = <Widget>[];
+              for (var i = 0; i < entries.length; i++) {
+                final entry = entries[i];
+                widgets.add(_buildPnLRow(entry.key, entry.value));
+                if (i < entries.length - 1) {
+                  widgets.add(_buildDivider());
+                }
+              }
+              return widgets;
+            }(),
         ],
       ),
     );

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 // Services
 import '../services/app_settings_service.dart';
 import '../services/binance_service.dart';
+import '../services/user_coins_service.dart';
 
 // ML
 import '../ml/crypto_ml_service.dart';
@@ -50,6 +51,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
   @override
   void initState() {
     super.initState();
+    debugPrint('📍 Insight: initState() - adding UserCoinsService listener');
     final quote = AppSettingsService().quoteCurrency.toUpperCase();
     _selectedSymbol = 'BTC$quote';
     _loadAvailableCoins();
@@ -57,8 +59,17 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     Future.delayed(const Duration(milliseconds: 500), _runInference);
     // Listen to quote currency changes
     AppSettingsService().addListener(_onQuoteCurrencyChanged);
+    // Listen to UserCoinsService changes (when API added/removed in Settings)
+    UserCoinsService().addListener(_onCoinsChanged);
+    debugPrint('✅ Insight: UserCoinsService listener added');
     // Start auto-refresh timer (30 seconds)
     _startAutoRefresh();
+  }
+
+  /// Called when UserCoinsService notifies that coins changed
+  void _onCoinsChanged() {
+    debugPrint('📢 Insight: Coins changed, reloading...');
+    _loadAvailableCoins();
   }
 
   /// Start auto-refresh timer to update predictions every 30 seconds
@@ -82,6 +93,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
   void dispose() {
     _stopAutoRefresh(); // Cancel timer before disposing
     AppSettingsService().removeListener(_onQuoteCurrencyChanged);
+    UserCoinsService().removeListener(_onCoinsChanged);
     super.dispose();
   }
 
@@ -148,9 +160,10 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         }
       }
 
-      // If no holdings, use default coins
+      // If no holdings, use UserCoinsService (TOP 10 default or API coins)
       if (coins.isEmpty) {
-        coins.addAll(['BTC', 'ETH', 'BNB', 'SOL', 'WLFI', 'TRUMP'].map((b) => '$b$quote'));
+        final userCoins = await UserCoinsService().getUserCoins();
+        coins.addAll(userCoins.map((b) => '$b$quote'));
       }
 
       if (mounted) {
@@ -164,11 +177,12 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       }
     } catch (e) {
       debugPrint('Error loading coins: $e');
-      // Fall back to default coins
+      // Fall back to UserCoinsService (TOP 10 default or API coins)
       final quote = AppSettingsService().quoteCurrency.toUpperCase();
+      final userCoins = await UserCoinsService().getUserCoins();
       if (mounted) {
         setState(() {
-          _availableCoins = ['BTC', 'ETH', 'BNB', 'SOL', 'WLFI', 'TRUMP'].map((b) => '$b$quote').toList();
+          _availableCoins = userCoins.map((b) => '$b$quote').toList();
           // Ensure selected symbol is in the list
           if (!_availableCoins.contains(_selectedSymbol) && _availableCoins.isNotEmpty) {
             _selectedSymbol = _availableCoins.first;
@@ -265,9 +279,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
 
   List<String> _buildPairs() {
     if (_availableCoins.isEmpty) {
-      // Fallback while loading
+      // Fallback while loading - use TOP 10 from UserCoinsService
       final q = AppSettingsService().quoteCurrency.toUpperCase();
-      return ['BTC', 'ETH', 'BNB', 'SOL', 'WLFI', 'TRUMP'].map((b) => '$b$q').toList();
+      return UserCoinsService.defaultCoins.map((b) => '$b$q').toList();
     }
     return _availableCoins;
   }

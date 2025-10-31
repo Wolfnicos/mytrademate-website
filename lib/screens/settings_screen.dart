@@ -206,6 +206,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       await _binanceService.saveCredentials(apiKey, apiSecret);
+
+      // Update coins from Binance portfolio
+      await UserCoinsService().updateCoinsFromBinance();
+
       _showSnackBar('Credentials saved successfully', isError: false);
       // Keep them in the fields so they persist visually
       setState(() {});

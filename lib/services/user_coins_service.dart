@@ -7,7 +7,7 @@ import 'package:mytrademate/services/binance_service.dart';
 /// Logic:
 /// - If user has Binance API connected → use coins from portfolio
 /// - If user has NO API → use TOP 10 popular coins (default)
-class UserCoinsService {
+class UserCoinsService with ChangeNotifier {
   static final UserCoinsService _instance = UserCoinsService._internal();
   factory UserCoinsService() => _instance;
   UserCoinsService._internal();
@@ -64,6 +64,7 @@ class UserCoinsService {
   /// Update coins from Binance portfolio
   /// Extracts unique coins from user's portfolio balances
   Future<void> updateCoinsFromBinance() async {
+    debugPrint('🔄 UserCoinsService: updateCoinsFromBinance() called');
     try {
       final binanceService = BinanceService();
 
@@ -71,14 +72,18 @@ class UserCoinsService {
       final hasCredentials = binanceService.apiKey != null &&
                             binanceService.apiKey!.isNotEmpty;
 
+      debugPrint('🔍 API credentials check: hasCredentials=$hasCredentials');
+
       if (!hasCredentials) {
         debugPrint('⚠️  No Binance API connected - using default coins');
         await setDefaultCoins();
         return;
       }
 
+      debugPrint('🔄 Fetching account balances from Binance...');
       // Fetch account balances
       final balances = await binanceService.getAccountBalances();
+      debugPrint('✅ Fetched ${balances.length} balances from Binance');
 
       if (balances.isEmpty) {
         debugPrint('⚠️  Empty balances - using default coins');
@@ -106,6 +111,9 @@ class UserCoinsService {
 
       debugPrint('✅ Updated coins from Binance API: ${coins.length} coins');
       debugPrint('   Coins: ${coins.join(", ")}');
+
+      // Notify listeners that coins changed
+      notifyListeners();
     } catch (e) {
       debugPrint('❌ Error updating coins from Binance: $e');
       // Fallback to default on error
@@ -119,6 +127,9 @@ class UserCoinsService {
     _cachedCoins = List.from(defaultCoins);
     _cachedSource = 'default';
     debugPrint('✅ Reset to default TOP 10 coins');
+
+    // Notify listeners that coins changed
+    notifyListeners();
   }
 
   /// Manually set custom coin list
@@ -132,6 +143,9 @@ class UserCoinsService {
     _cachedCoins = coins;
     _cachedSource = 'custom';
     debugPrint('✅ Set custom coins: ${coins.join(", ")}');
+
+    // Notify listeners that coins changed
+    notifyListeners();
   }
 
   /// Add a coin to the list
@@ -146,6 +160,9 @@ class UserCoinsService {
     await _saveCoins(coins, _cachedSource);
     _cachedCoins = coins;
     debugPrint('✅ Added coin: $coin');
+
+    // Notify listeners that coins changed
+    notifyListeners();
   }
 
   /// Remove a coin from the list
@@ -168,6 +185,9 @@ class UserCoinsService {
     await _saveCoins(coins, _cachedSource);
     _cachedCoins = coins;
     debugPrint('✅ Removed coin: $coin');
+
+    // Notify listeners that coins changed
+    notifyListeners();
   }
 
   /// Get coins source ('api', 'default', or 'custom')
