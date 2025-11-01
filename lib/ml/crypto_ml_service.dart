@@ -519,15 +519,29 @@ class CryptoMLService {
       finalConfidence = 0.38;
       decisionReason = 'Chop zone: low ATR + high liquidity → avoid false signal';
     }
-    // 2. TREND BOOST: High volatility → Increase confidence
+    // 2. TREND BOOST: High volatility → Boost dominant direction only
     else if (atrPercent > 0.30) {
-      final boost = 1.20; // +20% confidence in strong trends
-      finalConfidence = (finalConfidence * boost).clamp(0.0, 0.95);
-      decisionReason = 'High volatility - strong trend detected';
+      // FIX: Only boost the DOMINANT direction (buy > sell OR sell > buy)
+      final buy = ensemble.probabilities['BUY'] ?? 0.0;
+      final sell = ensemble.probabilities['SELL'] ?? 0.0;
 
-      if (!silent) {
-        // ignore: avoid_print
-        print('📈 TREND BOOST: ATR=${atrPercent.toStringAsFixed(2)}% → +20% confidence');
+      // Only apply trend boost if there's a clear direction (NOT when buy ≈ sell)
+      if ((buy > sell && finalAction == 'BUY') || (sell > buy && finalAction == 'SELL')) {
+        final boost = 1.20; // +20% confidence in strong trends
+        finalConfidence = (finalConfidence * boost).clamp(0.0, 0.95);
+        decisionReason = 'High volatility - strong trend detected';
+
+        if (!silent) {
+          // ignore: avoid_print
+          print('📈 TREND BOOST: ATR=${atrPercent.toStringAsFixed(2)}% → +20% confidence on ${finalAction}');
+        }
+      } else {
+        // No boost when direction is unclear or HOLD
+        decisionReason = 'High volatility but no clear direction';
+        if (!silent) {
+          // ignore: avoid_print
+          print('⚠️ TREND BOOST SKIPPED: ATR=${atrPercent.toStringAsFixed(2)}% but BUY≈SELL or HOLD');
+        }
       }
     }
     // 3. MICRO-TREND CONFIRMATION: Moderate volatility + Good confidence → Small boost
