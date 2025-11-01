@@ -785,19 +785,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
 
             const SizedBox(height: 12),
-
-            // Skip button
-            Builder(
-              builder: (context) => TextButton(
-                onPressed: _isLoading ? null : _setupPIN,
-                child: Text(
-                  'Skip for now',
-                  style: AppTheme.labelMedium.copyWith(
-                    color: AppTheme.getTextSecondary(context),
-                  ),
-                ),
-              ),
-            ),
           ],
 
                   const SizedBox(height: 40),
