@@ -401,6 +401,8 @@ class CryptoMLService {
             result.features,
             coin: coin,
             timeframe: tf,
+            atr: volatility,
+            volumePercentile: volumePercentile,
           );
           
           // PHASE 3 PILOT: Apply Phase 3 weights if enabled for this coin+timeframe
@@ -446,6 +448,8 @@ class CryptoMLService {
             result.features,
             coin: coin,
             timeframe: timeframe, // Use requested timeframe for confidence
+            atr: result.atr,
+            volumePercentile: volumePercentile,
           );
           
           // PHASE 3 PILOT: Apply Phase 3 weights if enabled for this coin+timeframe
@@ -634,6 +638,8 @@ class CryptoMLService {
       bool silent = false,
       String? coin,
       String? timeframe,
+      double? atr,
+      double? volumePercentile,
     }
   ) async {
     final interpreter = _interpreters[modelKey]!;
@@ -745,6 +751,31 @@ class CryptoMLService {
         print('   🌡️  Dynamic T=${temperature.toStringAsFixed(1)} (signal=${(signalStrength*100).toStringAsFixed(1)}%) - was ${(maxProb * 100).toStringAsFixed(1)}% confident');
         // ignore: avoid_print
         print('   ✅ AFTER scaling: [${probabilities.map((p) => p.toStringAsFixed(4)).join(", ")}]');
+      }
+    }
+
+    // STEP 1: Apply bullish bias on individual model predictions
+    // (before combining in ensemble)
+    final atrPercent = (atr ?? 0.02) * 100;
+    final volPercent = (volumePercentile ?? 0.5) * 100;
+
+    if (volPercent > 90.0 && atrPercent < 50.0) {
+      // Get current BUY and SELL probabilities
+      final currentBuy = probabilities.length == 3 ? probabilities[2] : (probabilities.length == 2 ? probabilities[1] : 0.0);
+      final currentSell = probabilities[0];
+
+      if (currentBuy > currentSell) {
+        // Apply +10% bullish bias to BUY probability
+        if (probabilities.length == 3) {
+          probabilities[2] = (probabilities[2] + 0.10).clamp(0.0, 1.0);
+        } else if (probabilities.length == 2) {
+          probabilities[1] = (probabilities[1] + 0.10).clamp(0.0, 1.0);
+        }
+
+        if (!silent) {
+          // ignore: avoid_print
+          print('📈 BULLISH BIAS APPLIED in $modelKey: +10% to BUY (vol=${volPercent.toStringAsFixed(0)}%, ATR=${atrPercent.toStringAsFixed(2)}%)');
+        }
       }
     }
 
@@ -1040,33 +1071,14 @@ class CryptoMLService {
     final hold = avgProb['HOLD']!;
     final buy = avgProb['BUY']!;
 
-    // PATCH 1: Bullish Bias pe Vol High (pentru date live Binance)
-    final atrPercent = (atr ?? 0.02) * 100; // Convert to percentage
-    final volPercent = (volumePercentile ?? 0.5) * 100;
-
-    // Aplicăm bullish bias când volum > 90% și ATR < 50%
-    double bullishBias = 0.0;
-    if (volPercent > 90.0 && atrPercent < 50.0) {
-      // Dacă BUY > SELL, adăugăm +10% la BUY confidence
-      if (buy > sell) {
-        bullishBias = 0.10; // +10% la BUY dacă vol high & ATR low
-        // ignore: avoid_print
-        print('📈 BULLISH BIAS APPLIED: +10% (vol=${volPercent.toStringAsFixed(0)}%, ATR=${atrPercent.toStringAsFixed(2)}%)');
-      }
-    }
-
-    // Calculăm confidence-ul dinamic cu bullish bias
-    var dynamicConfidence = buy + bullishBias;
-    dynamicConfidence = dynamicConfidence.clamp(0.0, 1.0);
-
-    // Determinăm acțiunea cu threshold redus la 0.50
+    // STEP 3: Determine action with reduced threshold (bullish bias already applied in individual models)
     var finalAction = 'HOLD';
-    var finalConfidence = dynamicConfidence;
+    var finalConfidence = 0.0;
 
-    if (dynamicConfidence > 0.50) {  // Threshold redus de la 0.55 la 0.50
+    if (buy > 0.45) {  // ← Threshold reduced from 0.50 to 0.45
       finalAction = 'BUY';
-      finalConfidence = dynamicConfidence;
-    } else if (sell > buy && sell > 0.50) {
+      finalConfidence = buy;
+    } else if (sell > 0.45) {
       finalAction = 'SELL';
       finalConfidence = sell;
     } else {
