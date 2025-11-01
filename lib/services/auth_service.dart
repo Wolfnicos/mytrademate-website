@@ -155,12 +155,8 @@ class AuthService extends ChangeNotifier {
         return false;
       }
 
-      // Check if user has an account registered
+      // FIX: Allow biometric auth even if no account exists yet (onboarding flow)
       final storedEmail = await _secureStorage.read(key: _kEmailKey);
-      if (storedEmail == null) {
-        debugPrint('AuthService: No account registered');
-        return false;
-      }
 
       final didAuthenticate = await _localAuth.authenticate(
         localizedReason: 'Authenticate to access your crypto portfolio',
@@ -172,7 +168,8 @@ class AuthService extends ChangeNotifier {
 
       if (didAuthenticate) {
         await _secureStorage.write(key: _kIsAuthenticatedKey, value: 'true');
-        _userEmail = storedEmail;
+        // If no account exists, use 'guest' (onboarding flow)
+        _userEmail = storedEmail ?? 'guest';
         _isAuthenticated = true;
         notifyListeners();
         return true;
