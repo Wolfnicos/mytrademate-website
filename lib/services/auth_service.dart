@@ -15,6 +15,7 @@ class AuthService extends ChangeNotifier {
   static const String _kEmailKey = 'user_email';
   static const String _kPasswordHashKey = 'user_password_hash';
   static const String _kBiometricsEnabledKey = 'biometrics_enabled';
+  static const String _kPinHashKey = 'pin_hash';
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final LocalAuthentication _localAuth = LocalAuthentication();
@@ -45,12 +46,24 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Check if device supports biometric authentication
+  /// Check if device supports biometric authentication AND has biometrics enrolled
   Future<bool> canUseBiometrics() async {
     try {
       final canCheck = await _localAuth.canCheckBiometrics;
       final isDeviceSupported = await _localAuth.isDeviceSupported();
-      return canCheck && isDeviceSupported;
+
+      if (!canCheck || !isDeviceSupported) {
+        return false;
+      }
+
+      // IMPORTANT: Also check if any biometrics are actually enrolled
+      final availableBiometrics = await _localAuth.getAvailableBiometrics();
+      final hasEnrolledBiometrics = availableBiometrics.isNotEmpty;
+
+      debugPrint('AuthService: canCheck=$canCheck, isDeviceSupported=$isDeviceSupported, '
+          'availableBiometrics=$availableBiometrics, hasEnrolled=$hasEnrolledBiometrics');
+
+      return hasEnrolledBiometrics;
     } catch (e) {
       debugPrint('AuthService: Error checking biometrics: $e');
       return false;
@@ -206,6 +219,82 @@ class AuthService extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('AuthService: Error disabling biometrics: $e');
+    }
+  }
+
+  /// Check if a PIN is set
+  Future<bool> hasPIN() async {
+    try {
+      final pinHash = await _secureStorage.read(key: _kPinHashKey);
+      return pinHash != null && pinHash.isNotEmpty;
+    } catch (e) {
+      debugPrint('AuthService: Error checking PIN: $e');
+      return false;
+    }
+  }
+
+  /// Set a new PIN
+  Future<bool> setPIN(String pin) async {
+    try {
+      if (pin.length < 4 || pin.length > 6) {
+        debugPrint('AuthService: PIN must be 4-6 digits');
+        return false;
+      }
+
+      // Verify PIN contains only digits
+      if (!RegExp(r'^\d+$').hasMatch(pin)) {
+        debugPrint('AuthService: PIN must contain only digits');
+        return false;
+      }
+
+      final pinHash = _hashPassword(pin);
+      await _secureStorage.write(key: _kPinHashKey, value: pinHash);
+      debugPrint('AuthService: PIN set successfully');
+      return true;
+    } catch (e) {
+      debugPrint('AuthService: Error setting PIN: $e');
+      return false;
+    }
+  }
+
+  /// Verify a PIN
+  Future<bool> verifyPIN(String pin) async {
+    try {
+      final storedPinHash = await _secureStorage.read(key: _kPinHashKey);
+      if (storedPinHash == null) {
+        debugPrint('AuthService: No PIN set');
+        return false;
+      }
+
+      final pinHash = _hashPassword(pin);
+      final isValid = pinHash == storedPinHash;
+
+      if (isValid) {
+        // Mark user as authenticated
+        await _secureStorage.write(key: _kIsAuthenticatedKey, value: 'true');
+        _isAuthenticated = true;
+
+        // Set user email to 'guest' or retrieve stored email
+        final storedEmail = await _secureStorage.read(key: _kEmailKey);
+        _userEmail = storedEmail ?? 'guest';
+
+        notifyListeners();
+      }
+
+      return isValid;
+    } catch (e) {
+      debugPrint('AuthService: Error verifying PIN: $e');
+      return false;
+    }
+  }
+
+  /// Clear/delete PIN
+  Future<void> clearPIN() async {
+    try {
+      await _secureStorage.delete(key: _kPinHashKey);
+      debugPrint('AuthService: PIN cleared');
+    } catch (e) {
+      debugPrint('AuthService: Error clearing PIN: $e');
     }
   }
 

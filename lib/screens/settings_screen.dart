@@ -65,8 +65,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final canCheck = await _localAuth.canCheckBiometrics;
       final isDeviceSupported = await _localAuth.isDeviceSupported();
+
+      // IMPORTANT: Also check if any biometrics are actually enrolled
+      final availableBiometrics = await _localAuth.getAvailableBiometrics();
+      final hasEnrolledBiometrics = availableBiometrics.isNotEmpty;
+
+      debugPrint('Settings: canCheck=$canCheck, isDeviceSupported=$isDeviceSupported, '
+          'availableBiometrics=$availableBiometrics, hasEnrolled=$hasEnrolledBiometrics');
+
       setState(() {
-        _canCheckBiometrics = canCheck && isDeviceSupported;
+        _canCheckBiometrics = canCheck && isDeviceSupported && hasEnrolledBiometrics;
       });
     } catch (e) {
       debugPrint('Error checking biometric support: $e');

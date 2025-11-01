@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:local_auth/local_auth.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/pin_dialog.dart';
 
 /// Premium Onboarding Flow (3 pages)
 /// Page 1: Welcome + All Features
@@ -40,9 +41,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     try {
       final canCheck = await _localAuth.canCheckBiometrics;
       final isDeviceSupported = await _localAuth.isDeviceSupported();
+
+      // IMPORTANT: Also check if any biometrics are actually enrolled
+      final availableBiometrics = await _localAuth.getAvailableBiometrics();
+      final hasEnrolledBiometrics = availableBiometrics.isNotEmpty;
+
       if (mounted) {
         setState(() {
-          _canCheckBiometrics = canCheck && isDeviceSupported;
+          _canCheckBiometrics = canCheck && isDeviceSupported && hasEnrolledBiometrics;
         });
       }
     } catch (e) {
@@ -95,12 +101,74 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _setupPIN() async {
-    // For now, skip PIN setup and go to app
     setState(() => _isLoading = true);
-    await context.read<AuthService>().signInAsGuest();
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    Navigator.of(context).pushReplacementNamed('/home');
+
+    try {
+      final authService = context.read<AuthService>();
+
+      // Check if PIN is already set
+      final hasPIN = await authService.hasPIN();
+
+      if (hasPIN) {
+        // User has PIN - VERIFY it
+        final pin = await PINDialog.showVerify(context);
+
+        if (!mounted) return;
+
+        if (pin == null) {
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        // Verify PIN
+        final isValid = await authService.verifyPIN(pin);
+
+        if (!mounted) return;
+
+        if (isValid) {
+          setState(() => _isLoading = false);
+          Navigator.of(context).pushReplacementNamed('/home');
+        } else {
+          setState(() => _isLoading = false);
+          _showError('Invalid PIN code');
+        }
+      } else {
+        // User doesn't have PIN - SET it
+        final pin = await PINDialog.showSetup(context);
+
+        if (!mounted) return;
+
+        // If user cancelled, just sign in as guest
+        if (pin == null) {
+          await authService.signInAsGuest();
+          if (!mounted) return;
+          setState(() => _isLoading = false);
+          Navigator.of(context).pushReplacementNamed('/home');
+          return;
+        }
+
+        // Save PIN and sign in
+        final success = await authService.setPIN(pin);
+
+        if (!mounted) return;
+
+        if (success) {
+          // Sign in as guest (user has PIN but no account)
+          await authService.signInAsGuest();
+          if (!mounted) return;
+          setState(() => _isLoading = false);
+          Navigator.of(context).pushReplacementNamed('/home');
+        } else {
+          setState(() => _isLoading = false);
+          _showError('Failed to set PIN. Please try again.');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error with PIN: $e');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showError('An error occurred. Please try again.');
+    }
   }
 
   void _showError(String message) {
