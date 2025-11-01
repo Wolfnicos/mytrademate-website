@@ -298,6 +298,38 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Change PIN (requires old PIN verification)
+  Future<bool> changePIN(String oldPin, String newPin) async {
+    try {
+      // First verify the old PIN
+      final isOldPinValid = await verifyPIN(oldPin);
+      if (!isOldPinValid) {
+        debugPrint('AuthService: Old PIN is incorrect');
+        return false;
+      }
+
+      // Validate new PIN
+      if (newPin.length < 4 || newPin.length > 6) {
+        debugPrint('AuthService: New PIN must be 4-6 digits');
+        return false;
+      }
+
+      if (!RegExp(r'^\d+$').hasMatch(newPin)) {
+        debugPrint('AuthService: New PIN must contain only digits');
+        return false;
+      }
+
+      // Set the new PIN
+      final newPinHash = _hashPassword(newPin);
+      await _secureStorage.write(key: _kPinHashKey, value: newPinHash);
+      debugPrint('AuthService: PIN changed successfully');
+      return true;
+    } catch (e) {
+      debugPrint('AuthService: Error changing PIN: $e');
+      return false;
+    }
+  }
+
   /// Sign out
   Future<void> signOut() async {
     try {

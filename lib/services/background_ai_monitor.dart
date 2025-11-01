@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:workmanager/workmanager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
@@ -99,45 +100,56 @@ class BackgroundAIMonitor {
 
   /// Initialize background monitoring
   static Future<void> initialize() async {
-    await Workmanager().initialize(
-      callbackDispatcher,
-      isInDebugMode: false, // Set to true for debugging
-    );
-    debugPrint('✅ Background AI Monitor initialized');
+    // Workmanager only works on Android
+    if (Platform.isAndroid) {
+      await Workmanager().initialize(
+        callbackDispatcher,
+        isInDebugMode: false, // Set to true for debugging
+      );
+      debugPrint('✅ Background AI Monitor initialized (Android)');
+    } else {
+      debugPrint('⚠️  Background monitoring not available on iOS - use foreground only');
+    }
   }
 
   /// Start monitoring
   static Future<void> startMonitoring({
     Duration frequency = const Duration(minutes: 30),
   }) async {
-    await Workmanager().registerPeriodicTask(
-      _taskName,
-      _taskName,
-      frequency: frequency,
-      initialDelay: const Duration(minutes: 1), // First check after 1 minute
-      constraints: Constraints(
-        networkType: NetworkType.connected, // Requires internet for price data
-        requiresBatteryNotLow: true, // Don't drain battery
-      ),
-      existingWorkPolicy: ExistingWorkPolicy.replace,
-    );
+    // Background monitoring only works on Android
+    if (Platform.isAndroid) {
+      await Workmanager().registerPeriodicTask(
+        _taskName,
+        _taskName,
+        frequency: frequency,
+        initialDelay: const Duration(minutes: 1), // First check after 1 minute
+        constraints: Constraints(
+          networkType: NetworkType.connected, // Requires internet for price data
+          requiresBatteryNotLow: true, // Don't drain battery
+        ),
+      );
+      debugPrint('🚀 Background monitoring started (every ${frequency.inMinutes} minutes)');
+    } else {
+      // iOS: Just save the enabled state, notifications work in foreground
+      debugPrint('⚠️  iOS: Background monitoring limited - alerts work when app is open');
+    }
 
     // Save enabled state
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('ai_alerts_enabled', true);
-
-    debugPrint('🚀 Background monitoring started (every ${frequency.inMinutes} minutes)');
   }
 
   /// Stop monitoring
   static Future<void> stopMonitoring() async {
-    await Workmanager().cancelByUniqueName(_taskName);
+    // Only cancel on Android
+    if (Platform.isAndroid) {
+      await Workmanager().cancelByUniqueName(_taskName);
+      debugPrint('⏹️  Background monitoring stopped');
+    }
 
     // Save disabled state
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('ai_alerts_enabled', false);
-
-    debugPrint('⏹️  Background monitoring stopped');
   }
 
   /// Check if monitoring is active

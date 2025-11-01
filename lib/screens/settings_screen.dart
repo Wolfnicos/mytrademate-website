@@ -13,6 +13,7 @@ import '../services/user_coins_service.dart';
 import '../services/local_notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/pin_dialog.dart';
 import 'paywall_screen.dart';
 // import 'ml_debug_screen.dart'; // Hidden for production
 
@@ -151,6 +152,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  // Change PIN Method
+  Future<void> _changePIN() async {
+    final authService = context.read<AuthService>();
+
+    // First check if user has a PIN
+    final hasPIN = await authService.hasPIN();
+    if (!hasPIN) {
+      if (!mounted) return;
+      _showSnackBar('No PIN set. Please set a PIN from the onboarding screen.', isError: true);
+      return;
+    }
+
+    if (!mounted) return;
+
+    // Step 1: Verify old PIN
+    final oldPin = await PINDialog.showVerify(context);
+    if (!mounted) return;
+
+    if (oldPin == null) {
+      return; // User cancelled
+    }
+
+    // Handle Forgot PIN
+    if (oldPin == 'FORGOT_PIN') {
+      await _showForgotPINDialog();
+      return;
+    }
+
+    // Verify the old PIN
+    final storedPinHash = await authService.verifyPIN(oldPin);
+    if (!storedPinHash) {
+      if (!mounted) return;
+      _showSnackBar('Incorrect old PIN', isError: true);
+      return;
+    }
+
+    if (!mounted) return;
+
+    // Step 2: Enter new PIN (twice)
+    final newPin = await PINDialog.showSetup(context);
+    if (!mounted) return;
+
+    if (newPin == null) {
+      return; // User cancelled
+    }
+
+    // Step 3: Save new PIN
+    final success = await authService.setPIN(newPin);
+    if (!mounted) return;
+
+    if (success) {
+      _showSnackBar('PIN changed successfully', isError: false);
+    } else {
+      _showSnackBar('Failed to change PIN. Please try again.', isError: true);
+    }
+  }
+
   // AI Alerts Methods
   Future<void> _toggleAIAlerts(bool value) async {
     if (value) {
@@ -277,6 +335,131 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  // Forgot PIN Dialog
+  Future<void> _showForgotPINDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.surface
+            : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppTheme.spacing8),
+              decoration: BoxDecoration(
+                color: AppTheme.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+              ),
+              child: const Icon(Icons.warning_amber, color: AppTheme.error, size: 24),
+            ),
+            const SizedBox(width: AppTheme.spacing12),
+            const Expanded(
+              child: Text(
+                'Reset App?',
+                style: AppTheme.headingLarge,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This will delete ALL app data including:',
+              style: AppTheme.bodyMedium.copyWith(
+                color: AppTheme.getTextPrimary(context),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: AppTheme.spacing12),
+            _buildResetItem('Your PIN code'),
+            _buildResetItem('API credentials'),
+            _buildResetItem('All settings and preferences'),
+            const SizedBox(height: AppTheme.spacing16),
+            Text(
+              'You will need to set up the app again from scratch.',
+              style: AppTheme.bodySmall.copyWith(
+                color: AppTheme.getTextSecondary(context),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.getTextSecondary(context)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+              ),
+            ),
+            child: const Text('Reset App'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final authService = context.read<AuthService>();
+      await authService.deleteAccount();
+      if (!mounted) return;
+
+      // Sign out and return to onboarding
+      await authService.signOut();
+      if (!mounted) return;
+
+      Navigator.of(context).pushNamedAndRemoveUntil('/onboarding', (route) => false);
+
+      // Show success message on next screen
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('App data cleared. Please set up a new PIN.'),
+              backgroundColor: AppTheme.success,
+              duration: Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      });
+    }
+  }
+
+  Widget _buildResetItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppTheme.spacing8),
+      child: Row(
+        children: [
+          const Icon(Icons.close, color: AppTheme.error, size: 16),
+          const SizedBox(width: AppTheme.spacing8),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTheme.bodySmall.copyWith(
+                color: AppTheme.getTextSecondary(context),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showSnackBar(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -349,6 +532,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
                     ),
                   ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(AppTheme.spacing8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                    ),
+                    child: const Icon(Icons.lock_reset, color: AppTheme.primary),
+                  ),
+                  title: Text('Change PIN Code', style: AppTheme.bodyLarge),
+                  subtitle: Text(
+                    'Update your PIN for app access',
+                    style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
+                  ),
+                  trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+                  onTap: _changePIN,
+                ),
               ],
             ),
           ),

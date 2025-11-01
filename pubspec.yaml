@@ -74,7 +74,7 @@ dependencies:
 
   # Local Notifications & Background Tasks (NO CLOUD!)
   flutter_local_notifications: ^17.0.0
-  workmanager: ^0.5.2
+  workmanager: ^0.9.0
 
 dev_dependencies:
   flutter_test:

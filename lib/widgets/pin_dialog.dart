@@ -270,6 +270,16 @@ class _PINDialogState extends State<PINDialog> {
             style: TextStyle(color: AppTheme.getTextSecondary(context)),
           ),
         ),
+        // Show "Forgot PIN?" only in verification mode (not in setup mode)
+        if (!widget.isSetup) ...[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop('FORGOT_PIN'),
+            child: Text(
+              'Forgot PIN?',
+              style: TextStyle(color: AppTheme.error),
+            ),
+          ),
+        ],
         ElevatedButton(
           onPressed: _onPinEntered,
           style: ElevatedButton.styleFrom(

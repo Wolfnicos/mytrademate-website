@@ -120,6 +120,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           return;
         }
 
+        // Check if user clicked "Forgot PIN?"
+        if (pin == 'FORGOT_PIN') {
+          setState(() => _isLoading = false);
+          await _showForgotPINDialog();
+          return;
+        }
+
         // Verify PIN
         final isValid = await authService.verifyPIN(pin);
 
@@ -178,6 +185,112 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         backgroundColor: AppTheme.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Future<void> _showForgotPINDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.surface
+            : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppTheme.spacing8),
+              decoration: BoxDecoration(
+                color: AppTheme.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+              ),
+              child: const Icon(Icons.warning_amber, color: AppTheme.error, size: 24),
+            ),
+            const SizedBox(width: AppTheme.spacing12),
+            const Expanded(
+              child: Text(
+                'Reset App?',
+                style: AppTheme.headingLarge,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This will delete ALL app data including:',
+              style: AppTheme.bodyMedium.copyWith(
+                color: AppTheme.getTextPrimary(context),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: AppTheme.spacing12),
+            _buildResetItem('Your PIN code'),
+            _buildResetItem('API credentials'),
+            _buildResetItem('All settings and preferences'),
+            const SizedBox(height: AppTheme.spacing16),
+            Text(
+              'You will need to set up the app again from scratch.',
+              style: AppTheme.bodySmall.copyWith(
+                color: AppTheme.getTextSecondary(context),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.getTextSecondary(context)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+              ),
+            ),
+            child: const Text('Reset App'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      setState(() => _isLoading = true);
+      final authService = context.read<AuthService>();
+      await authService.deleteAccount();
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      // Stay on onboarding screen, user can start fresh
+      _showError('App data cleared. You can now set up a new PIN.');
+    }
+  }
+
+  Widget _buildResetItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppTheme.spacing8),
+      child: Row(
+        children: [
+          const Icon(Icons.close, color: AppTheme.error, size: 16),
+          const SizedBox(width: AppTheme.spacing8),
+          Text(
+            text,
+            style: AppTheme.bodyMedium.copyWith(
+              color: AppTheme.getTextSecondary(context),
+            ),
+          ),
+        ],
       ),
     );
   }
