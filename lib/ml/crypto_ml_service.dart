@@ -1071,14 +1071,15 @@ class CryptoMLService {
     final hold = avgProb['HOLD']!;
     final buy = avgProb['BUY']!;
 
-    // STEP 3: Determine action with reduced threshold (bullish bias already applied in individual models)
+    // STEP 3: Choose action based on argmax (highest probability wins)
+    // FIX: Alege BUY dacă buy > sell, chiar dacă < 0.50
     var finalAction = 'HOLD';
     var finalConfidence = 0.0;
 
-    if (buy > 0.45) {  // ← Threshold reduced from 0.50 to 0.45
+    if (buy > sell && buy > hold) {
       finalAction = 'BUY';
       finalConfidence = buy;
-    } else if (sell > 0.45) {
+    } else if (sell > buy && sell > hold) {
       finalAction = 'SELL';
       finalConfidence = sell;
     } else {
