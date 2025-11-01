@@ -1040,28 +1040,33 @@ class CryptoMLService {
     final hold = avgProb['HOLD']!;
     final buy = avgProb['BUY']!;
 
-    // Aplicăm micro-boost doar pentru BUY când ATR < 0.5% (piață calmă dar cu trend)
-    double microBoost = 0.0;
+    // PATCH 1: Bullish Bias pe Vol High (pentru date live Binance)
     final atrPercent = (atr ?? 0.02) * 100; // Convert to percentage
     final volPercent = (volumePercentile ?? 0.5) * 100;
 
-    if (atrPercent < 0.5 && volPercent > 90.0) {
-      // Market foarte calm cu lichiditate foarte mare → micro-boost
-      microBoost = 0.08 + (0.5 - atrPercent) * 0.2; // 8% → 10%
-      microBoost = microBoost.clamp(0.0, 0.10);
+    // Aplicăm bullish bias când volum > 90% și ATR < 50%
+    double bullishBias = 0.0;
+    if (volPercent > 90.0 && atrPercent < 50.0) {
+      // Dacă BUY > SELL, adăugăm +10% la BUY confidence
+      if (buy > sell) {
+        bullishBias = 0.10; // +10% la BUY dacă vol high & ATR low
+        // ignore: avoid_print
+        print('📈 BULLISH BIAS APPLIED: +10% (vol=${volPercent.toStringAsFixed(0)}%, ATR=${atrPercent.toStringAsFixed(2)}%)');
+      }
     }
 
-    // Calculăm confidence-ul dinamic
-    var dynamicConfidence = buy + microBoost;
+    // Calculăm confidence-ul dinamic cu bullish bias
+    var dynamicConfidence = buy + bullishBias;
     dynamicConfidence = dynamicConfidence.clamp(0.0, 1.0);
 
-    // Determinăm acțiunea bazată pe confidence dinamic
+    // Determinăm acțiunea cu threshold redus la 0.50
     var finalAction = 'HOLD';
     var finalConfidence = dynamicConfidence;
 
-    if (dynamicConfidence > 0.55) {
+    if (dynamicConfidence > 0.50) {  // Threshold redus de la 0.55 la 0.50
       finalAction = 'BUY';
-    } else if (dynamicConfidence < 0.45) {
+      finalConfidence = dynamicConfidence;
+    } else if (sell > buy && sell > 0.50) {
       finalAction = 'SELL';
       finalConfidence = sell;
     } else {
