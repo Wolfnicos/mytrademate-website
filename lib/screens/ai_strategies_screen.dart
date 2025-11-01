@@ -72,13 +72,13 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     _loadAvailableCoins();
   }
 
-  /// Start auto-refresh timer to update predictions every 30 seconds
+  /// Start auto-refresh timer to update predictions every 3 minutes (SILENT)
   void _startAutoRefresh() {
     _autoRefreshTimer?.cancel(); // Cancel existing timer if any
-    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      debugPrint('🔄 Auto-refresh triggered for $_selectedSymbol @ $_interval');
+    _autoRefreshTimer = Timer.periodic(const Duration(minutes: 3), (_) {
+      debugPrint('🔄 Auto-refresh triggered (SILENT) for $_selectedSymbol @ $_interval');
       if (mounted && !_isRunningPrediction) {
-        _runInference();
+        _runInferenceSilent();  // Use silent refresh (no UI indicators)
       }
     });
   }
@@ -274,6 +274,59 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           _isRunningPrediction = false;
         });
       }
+    }
+  }
+
+  /// Silent refresh (no UI indicators) - used by auto-refresh timer
+  Future<void> _runInferenceSilent() async {
+    if (!mounted) return;
+    // DO NOT set _isRunningPrediction = true (no UI spinner/text)
+
+    try {
+      // Get coin from symbol (e.g., BTCUSDT -> BTC)
+      final coin = _selectedSymbol.replaceAll(RegExp(r'(USDT|EUR|USDC)$'), '');
+
+      debugPrint('🔄 AI Strategies (SILENT): fetching CryptoML prediction for $coin @$_interval');
+
+      // Fetch prediction with silent flag (reduced logging)
+      final prediction = await CryptoMLService().getPrediction(
+        coin: coin,
+        symbol: _selectedSymbol,
+        timeframe: _interval,
+        silent: true,  // Silent mode: no verbose logging
+      );
+
+      // Get current price for price change tracking
+      final currentPriceResult = await BinanceService().getFeaturesWithATRFallback(_selectedSymbol, interval: _interval);
+      final currentPrice = currentPriceResult.currentPrice;
+
+      // Calculate price change from previous prediction
+      final priceChange = _previousPrice != null ? currentPrice - _previousPrice! : 0.0;
+      final priceChangePercent = _previousPrice != null && _previousPrice! > 0
+          ? (priceChange / _previousPrice!) * 100
+          : 0.0;
+
+      if (_previousPrice != null && priceChangePercent.abs() > 0.5) {
+        // Only log significant price changes (>0.5%)
+        debugPrint('💹 Price change: ${priceChange >= 0 ? '+' : ''}${priceChange.toStringAsFixed(2)} (${priceChangePercent >= 0 ? '+' : ''}${priceChangePercent.toStringAsFixed(3)}%)');
+      }
+
+      debugPrint('🔄 CryptoML (SILENT): ${prediction.action} (${(prediction.confidence * 100).toStringAsFixed(1)}%)');
+
+      if (mounted) {
+        setState(() {
+          // Update state WITHOUT showing loading indicators
+          _previousAtr = _lastPrediction?.atr;
+          _previousPrice = currentPrice;
+          _lastPrediction = prediction;
+          _lastUpdateTime = DateTime.now();
+          // DO NOT set _isRunningPrediction = false (it was never true)
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ AI inference error (SILENT): $e');
+      // Don't update UI with error on silent refresh (user didn't initiate it)
+      // Just log the error and keep previous prediction
     }
   }
 

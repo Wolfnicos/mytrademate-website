@@ -339,17 +339,8 @@ class AIModelsStatusCard extends StatefulWidget {
 class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _pulseAnimation;
-  int _activityIndex = 0;
   int _progressKey = 0;
-
-  final List<String> _activities = [
-    'Analyzing market patterns',
-    'Processing technical indicators',
-    'Evaluating price movements',
-    'Detecting trend reversals',
-    'Calculating risk factors',
-    'Monitoring volatility signals',
-  ];
+  bool _hasLoadedOnce = false;  // Track if models loaded once
 
   @override
   void initState() {
@@ -365,17 +356,7 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
 
-    // Cycle through activities every 5 seconds
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 5));
-      if (mounted) {
-        setState(() {
-          _activityIndex = (_activityIndex + 1) % _activities.length;
-        });
-        return true;
-      }
-      return false;
-    });
+    // Removed: Activity cycling animation (was giving impression of constant work)
   }
 
   @override
@@ -560,27 +541,12 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
                     ),
                     const SizedBox(width: AppTheme.spacing8),
                     Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 800),
-                        transitionBuilder: (Widget child, Animation<double> animation) {
-                          return FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0, 0.2),
-                                end: Offset.zero,
-                              ).animate(animation),
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: Text(
-                          isActive ? _activities[_activityIndex] : 'Initializing neural engine...',
-                          key: ValueKey<String>(isActive ? _activities[_activityIndex] : 'loading'),
-                          style: AppTheme.bodyMedium.copyWith(
-                            color: isActive ? AppTheme.textPrimary : AppTheme.textTertiary,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      // Static text (no cycling animation)
+                      child: Text(
+                        isActive ? 'AI Models: Active & Ready' : 'Initializing neural engine...',
+                        style: AppTheme.bodyMedium.copyWith(
+                          color: isActive ? AppTheme.textPrimary : AppTheme.textTertiary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -590,36 +556,43 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
                 if (isActive) ...[
                   const SizedBox(height: AppTheme.spacing12),
 
-                  // Processing bar animation (slower)
+                  // Processing bar (animate once on first load, then static)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                    child: TweenAnimationBuilder<double>(
-                      key: ValueKey<int>(_progressKey),
-                      duration: const Duration(seconds: 3),
-                      curve: Curves.easeInOut,
-                      tween: Tween<double>(
-                        begin: 0.0,
-                        end: 1.0,
-                      ),
-                      onEnd: () {
-                        // Restart animation when it ends
-                        if (mounted) {
-                          setState(() {
-                            _progressKey++;
-                          });
-                        }
-                      },
-                      builder: (context, value, _) {
-                        return LinearProgressIndicator(
-                          value: value,
-                          backgroundColor: AppTheme.glassBorder,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            AppTheme.primary.withOpacity(0.8),
+                    child: !_hasLoadedOnce
+                        ? TweenAnimationBuilder<double>(
+                            duration: const Duration(seconds: 2),
+                            curve: Curves.easeInOut,
+                            tween: Tween<double>(
+                              begin: 0.0,
+                              end: 1.0,
+                            ),
+                            onEnd: () {
+                              // Mark as loaded, stop animation
+                              if (mounted) {
+                                setState(() {
+                                  _hasLoadedOnce = true;
+                                });
+                              }
+                            },
+                            builder: (context, value, _) {
+                              return LinearProgressIndicator(
+                                value: value,
+                                backgroundColor: AppTheme.glassBorder,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppTheme.primary.withOpacity(0.8),
+                                ),
+                                minHeight: 3,
+                              );
+                            },
+                          )
+                        : Container(
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: AppTheme.success.withOpacity(0.4),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
                           ),
-                          minHeight: 3,
-                        );
-                      },
-                    ),
                   ),
 
                   const SizedBox(height: AppTheme.spacing12),
