@@ -293,56 +293,95 @@
             </div>
         </div>
 
-        <h2>💎 FREE vs PREMIUM</h2>
+        <h2>💎 Trial & Subscription</h2>
 
         <div class="faq-item">
-            <div class="faq-question">Q: What's the difference between FREE and PREMIUM mode?</div>
+            <div class="faq-question">Q: How does the app pricing work?</div>
             <div class="faq-answer">
-                <p><strong>A:</strong> Comparison table:</p>
-                <table>
-                    <tr>
-                        <th>Feature</th>
-                        <th>FREE</th>
-                        <th>PREMIUM</th>
-                    </tr>
-                    <tr>
-                        <td>Portfolio Tracking</td>
-                        <td>✅</td>
-                        <td>✅</td>
-                    </tr>
-                    <tr>
-                        <td>Real-time Prices & Charts</td>
-                        <td>✅</td>
-                        <td>✅</td>
-                    </tr>
-                    <tr>
-                        <td>Charts (all timeframes: 5m to 1d)</td>
-                        <td>✅</td>
-                        <td>✅</td>
-                    </tr>
-                    <tr>
-                        <td>AI Insights (1d timeframe)</td>
-                        <td>✅</td>
-                        <td>✅</td>
-                    </tr>
-                    <tr>
-                        <td>AI Insights (5m, 15m, 1h, 4h)</td>
-                        <td>❌</td>
-                        <td>✅</td>
-                    </tr>
-                    <tr>
-                        <td>Advanced Indicators & Analytics</td>
-                        <td>❌</td>
-                        <td>✅</td>
-                    </tr>
-                    <tr>
-                        <td>Priority Support</td>
-                        <td>❌</td>
-                        <td>✅</td>
-                    </tr>
-                </table>
-                <p style="margin-top: 20px;"><strong>2-day FREE TRIAL:</strong> All new users get full PREMIUM access for 2 days, starting from first app launch!</p>
-                <p><strong>Upgrade to PREMIUM:</strong> €5.99/month or €57.50/year (save 20%)</p>
+                <p><strong>A:</strong> MyTradeMate Portfolio offers a simple trial-then-subscribe model:</p>
+
+                <p style="margin-top: 20px;"><strong>🎁 2-Day FREE TRIAL</strong></p>
+                <ul>
+                    <li>✅ All features unlocked for 2 days (48 hours)</li>
+                    <li>✅ Portfolio tracking with read-only Binance API</li>
+                    <li>✅ AI market insights on all timeframes (5m, 15m, 1h, 4h, 1d)</li>
+                    <li>✅ Advanced technical indicators</li>
+                    <li>✅ Real-time price charts</li>
+                    <li>✅ No credit card required to start trial</li>
+                </ul>
+
+                <p style="margin-top: 20px;"><strong>💳 After Trial (Subscription Required)</strong></p>
+                <p>After 2 days, you need a subscription to continue using the app:</p>
+                <ul>
+                    <li><strong>Monthly:</strong> €5.99/month</li>
+                    <li><strong>Annual:</strong> €57.50/year (save 20%, equivalent to €4.79/month)</li>
+                </ul>
+
+                <p style="margin-top: 20px;"><strong>📌 Important:</strong></p>
+                <ul>
+                    <li>Trial starts automatically when you first launch the app</li>
+                    <li>After trial expires, app requires subscription to continue</li>
+                    <li>No free tier - all features require subscription after trial</li>
+                    <li>Cancel anytime through Google Play Store settings</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2>🤖 Local AI & Offline Capability</h2>
+
+        <div class="faq-item">
+            <div class="faq-question">Q: Does the app work offline?</div>
+            <div class="faq-answer">
+                <p><strong>A: Yes!</strong> AI models and 1000 candles are cached locally. Predictions work without internet using last known data.</p>
+                <ul>
+                    <li>✅ <strong>TensorFlow Lite models:</strong> Run 100% on your device (no cloud needed)</li>
+                    <li>✅ <strong>1000 candles cached:</strong> Historical price data stored locally</li>
+                    <li>✅ <strong>76 indicators calculated on-device:</strong> All technical analysis happens locally</li>
+                    <li>✅ <strong>Predictions work offline:</strong> AI runs using cached data when internet is unavailable</li>
+                </ul>
+                <p><strong>What needs internet:</strong> Only fetching fresh price data from Binance API. If offline, the app uses the last known prices from cache.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Q: Why does the app need internet?</div>
+            <div class="faq-answer">
+                <p><strong>A:</strong> Only to fetch fresh price data directly from Binance API. All AI processing happens locally on your device.</p>
+                <ul>
+                    <li><strong>Internet required for:</strong> Fetching latest portfolio balances and current prices from Binance</li>
+                    <li><strong>No internet needed for:</strong> AI predictions, technical indicators, chart display (uses cached data)</li>
+                </ul>
+                <p><strong>Your device connects DIRECTLY to Binance</strong> - no MyTradeMate servers in between. We don't operate backend servers for user data.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Q: What happens to my data?</div>
+            <div class="faq-answer">
+                <p><strong>A:</strong> Your portfolio data never leaves your device. We don't have servers to collect or store it.</p>
+                <ul>
+                    <li>✅ <strong>Stored locally:</strong> API keys, portfolio data, and preferences stay on your device</li>
+                    <li>✅ <strong>AES-256 encryption:</strong> API keys encrypted with Android KeyStore</li>
+                    <li>✅ <strong>No cloud sync:</strong> Data never synced to cloud or our servers</li>
+                    <li>✅ <strong>Direct API calls:</strong> Your device → Binance API (no intermediary)</li>
+                    <li>✅ <strong>Zero tracking:</strong> No analytics, telemetry, or usage data collected</li>
+                </ul>
+                <p><strong>We can't see your data because it never leaves your device.</strong> Only Google Play sees payment info for subscriptions.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Q: How do I report bugs if there's no analytics?</div>
+            <div class="faq-answer">
+                <p><strong>A:</strong> Email us directly at <a href="mailto:mytrademate.app@gmail.com" style="color: var(--gold);">mytrademate.app@gmail.com</a>. We rely on user reports rather than automated tracking.</p>
+                <p><strong>Why no automated crash reports?</strong> We believe in complete privacy. Most apps track every action, crash, and screen view. We don't. If something breaks, please email us with:</p>
+                <ul>
+                    <li>Device model and Android version</li>
+                    <li>App version (found in Settings)</li>
+                    <li>Description of what happened</li>
+                    <li>Screenshots (if applicable)</li>
+                </ul>
+                <p><strong>Your privacy > Our convenience.</strong> We chose to respect your data rather than spy on your usage.</p>
             </div>
         </div>
 
@@ -392,7 +431,7 @@
         <div class="faq-item">
             <div class="faq-question">Q: What are the 76 AI indicators?</div>
             <div class="faq-answer">
-                <p><strong>A:</strong> Our AI analyzes 76 technical indicators across multiple categories:</p>
+                <p><strong>A:</strong> Our AI analyzes 76 technical indicators across multiple categories, all calculated locally on your device:</p>
                 <ul>
                     <li><strong>Momentum:</strong> RSI, Stochastic, MACD, Williams %R</li>
                     <li><strong>Trend:</strong> Moving Averages (SMA, EMA), ADX, Parabolic SAR</li>
@@ -401,7 +440,7 @@
                     <li><strong>Support/Resistance:</strong> Pivot Points, Fibonacci Retracements</li>
                     <li><strong>Custom:</strong> Price action patterns, candlestick formations</li>
                 </ul>
-                <p>All indicators are calculated in real-time and fed into our ensemble ML models for multi-timeframe predictions (5m, 15m, 1h, 4h, 1d).</p>
+                <p><strong>All indicators are calculated on-device</strong> in real-time and fed into our TensorFlow Lite ensemble ML models for multi-timeframe predictions (5m, 15m, 1h, 4h, 1d). No cloud processing - everything happens locally.</p>
             </div>
         </div>
 
@@ -480,8 +519,7 @@
             <div class="faq-answer">
                 <p><strong>A:</strong> Possible reasons:</p>
                 <ul>
-                    <li><strong>FREE mode:</strong> Only 1-day timeframe is available in FREE mode. Upgrade to PREMIUM for 5m, 15m, 1h, 4h timeframes.</li>
-                    <li><strong>Trial expired:</strong> Your 2-day trial has ended. Upgrade to PREMIUM to continue.</li>
+                    <li><strong>Trial expired:</strong> Your 2-day trial has ended. Subscribe (€5.99/month or €57.50/year) to continue using the app.</li>
                     <li><strong>No data available:</strong> Some trading pairs may not have sufficient historical data for AI predictions.</li>
                     <li><strong>App needs update:</strong> Check Google Play Store for app updates.</li>
                 </ul>
@@ -496,22 +534,22 @@
                 <p><strong>A:</strong> Simple and automatic:</p>
                 <ul>
                     <li>✅ Starts automatically when you first launch the app</li>
-                    <li>✅ Full PREMIUM access for 2 days (exactly 48 hours)</li>
+                    <li>✅ All features unlocked for 2 days (exactly 48 hours)</li>
                     <li>✅ No credit card required</li>
                     <li>✅ All AI insights unlocked (5m, 15m, 1h, 4h, 1d timeframes)</li>
                     <li>✅ Advanced technical indicators enabled</li>
                 </ul>
-                <p>After 2 days, the app reverts to FREE mode (1-day AI insights only). Upgrade to PREMIUM to access all timeframes.</p>
+                <p>After 2 days, you need a subscription (€5.99/month or €57.50/year) to continue using the app.</p>
             </div>
         </div>
 
         <div class="faq-item">
-            <div class="faq-question">Q: How much does PREMIUM cost?</div>
+            <div class="faq-question">Q: How much does the subscription cost?</div>
             <div class="faq-answer">
                 <p><strong>A:</strong> Two subscription options:</p>
                 <ul>
                     <li><strong>Monthly:</strong> €5.99/month (charged monthly)</li>
-                    <li><strong>Annual:</strong> €57.50/year (save 20%, ~€4.79/month)</li>
+                    <li><strong>Annual:</strong> €57.50/year (save 20%, equivalent to €4.79/month)</li>
                 </ul>
                 <p>Billing is handled by Google Play Store. Subscriptions auto-renew unless cancelled.</p>
             </div>
@@ -527,7 +565,7 @@
                     <li>Select MyTradeMate Portfolio</li>
                     <li>Tap "Cancel subscription"</li>
                 </ol>
-                <p>You'll continue to have PREMIUM access until the end of your current billing period.</p>
+                <p>You'll continue to have access to the app until the end of your current billing period.</p>
             </div>
         </div>
 

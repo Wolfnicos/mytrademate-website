@@ -181,7 +181,19 @@
             </div>
 
             <h2>🎯 Our Privacy Philosophy</h2>
-            <p>MyTradeMate Portfolio operates on a simple principle: <strong>Read-only access, maximum privacy.</strong> We designed our app to minimize data collection and maximize your security. All sensitive information stays on your device, encrypted and secure. We can ONLY view your portfolio - we cannot access your funds or execute any transactions.</p>
+            <p>MyTradeMate Portfolio operates on a simple principle: <strong>Local AI processing, maximum privacy.</strong> We designed our app to minimize data collection and maximize your security. All AI models run 100% on your device using TensorFlow Lite. Your portfolio data, API keys, and all processing happen locally - we don't have backend servers to collect or store your information.</p>
+
+            <div class="highlight-box">
+                <h3>🤖 Local AI Processing (Zero Tracking)</h3>
+                <p><strong>MyTradeMate Portfolio works differently from other crypto apps:</strong></p>
+                <ul>
+                    <li>✅ <strong>AI runs on your device:</strong> TensorFlow Lite models process 76 technical indicators locally</li>
+                    <li>✅ <strong>Works offline:</strong> 1000 candles cached locally, predictions work without internet</li>
+                    <li>✅ <strong>Direct API calls:</strong> Your device connects directly to Binance API (no intermediary servers)</li>
+                    <li>✅ <strong>No MyTradeMate servers:</strong> We don't operate backend servers for user data</li>
+                    <li>✅ <strong>Zero tracking:</strong> No analytics, telemetry, or data collection</li>
+                </ul>
+            </div>
 
             <h2>📊 What We DON'T Collect</h2>
             <p>Unlike most crypto apps, MyTradeMate Portfolio does NOT collect or store:</p>
@@ -194,15 +206,12 @@
                 <li><strong>Behavioral Data</strong> - No tracking pixels, analytics, or user profiling</li>
             </ul>
 
-            <h2>✅ What We DO Collect (Minimal)</h2>
-            <p>To provide basic app functionality, we collect only:</p>
+            <h2>✅ What We DO Collect (Almost Nothing)</h2>
+            <p>To provide basic app functionality:</p>
             <ul>
-                <li><strong>Crash Reports</strong> - Anonymous error logs to fix bugs (optional, can be disabled)</li>
-                <li><strong>App Version</strong> - To ensure compatibility and updates</li>
-                <li><strong>Device Type</strong> - iOS or Android, for optimization purposes only</li>
-                <li><strong>Subscription Status</strong> - To manage your Premium subscription (€5.99/month or €57.50/year)</li>
+                <li><strong>Subscription Status ONLY</strong> - Managed by Google Play (not us) to verify your subscription</li>
             </ul>
-            <p>All of this data is <strong>anonymous</strong> and cannot be linked back to you personally.</p>
+            <p><strong>That's it.</strong> We do NOT collect crash reports, analytics, device info, or any telemetry. If something breaks, we rely on you emailing us directly at mytrademate.app@gmail.com rather than automated tracking.</p>
 
             <h2>🔐 How We Protect Your Data</h2>
 
@@ -212,8 +221,8 @@
             <h3>Biometric Security</h3>
             <p>You can enable Face ID, Touch ID, or fingerprint authentication to add an extra layer of protection. Your biometric data never leaves your device and is managed by Apple/Google security systems.</p>
 
-            <h3>No Cloud Sync</h3>
-            <p>Your portfolio data, settings, and preferences are stored locally on your device. We don't sync data to the cloud, meaning you have complete control over your information.</p>
+            <h3>No Cloud Sync, No Servers</h3>
+            <p>Your portfolio data, settings, and preferences are stored locally on your device. We don't sync data to the cloud or operate backend servers. Your device connects directly to Binance API for price data - nothing goes through our servers because we don't have any.</p>
 
             <div class="highlight-box">
                 <h3>⚠️ Important: Read-Only API Key</h3>
@@ -227,30 +236,28 @@
                 <p><strong>This app is designed for portfolio tracking only.</strong> We cannot and will not execute any transactions, trades, or withdrawals. Your read-only API key ensures maximum security.</p>
             </div>
 
-            <h2>🍪 Cookies and Tracking</h2>
+            <h2>🍪 Cookies and Tracking (ZERO)</h2>
             <p>MyTradeMate Portfolio does NOT use:</p>
             <ul>
                 <li>Advertising cookies</li>
                 <li>Social media tracking pixels</li>
                 <li>Third-party analytics (Google Analytics, Facebook Pixel, etc.)</li>
                 <li>Cross-site tracking or fingerprinting</li>
+                <li>ANY analytics or telemetry in the app</li>
             </ul>
-            <p>Our website uses minimal technical cookies only for basic functionality (like remembering your language preference).</p>
+            <p><strong>Zero tracking. Period.</strong> We built this app to respect your privacy completely. If you need help, email us directly - we don't use automated tracking to spy on your usage.</p>
 
-            <h2>🤝 Third-Party Services</h2>
-            <p>MyTradeMate Portfolio connects to these third-party services:</p>
+            <h2>🤝 Third-Party Services (Direct Connections)</h2>
+            <p><strong>Important:</strong> Your device connects DIRECTLY to these services. No data flows through MyTradeMate servers (we don't have any).</p>
 
-            <h3>Binance API (Read-Only)</h3>
-            <p>When you use your read-only API keys, the app communicates directly with Binance servers to fetch portfolio balances and market data. This communication is encrypted (HTTPS) and follows Binance's own privacy policy. <strong>We can ONLY view your portfolio - we cannot access your funds or execute any transactions.</strong></p>
+            <h3>Binance API (Direct Connection from Your Device)</h3>
+            <p>When you use your read-only API keys, <strong>YOUR DEVICE</strong> communicates directly with Binance servers to fetch portfolio balances and market data. This communication is encrypted (HTTPS) and follows Binance's own privacy policy. <strong>MyTradeMate does NOT act as an intermediary.</strong> We can ONLY view your portfolio - we cannot access your funds or execute any transactions.</p>
 
-            <h3>CoinGecko API</h3>
-            <p>We use CoinGecko's public API to display cryptocurrency logos and additional market data. No personal information is shared with CoinGecko.</p>
+            <h3>CoinGecko API (Optional Coin Logos)</h3>
+            <p>Your device may fetch cryptocurrency logos directly from CoinGecko's public API. No personal information is shared with CoinGecko. This is optional for visual display only.</p>
 
-            <h3>RevenueCat (Subscription Management)</h3>
-            <p>For in-app purchases and subscriptions (€5.99/month or €57.50/year), we use RevenueCat. They collect minimal data (transaction ID, subscription status) to manage your premium access. RevenueCat is GDPR and CCPA compliant.</p>
-
-            <h3>Google Play Services</h3>
-            <p>Payment processing is handled by Google Play Store. Google's privacy policy governs their data practices.</p>
+            <h3>Google Play Services (Subscription Only)</h3>
+            <p>Payment processing and subscription management are handled entirely by Google Play Store. Only Google sees your payment information - we never do. Google's privacy policy governs their data practices.</p>
 
             <h2>👤 Your Rights (GDPR & CCPA Compliant)</h2>
             <p>Under data protection laws, you have the right to:</p>
@@ -290,9 +297,16 @@
             <p><strong>Email:</strong> <a href="mailto:mytrademate.app@gmail.com" style="color: var(--gold);">mytrademate.app@gmail.com</a></p>
 
             <div class="highlight-box">
-                <h3>🛡️ Bottom Line</h3>
-                <p><strong>MyTradeMate Portfolio respects your privacy.</strong> We built this app for crypto holders who value security and control. Your read-only API keys, portfolio data, and personal information stay on your device, encrypted and protected. We can't access your funds, we don't want to access your funds, and we will never sell your data.</p>
-                <p><strong>This is a portfolio tracker, not a trading platform.</strong> We can ONLY view your holdings - we cannot execute any transactions.</p>
+                <h3>🛡️ Bottom Line: Privacy-First Architecture</h3>
+                <p><strong>MyTradeMate Portfolio respects your privacy by design.</strong> We built this app for crypto holders who value security and control:</p>
+                <ul>
+                    <li>✅ <strong>100% Local AI:</strong> TensorFlow Lite models run on your device, not in the cloud</li>
+                    <li>✅ <strong>Works Offline:</strong> 1000 candles cached locally, predictions work without internet</li>
+                    <li>✅ <strong>Direct API Calls:</strong> Your device → Binance API (no MyTradeMate servers)</li>
+                    <li>✅ <strong>Zero Tracking:</strong> No analytics, telemetry, or data collection</li>
+                    <li>✅ <strong>Read-Only Access:</strong> We can ONLY view your portfolio, cannot execute any transactions</li>
+                </ul>
+                <p><strong>This is a portfolio tracker, not a trading platform.</strong> Your data stays on your device. Always.</p>
             </div>
         </div>
 
