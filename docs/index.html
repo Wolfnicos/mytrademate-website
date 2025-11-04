@@ -405,12 +405,44 @@
         <p class="waitlist-notice">✨ First 1,000 users only · €3.99/month FOREVER</p>
 
         <!-- Email fallback for desktop users -->
-        <div class="email-fallback" style="margin-top: 30px; padding: 25px; background: rgba(255, 255, 255, 0.1); border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.2);">
-            <p style="font-size: 16px; opacity: 0.9; margin-bottom: 15px;">📧 Email not opening? Send directly to:</p>
-            <p style="font-size: 22px; font-weight: 700; color: #FFD700; margin-bottom: 15px;">mytrademate.app@gmail.com</p>
-            <p style="font-size: 15px; opacity: 0.85; margin-bottom: 8px;"><strong>Subject:</strong> <em>I want the MyTradeMate launch discount!</em></p>
-            <p style="font-size: 15px; opacity: 0.85;"><strong>Message:</strong> <em>Please notify me on launch day!</em></p>
+        <div class="email-fallback" style="margin-top: 30px; padding: 25px; background: rgba(255, 255, 255, 0.1); border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.2); text-align: center;">
+            <p style="font-size: 16px; opacity: 0.9; margin-bottom: 15px;">📧 <strong>Button not working?</strong> Copy email and send manually:</p>
+
+            <!-- Copy Email Button -->
+            <button onclick="copyEmail()" id="copyBtn" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #000; border: none; padding: 12px 30px; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 20px; transition: transform 0.2s, box-shadow 0.2s;">
+                📋 Copy Email Address
+            </button>
+
+            <p style="font-size: 20px; font-weight: 700; color: #FFD700; margin-bottom: 20px; word-break: break-all;">mytrademate.app@gmail.com</p>
+
+            <div style="text-align: left; max-width: 500px; margin: 0 auto; background: rgba(0, 0, 0, 0.2); padding: 15px; border-radius: 10px;">
+                <p style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;"><strong>Subject:</strong></p>
+                <p style="font-size: 14px; opacity: 0.85; margin-bottom: 15px; font-style: italic;">I want the MyTradeMate launch discount!</p>
+                <p style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;"><strong>Message:</strong></p>
+                <p style="font-size: 14px; opacity: 0.85; font-style: italic;">Please notify me on launch day!</p>
+            </div>
         </div>
+
+        <script>
+        function copyEmail() {
+            const email = 'mytrademate.app@gmail.com';
+            navigator.clipboard.writeText(email).then(function() {
+                // Success feedback
+                const btn = document.getElementById('copyBtn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ Email Copied!';
+                btn.style.background = 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)';
+
+                setTimeout(function() {
+                    btn.innerHTML = originalText;
+                    btn.style.background = 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)';
+                }, 2000);
+            }).catch(function(err) {
+                // Fallback for older browsers
+                alert('Email address: mytrademate.app@gmail.com');
+            });
+        }
+        </script>
     </section>
 
     <!-- Features Section -->
