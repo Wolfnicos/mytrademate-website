@@ -327,6 +327,64 @@
             </div>
         </div>
 
+        <h2>🤖 Local AI & Offline Capability</h2>
+
+        <div class="faq-item">
+            <div class="faq-question">Q: Does the app work offline?</div>
+            <div class="faq-answer">
+                <p><strong>A: Yes!</strong> AI models and 1000 candles are cached locally. Predictions work without internet using last known data.</p>
+                <ul>
+                    <li>✅ <strong>TensorFlow Lite models:</strong> Run 100% on your device (no cloud needed)</li>
+                    <li>✅ <strong>1000 candles cached:</strong> Historical price data stored locally</li>
+                    <li>✅ <strong>76 indicators calculated on-device:</strong> All technical analysis happens locally</li>
+                    <li>✅ <strong>Predictions work offline:</strong> AI runs using cached data when internet is unavailable</li>
+                </ul>
+                <p><strong>What needs internet:</strong> Only fetching fresh price data from Binance API. If offline, the app uses the last known prices from cache.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Q: Why does the app need internet?</div>
+            <div class="faq-answer">
+                <p><strong>A:</strong> Only to fetch fresh price data directly from Binance API. All AI processing happens locally on your device.</p>
+                <ul>
+                    <li><strong>Internet required for:</strong> Fetching latest portfolio balances and current prices from Binance</li>
+                    <li><strong>No internet needed for:</strong> AI predictions, technical indicators, chart display (uses cached data)</li>
+                </ul>
+                <p><strong>Your device connects DIRECTLY to Binance</strong> - no MyTradeMate servers in between. We don't operate backend servers for user data.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Q: What happens to my data?</div>
+            <div class="faq-answer">
+                <p><strong>A:</strong> Your portfolio data never leaves your device. We don't have servers to collect or store it.</p>
+                <ul>
+                    <li>✅ <strong>Stored locally:</strong> API keys, portfolio data, and preferences stay on your device</li>
+                    <li>✅ <strong>AES-256 encryption:</strong> API keys encrypted with Android KeyStore</li>
+                    <li>✅ <strong>No cloud sync:</strong> Data never synced to cloud or our servers</li>
+                    <li>✅ <strong>Direct API calls:</strong> Your device → Binance API (no intermediary)</li>
+                    <li>✅ <strong>Zero tracking:</strong> No analytics, telemetry, or usage data collected</li>
+                </ul>
+                <p><strong>We can't see your data because it never leaves your device.</strong> Only Google Play sees payment info for subscriptions.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Q: How do I report bugs if there's no analytics?</div>
+            <div class="faq-answer">
+                <p><strong>A:</strong> Email us directly at <a href="mailto:mytrademate.app@gmail.com" style="color: var(--gold);">mytrademate.app@gmail.com</a>. We rely on user reports rather than automated tracking.</p>
+                <p><strong>Why no automated crash reports?</strong> We believe in complete privacy. Most apps track every action, crash, and screen view. We don't. If something breaks, please email us with:</p>
+                <ul>
+                    <li>Device model and Android version</li>
+                    <li>App version (found in Settings)</li>
+                    <li>Description of what happened</li>
+                    <li>Screenshots (if applicable)</li>
+                </ul>
+                <p><strong>Your privacy > Our convenience.</strong> We chose to respect your data rather than spy on your usage.</p>
+            </div>
+        </div>
+
         <h2>🤖 AI Market Insights</h2>
 
         <div class="faq-item">
@@ -373,7 +431,7 @@
         <div class="faq-item">
             <div class="faq-question">Q: What are the 76 AI indicators?</div>
             <div class="faq-answer">
-                <p><strong>A:</strong> Our AI analyzes 76 technical indicators across multiple categories:</p>
+                <p><strong>A:</strong> Our AI analyzes 76 technical indicators across multiple categories, all calculated locally on your device:</p>
                 <ul>
                     <li><strong>Momentum:</strong> RSI, Stochastic, MACD, Williams %R</li>
                     <li><strong>Trend:</strong> Moving Averages (SMA, EMA), ADX, Parabolic SAR</li>
@@ -382,7 +440,7 @@
                     <li><strong>Support/Resistance:</strong> Pivot Points, Fibonacci Retracements</li>
                     <li><strong>Custom:</strong> Price action patterns, candlestick formations</li>
                 </ul>
-                <p>All indicators are calculated in real-time and fed into our ensemble ML models for multi-timeframe predictions (5m, 15m, 1h, 4h, 1d).</p>
+                <p><strong>All indicators are calculated on-device</strong> in real-time and fed into our TensorFlow Lite ensemble ML models for multi-timeframe predictions (5m, 15m, 1h, 4h, 1d). No cloud processing - everything happens locally.</p>
             </div>
         </div>
 
