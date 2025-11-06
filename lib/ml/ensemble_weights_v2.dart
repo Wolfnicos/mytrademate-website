@@ -138,7 +138,8 @@ class EnsembleWeightsV2 {
 
     if (requestedTf == modelTf) {
       // Exact match gets highest weight
-      weight = 0.35;
+      // REDUCED from 0.35 to 0.25 to prevent single model dominance
+      weight = 0.25;
     } else {
       // Calculate distance in log space
       final distance = (requestedMinutes / modelMinutes).abs();

@@ -20,6 +20,9 @@ import 'screens/settings_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/app_settings_service.dart';
 import 'services/auth_service.dart';
+import 'services/local_notification_service.dart';
+import 'services/background_ai_monitor.dart';
+import 'services/user_coins_service.dart';
 import 'theme/app_theme.dart';
 import 'providers/navigation_provider.dart';
 import 'services/achievement_service.dart';
@@ -29,8 +32,8 @@ import 'widgets/risk_disclaimer_dialog.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Register Syncfusion license (7-day temporary, will be replaced with permanent Community License)
-  SyncfusionLicense.registerLicense('Ngo9BigBOggjHTQxAR8/V1JFaF1cX2hIf0xyWmFZfVtgfV9FYlZTTGYuP1ZhSXxWd0VhUX9Xc3ZXTmlaVkx9XEM=');
+  // Register Syncfusion Community License (valid for 1 year for individual developers)
+  SyncfusionLicense.registerLicense('Ngo9BigBOggjHTQxAR8/V1JFaF5cXGRCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdmWH9ceXVVRmBZVUZxXEBWYEg=');
 
   // Initialize ONLY fast, essential services in main()
   // This allows the app to start in <1 second
@@ -38,16 +41,22 @@ Future<void> main() async {
   await AuthService().load();
   await AchievementService().load();
 
+  // Initialize LOCAL notification services (NO CLOUD!)
+  await LocalNotificationService.initialize();
+  await BackgroundAIMonitor.initialize();
+  await UserCoinsService().initialize();
+
   // Initialize theme provider
   final themeProvider = ThemeProvider();
   await themeProvider.init();
 
-  // Initialize RevenueCat SDK
-  await SubscriptionProvider.initializeRevenueCat();
+  // Initialize RevenueCat SDK (DISABLED for LITE version testing)
+  // TODO: Enable after getting real RevenueCat API keys
+  // await SubscriptionProvider.initializeRevenueCat();
 
-  // Initialize subscription provider and check status
+  // Initialize subscription provider (check status disabled for testing)
   final subscriptionProvider = SubscriptionProvider();
-  await subscriptionProvider.checkSubscriptionStatus();
+  // await subscriptionProvider.checkSubscriptionStatus();
 
   // Start the app immediately
   runApp(
@@ -244,9 +253,9 @@ class _PremiumAppBar extends StatelessWidget implements PreferredSizeWidget {
                     width: 1,
                   ),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.settings_outlined,
-                  color: AppTheme.textSecondary,
+                  color: AppTheme.getTextSecondary(context),
                   size: 20,
                 ),
               ),
@@ -279,21 +288,25 @@ class _PremiumBottomNav extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                AppTheme.surface.withOpacity(0.85),
-                AppTheme.surface.withOpacity(0.75),
+                AppTheme.getSurface(context).withOpacity(0.85),
+                AppTheme.getSurface(context).withOpacity(0.75),
               ],
               begin: Alignment.bottomCenter,
               end: Alignment.topCenter,
             ),
             border: Border(
               top: BorderSide(
-                color: AppTheme.glassBorder,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.glassBorder
+                    : Colors.grey[300]!,
                 width: 1,
               ),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.black.withOpacity(0.1)
+                    : Colors.black.withOpacity(0.05),
                 blurRadius: 20,
                 offset: const Offset(0, -4),
               ),
@@ -383,7 +396,7 @@ class _BottomNavItem extends StatelessWidget {
                 // Icon with gradient glow when active
                 Icon(
                   isActive ? activeIcon : icon,
-                  color: isActive ? AppTheme.primary : AppTheme.textSecondary,
+                  color: isActive ? AppTheme.primary : AppTheme.getTextSecondary(context),
                   size: 22,
                 ),
                 const SizedBox(height: 2),
@@ -391,7 +404,7 @@ class _BottomNavItem extends StatelessWidget {
                 Text(
                   label,
                   style: AppTheme.labelSmall.copyWith(
-                    color: isActive ? AppTheme.textPrimary : AppTheme.textTertiary,
+                    color: isActive ? AppTheme.getTextPrimary(context) : AppTheme.getTextTertiary(context),
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                     fontSize: 11, // Increased from 9px for accessibility (WCAG 2.1 AA)
                   ),

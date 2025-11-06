@@ -3,6 +3,7 @@ import 'package:local_auth/local_auth.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/risk_disclaimer_dialog.dart';
+import '../widgets/pin_dialog.dart';
 import '../services/auth_service.dart';
 import 'package:provider/provider.dart';
 
@@ -128,7 +129,7 @@ class _PremiumIntroPageState extends State<_PremiumIntroPage> {
 
           // Tagline
           Text(
-            'AI-Powered Crypto Trading',
+            'AI-Powered Portfolio Tracker',
             style: AppTheme.headingLarge.copyWith(
               fontSize: 24,
               fontWeight: FontWeight.w700,
@@ -741,11 +742,13 @@ class _AuthPageState extends State<_AuthPage> {
   bool _canUseBiometrics = false;
   List<BiometricType> _availableBiometrics = [];
   bool _showPassword = false;
+  bool _hasPIN = false;
 
   @override
   void initState() {
     super.initState();
     _checkBiometrics();
+    _checkPIN();
     _prefillFromStorage();
   }
 
@@ -767,6 +770,18 @@ class _AuthPageState extends State<_AuthPage> {
     // If biometrics enabled, auto-attempt quick login
     if (authService.biometricsEnabled && canUse && mounted) {
       await _signInWithBiometrics();
+    }
+  }
+
+  Future<void> _checkPIN() async {
+    final authService = context.read<AuthService>();
+    final hasPIN = await authService.hasPIN();
+    setState(() {
+      _hasPIN = hasPIN;
+    });
+    // If PIN is set and biometrics are NOT available, auto-attempt PIN login
+    if (hasPIN && !_canUseBiometrics && mounted) {
+      await _signInWithPIN();
     }
   }
 
@@ -866,6 +881,28 @@ class _AuthPageState extends State<_AuthPage> {
     }
   }
 
+  Future<void> _signInWithPIN() async {
+    // Show PIN dialog
+    final pin = await PINDialog.showVerify(context);
+
+    if (!mounted || pin == null) return;
+
+    setState(() => _isLoading = true);
+
+    final authService = context.read<AuthService>();
+    final success = await authService.verifyPIN(pin);
+
+    if (!mounted) return;
+
+    setState(() => _isLoading = false);
+
+    if (success) {
+      Navigator.of(context).pushReplacementNamed('/home');
+    } else {
+      _showError('Invalid PIN code');
+    }
+  }
+
   void _offerBiometrics() {
     showDialog(
       context: context,
@@ -944,7 +981,9 @@ class _AuthPageState extends State<_AuthPage> {
           ),
           const SizedBox(height: AppTheme.spacing4),
           Text(
-            'Use email or biometric login',
+            _canUseBiometrics || _hasPIN
+                ? 'Use email, biometric, or PIN login'
+                : 'Use email to sign in',
             style: AppTheme.bodySmall.copyWith(
               color: colors.onBackground.withOpacity(0.7),
               fontSize: 13,
@@ -1093,6 +1132,38 @@ class _AuthPageState extends State<_AuthPage> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.secondary,
                   side: const BorderSide(color: AppTheme.secondary, width: 2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                  ),
+                ),
+              ),
+            ),
+          ],
+
+          // PIN Login (if available)
+          if (_hasPIN) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(child: Divider(color: AppTheme.glassBorder)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacing8),
+                  child: Text('OR', style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary, fontSize: 12)),
+                ),
+                Expanded(child: Divider(color: AppTheme.glassBorder)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: OutlinedButton.icon(
+                onPressed: _isLoading ? null : _signInWithPIN,
+                icon: const Icon(Icons.pin),
+                label: const Text('Quick login with PIN'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primary,
+                  side: const BorderSide(color: AppTheme.primary, width: 2),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                   ),

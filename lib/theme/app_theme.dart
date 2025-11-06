@@ -35,10 +35,10 @@ class AppTheme {
   static const Color textTertiary = Color(0xFF6B7280);
   static const Color textDisabled = Color(0xFF4B5563);
 
-  // Text Colors - Light Mode
-  static const Color textPrimaryLight = Color(0xFF1F2937);
-  static const Color textSecondaryLight = Color(0xFF4B5563);
-  static const Color textTertiaryLight = Color(0xFF9CA3AF);
+  // Text Colors - Light Mode (HIGH CONTRAST for WCAG AA compliance)
+  static const Color textPrimaryLight = Color(0xFF000000); // Pure black for maximum contrast
+  static const Color textSecondaryLight = Color(0xFF374151); // Dark gray (was too light #4B5563)
+  static const Color textTertiaryLight = Color(0xFF6B7280); // Medium gray (was too light #9CA3AF)
   static const Color textDisabledLight = Color(0xFFD1D5DB);
 
   // Semantic Colors
@@ -333,7 +333,7 @@ class AppTheme {
         headlineLarge: headingLarge.copyWith(color: textPrimaryLight),
         headlineMedium: headingMedium.copyWith(color: textPrimaryLight),
         headlineSmall: headingSmall.copyWith(color: textPrimaryLight),
-        bodyLarge: bodyLarge.copyWith(color: textPrimaryLight),
+        bodyLarge: bodyLarge.copyWith(color: textSecondaryLight), // Dark gray for readability
         bodyMedium: bodyMedium.copyWith(color: textSecondaryLight),
         bodySmall: bodySmall.copyWith(color: textTertiaryLight),
         labelLarge: labelLarge.copyWith(color: textPrimaryLight),

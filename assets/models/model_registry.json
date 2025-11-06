@@ -18,8 +18,10 @@
   "feature_hash": "c26c42c46b473b8cee74289e1dde1552d8969b87ac922ed659da1e5e22e20ef2",
   "risk": {"vol_z_limit": 1.5, "vol_thresh_increment": 0.03},
   "models": [
-    {"id": "general_5m", "coin": "*", "tf": "5m", "version": "2025.10.19", "trained_date": "2025-10-19", "acc_val": 0.6138, "mcc": 0.28, "sharpe": 0.9, "ece": 0.08, "temp": 1.50, "bias": [0.0, 0.0, 0.0], "w": 1.0, "labels": ["SELL", "HOLD", "BUY"]},
+    {"id": "btc_5m", "coin": "BTC", "tf": "5m", "version": "2025.10.19", "trained_date": "2025-10-19", "acc_val": 0.6223, "mcc": 0.30, "sharpe": 1.0, "ece": 0.08, "temp": 10.00, "bias": [0.0, 0.0, 0.0], "w": 0.80, "labels": ["SELL", "HOLD", "BUY"]},
+    {"id": "btc_15m", "coin": "BTC", "tf": "15m", "version": "2025.10.19", "trained_date": "2025-10-19", "acc_val": 0.58, "mcc": 0.25, "sharpe": 0.85, "ece": 0.08, "temp": 2.00, "bias": [0.0, 0.0, 0.0], "w": 1.0, "labels": ["SELL", "HOLD", "BUY"]},
     {"id": "btc_1h", "coin": "BTC", "tf": "1h", "version": "2025.10.18", "trained_date": "2025-10-18", "acc_val": 0.56, "mcc": 0.23, "sharpe": 0.8, "ece": 0.06, "temp": 1.72, "bias": [0.0, 0.0, 0.0], "w": 0.62, "labels": ["SELL", "HOLD", "BUY"]},
+    {"id": "general_5m", "coin": "*", "tf": "5m", "version": "2025.10.19", "trained_date": "2025-10-19", "acc_val": 0.6138, "mcc": 0.28, "sharpe": 0.9, "ece": 0.08, "temp": 1.50, "bias": [0.0, 0.0, 0.0], "w": 1.0, "labels": ["SELL", "HOLD", "BUY"]},
     {"id": "general_1h", "coin": "*", "tf": "1h", "version": "2025.10.10", "trained_date": "2025-10-10", "acc_val": 0.54, "mcc": 0.20, "sharpe": 0.6, "ece": 0.09, "temp": 1.95, "bias": [0.0, 0.0, 0.0], "w": 0.38, "labels": ["SELL", "HOLD", "BUY"]},
     {"id": "general_4h", "coin": "*", "tf": "4h", "version": "2025.10.20", "trained_date": "2025-10-20", "acc_val": 0.44, "mcc": 0.15, "sharpe": 0.5, "ece": 0.10, "temp": 1.80, "bias": [0.0, 0.0, 0.0], "w": 1.0, "labels": ["SELL", "HOLD", "BUY"]},
     {"id": "general_1d", "coin": "*", "tf": "1d", "version": "2025.10.19", "trained_date": "2025-10-19", "acc_val": 0.4778, "mcc": 0.15, "sharpe": 0.5, "ece": 0.10, "temp": 1.80, "bias": [0.0, 0.0, 0.0], "w": 1.0, "labels": ["SELL", "HOLD", "BUY"]}

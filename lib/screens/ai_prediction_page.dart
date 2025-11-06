@@ -83,13 +83,10 @@ class _AiPredictionPageState extends State<AiPredictionPage> {
 
       debugPrint('▶️ AIPage: fetching ML prediction for $coin @$_interval');
 
-      // Fetch price data (60x76 features) from Binance
-      final priceData = await BinanceService().getFeaturesForModel(_selectedSymbol, interval: _interval);
-
-      // Use CryptoMLService multi-timeframe weighted ensemble
+      // NEW: CryptoMLService now fetches candles for EACH model's timeframe!
       final res = await CryptoMLService().getPrediction(
         coin: coin,
-        priceData: priceData,
+        symbol: _selectedSymbol,
         timeframe: _interval,
       );
 

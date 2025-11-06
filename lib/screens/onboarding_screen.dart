@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:local_auth/local_auth.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/pin_dialog.dart';
 
 /// Premium Onboarding Flow (3 pages)
 /// Page 1: Welcome + All Features
@@ -40,9 +41,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     try {
       final canCheck = await _localAuth.canCheckBiometrics;
       final isDeviceSupported = await _localAuth.isDeviceSupported();
+
+      // IMPORTANT: Also check if any biometrics are actually enrolled
+      final availableBiometrics = await _localAuth.getAvailableBiometrics();
+      final hasEnrolledBiometrics = availableBiometrics.isNotEmpty;
+
       if (mounted) {
         setState(() {
-          _canCheckBiometrics = canCheck && isDeviceSupported;
+          _canCheckBiometrics = canCheck && isDeviceSupported && hasEnrolledBiometrics;
         });
       }
     } catch (e) {
@@ -95,12 +101,81 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _setupPIN() async {
-    // For now, skip PIN setup and go to app
     setState(() => _isLoading = true);
-    await context.read<AuthService>().signInAsGuest();
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    Navigator.of(context).pushReplacementNamed('/home');
+
+    try {
+      final authService = context.read<AuthService>();
+
+      // Check if PIN is already set
+      final hasPIN = await authService.hasPIN();
+
+      if (hasPIN) {
+        // User has PIN - VERIFY it
+        final pin = await PINDialog.showVerify(context);
+
+        if (!mounted) return;
+
+        if (pin == null) {
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        // Check if user clicked "Forgot PIN?"
+        if (pin == 'FORGOT_PIN') {
+          setState(() => _isLoading = false);
+          await _showForgotPINDialog();
+          return;
+        }
+
+        // Verify PIN
+        final isValid = await authService.verifyPIN(pin);
+
+        if (!mounted) return;
+
+        if (isValid) {
+          setState(() => _isLoading = false);
+          Navigator.of(context).pushReplacementNamed('/home');
+        } else {
+          setState(() => _isLoading = false);
+          _showError('Invalid PIN code');
+        }
+      } else {
+        // User doesn't have PIN - SET it
+        final pin = await PINDialog.showSetup(context);
+
+        if (!mounted) return;
+
+        // If user cancelled, just sign in as guest
+        if (pin == null) {
+          await authService.signInAsGuest();
+          if (!mounted) return;
+          setState(() => _isLoading = false);
+          Navigator.of(context).pushReplacementNamed('/home');
+          return;
+        }
+
+        // Save PIN and sign in
+        final success = await authService.setPIN(pin);
+
+        if (!mounted) return;
+
+        if (success) {
+          // Sign in as guest (user has PIN but no account)
+          await authService.signInAsGuest();
+          if (!mounted) return;
+          setState(() => _isLoading = false);
+          Navigator.of(context).pushReplacementNamed('/home');
+        } else {
+          setState(() => _isLoading = false);
+          _showError('Failed to set PIN. Please try again.');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error with PIN: $e');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showError('An error occurred. Please try again.');
+    }
   }
 
   void _showError(String message) {
@@ -114,10 +189,116 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
+  Future<void> _showForgotPINDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.surface
+            : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppTheme.spacing8),
+              decoration: BoxDecoration(
+                color: AppTheme.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+              ),
+              child: const Icon(Icons.warning_amber, color: AppTheme.error, size: 24),
+            ),
+            const SizedBox(width: AppTheme.spacing12),
+            const Expanded(
+              child: Text(
+                'Reset App?',
+                style: AppTheme.headingLarge,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This will delete ALL app data including:',
+              style: AppTheme.bodyMedium.copyWith(
+                color: AppTheme.getTextPrimary(context),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: AppTheme.spacing12),
+            _buildResetItem('Your PIN code'),
+            _buildResetItem('API credentials'),
+            _buildResetItem('All settings and preferences'),
+            const SizedBox(height: AppTheme.spacing16),
+            Text(
+              'You will need to set up the app again from scratch.',
+              style: AppTheme.bodySmall.copyWith(
+                color: AppTheme.getTextSecondary(context),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.getTextSecondary(context)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+              ),
+            ),
+            child: const Text('Reset App'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      setState(() => _isLoading = true);
+      final authService = context.read<AuthService>();
+      await authService.deleteAccount();
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      // Stay on onboarding screen, user can start fresh
+      _showError('App data cleared. You can now set up a new PIN.');
+    }
+  }
+
+  Widget _buildResetItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppTheme.spacing8),
+      child: Row(
+        children: [
+          const Icon(Icons.close, color: AppTheme.error, size: 16),
+          const SizedBox(width: AppTheme.spacing8),
+          Text(
+            text,
+            style: AppTheme.bodyMedium.copyWith(
+              color: AppTheme.getTextSecondary(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: AppTheme.getBackground(context),
       body: SafeArea(
         child: Column(
           children: [
@@ -171,6 +352,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // PAGE 1: Welcome + All Features
   Widget _buildPage1Welcome() {
     return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 32.0),
       child: Column(
         children: [
@@ -220,6 +402,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             'AI-Powered Crypto Tracking',
             style: AppTheme.headingMedium.copyWith(
               fontWeight: FontWeight.w600,
+              color: AppTheme.getTextPrimary(context),
             ),
             textAlign: TextAlign.center,
           ),
@@ -229,7 +412,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Text(
             'Your intelligent portfolio assistant with advanced AI predictions',
             style: AppTheme.bodyMedium.copyWith(
-              color: AppTheme.textSecondary,
+              color: AppTheme.getTextSecondary(context),
             ),
             textAlign: TextAlign.center,
           ),
@@ -251,7 +434,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             icon: Icons.show_chart_rounded,
             iconColor: const Color(0xFF34C759),
             title: 'Multi-Timeframe Analysis',
-            description: '5 timeframes • 1D free • Pro unlocks 5m-4h',
+            description: '5 timeframes • 2-day trial, then subscription',
           ),
 
           const SizedBox(height: 12),
@@ -283,16 +466,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // PAGE 2: FREE vs PREMIUM
   Widget _buildPage2FreePremium() {
     return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 28.0),
       child: Column(
         children: [
           const SizedBox(height: 32),
 
           Text(
-            'Free or Pro?',
+            '2-Day Free Trial',
             style: AppTheme.displayLarge.copyWith(
               fontSize: 32,
               fontWeight: FontWeight.bold,
+              color: AppTheme.getTextPrimary(context),
             ),
             textAlign: TextAlign.center,
           ),
@@ -300,10 +485,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 16),
 
           Text(
-            '1D predictions free forever. Upgrade for faster signals.',
+            'Full access for 2 days, then €5.99/month or €57.50/year',
             style: AppTheme.bodyLarge.copyWith(
               fontSize: 17,
-              color: AppTheme.textSecondary,
+              color: AppTheme.getTextSecondary(context),
             ),
             textAlign: TextAlign.center,
           ),
@@ -329,21 +514,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     Icon(Icons.check_circle, color: AppTheme.success, size: 28),
                     const SizedBox(width: 12),
                     Text(
-                      'FREE Plan',
+                      'Trial (2 Days)',
                       style: AppTheme.headingLarge.copyWith(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
+                        color: AppTheme.getTextPrimary(context),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
-                _buildFeature('✓ AI predictions on 1D timeframe', fontSize: 15),
+                _buildFeature('✓ All AI predictions (5m, 15m, 1h, 4h, 1d)', fontSize: 15),
                 _buildFeature('✓ Portfolio view (read-only)', fontSize: 15),
                 _buildFeature('✓ Real-time price data', fontSize: 15),
                 _buildFeature('✓ Candlestick charts', fontSize: 15),
-                _buildFeature('✗ Short-term AI (5m–4h)', isDisabled: true, fontSize: 15),
-                _buildFeature('✗ Price alerts', isDisabled: true, fontSize: 15),
+                _buildFeature('✓ Full access for 2 days', fontSize: 15),
+                const SizedBox(height: 8),
+                Text(
+                  'Then subscription required',
+                  style: AppTheme.labelSmall.copyWith(
+                    fontSize: 12,
+                    color: AppTheme.getTextSecondary(context),
+                  ),
+                ),
               ],
             ),
           ),
@@ -391,13 +584,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                _buildFeature('✓ All Free features', fontSize: 15),
-                _buildFeature('✓ AI predictions on 5m, 15m, 1h, 4h timeframes', fontSize: 15),
-                _buildFeature('✓ Price alerts and notifications', fontSize: 15),
-                _buildFeature('✓ Faster signal refresh', fontSize: 15),
+                _buildFeature('✓ All features unlocked', fontSize: 15),
+                _buildFeature('✓ AI predictions on all timeframes', fontSize: 15),
+                _buildFeature('✓ Portfolio tracking', fontSize: 15),
+                _buildFeature('✓ Real-time market data', fontSize: 15),
                 const SizedBox(height: 16),
                 Text(
-                  '€9.99/month or €84.99/year (save 30%)',
+                  '€5.99/month or €57.50/year (save 20%)',
                   style: AppTheme.labelMedium.copyWith(
                     fontSize: 13,
                     color: AppTheme.primary,
@@ -416,11 +609,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   // PAGE 3: Disclaimer + Security Setup
   Widget _buildPage3Security() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 32.0),
-      child: Column(
-        children: [
-          const SizedBox(height: 20),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32.0),
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
 
           // Disclaimer box
           Container(
@@ -526,6 +727,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       'I understand and accept the risks',
                       style: AppTheme.bodyLarge.copyWith(
                         fontWeight: FontWeight.w600,
+                        color: AppTheme.getTextPrimary(context),
                       ),
                     ),
                   ),
@@ -544,6 +746,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               'Secure Your Account',
               style: AppTheme.headingLarge.copyWith(
                 fontWeight: FontWeight.bold,
+                color: AppTheme.getTextPrimary(context),
               ),
               textAlign: TextAlign.center,
             ),
@@ -553,7 +756,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Text(
               'Choose how to protect your trading account',
               style: AppTheme.bodyMedium.copyWith(
-                color: AppTheme.textSecondary,
+                color: AppTheme.getTextSecondary(context),
               ),
               textAlign: TextAlign.center,
             ),
@@ -582,22 +785,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
 
             const SizedBox(height: 12),
-
-            // Skip button
-            TextButton(
-              onPressed: _isLoading ? null : _setupPIN,
-              child: Text(
-                'Skip for now',
-                style: AppTheme.labelMedium.copyWith(
-                  color: AppTheme.textSecondary,
-                ),
-              ),
-            ),
           ],
 
-          const SizedBox(height: 40),
-        ],
-      ),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -637,13 +833,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   title,
                   style: AppTheme.bodyLarge.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: AppTheme.getTextPrimary(context),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
                   style: AppTheme.bodySmall.copyWith(
-                    color: AppTheme.textSecondary,
+                    color: AppTheme.getTextSecondary(context),
                   ),
                 ),
               ],
@@ -657,12 +854,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget _buildFeature(String text, {bool isDisabled = false, double fontSize = 14}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10.0),
-      child: Text(
-        text,
-        style: AppTheme.bodyMedium.copyWith(
-          fontSize: fontSize,
-          color: isDisabled ? AppTheme.textTertiary : AppTheme.textSecondary,
-          decoration: isDisabled ? TextDecoration.lineThrough : null,
+      child: Builder(
+        builder: (context) => Text(
+          text,
+          style: AppTheme.bodyMedium.copyWith(
+            fontSize: fontSize,
+            color: isDisabled ? AppTheme.getTextTertiary(context) : AppTheme.getTextSecondary(context),
+            decoration: isDisabled ? TextDecoration.lineThrough : null,
+          ),
         ),
       ),
     );
@@ -674,24 +873,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icon,
-            color: AppTheme.textSecondary,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: AppTheme.bodyMedium.copyWith(
-                color: AppTheme.textSecondary,
+      child: Builder(
+        builder: (context) => Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              icon,
+              color: AppTheme.getTextSecondary(context),
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                text,
+                style: AppTheme.bodyMedium.copyWith(
+                  color: AppTheme.getTextSecondary(context),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -748,13 +949,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     title,
                     style: AppTheme.bodyLarge.copyWith(
                       fontWeight: FontWeight.w600,
+                      color: AppTheme.getTextPrimary(context),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     description,
                     style: AppTheme.bodySmall.copyWith(
-                      color: AppTheme.textSecondary,
+                      color: AppTheme.getTextSecondary(context),
                     ),
                   ),
                 ],

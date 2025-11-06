@@ -8,9 +8,14 @@ import '../providers/subscription_provider.dart';
 import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
 import '../services/auth_service.dart';
+import '../services/background_ai_monitor.dart';
+import '../services/user_coins_service.dart';
+import '../services/local_notification_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/pin_dialog.dart';
 import 'paywall_screen.dart';
+// import 'ml_debug_screen.dart'; // Hidden for production
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -33,6 +38,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _permissionLevel = 'read';
   String _quote = 'USDT';
 
+  // AI Alerts settings
+  bool _aiAlertsEnabled = false;
+  double _confidenceThreshold = 0.58; // 58%
+  String _alertTimeframe = '4h';
+  int _userCoinsCount = 0;
+  String _coinsSource = 'default';
+
   @override
   void initState() {
     super.initState();
@@ -54,8 +66,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final canCheck = await _localAuth.canCheckBiometrics;
       final isDeviceSupported = await _localAuth.isDeviceSupported();
+
+      // IMPORTANT: Also check if any biometrics are actually enrolled
+      final availableBiometrics = await _localAuth.getAvailableBiometrics();
+      final hasEnrolledBiometrics = availableBiometrics.isNotEmpty;
+
+      debugPrint('Settings: canCheck=$canCheck, isDeviceSupported=$isDeviceSupported, '
+          'availableBiometrics=$availableBiometrics, hasEnrolled=$hasEnrolledBiometrics');
+
       setState(() {
-        _canCheckBiometrics = canCheck && isDeviceSupported;
+        _canCheckBiometrics = canCheck && isDeviceSupported && hasEnrolledBiometrics;
       });
     } catch (e) {
       debugPrint('Error checking biometric support: $e');
@@ -67,9 +87,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final results = await Future.wait([
       SharedPreferences.getInstance(),
       _binanceService.loadCredentials(),
+      BackgroundAIMonitor.getSettings(),
+      UserCoinsService().getUserCoins(),
+      UserCoinsService().getCoinsSource(),
     ]);
 
     final prefs = results[0] as SharedPreferences;
+    final aiSettings = results[2] as Map<String, dynamic>;
+    final userCoins = results[3] as List<String>;
+    final coinsSource = results[4] as String;
 
     // Single setState to avoid multiple rebuilds
     if (mounted) {
@@ -79,6 +105,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _quote = AppSettingsService().quoteCurrency;
         _apiKeyController.text = _binanceService.apiKey ?? '';
         _apiSecretController.text = _binanceService.apiSecret ?? '';
+
+        // AI Alerts settings
+        _aiAlertsEnabled = aiSettings['enabled'] as bool;
+        _confidenceThreshold = aiSettings['threshold'] as double;
+        _alertTimeframe = aiSettings['timeframe'] as String;
+        _userCoinsCount = userCoins.length;
+        _coinsSource = coinsSource;
       });
     }
   }
@@ -90,7 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final authenticated = await _localAuth.authenticate(
           localizedReason: 'Enable biometric authentication',
           options: const AuthenticationOptions(
-            biometricOnly: true,
+            biometricOnly: false, // Allow PIN/password fallback on Android
             stickyAuth: true,
           ),
         );
@@ -98,18 +131,134 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (authenticated) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setBool('biometric_enabled', true);
-          setState(() => _biometricEnabled = true);
-          _showSnackBar('Biometric authentication enabled', isError: false);
+          if (mounted) {
+            setState(() => _biometricEnabled = true);
+            _showSnackBar('Biometric authentication enabled', isError: false);
+          }
         }
       } catch (e) {
-        _showSnackBar('Error enabling authentication: $e', isError: true);
+        debugPrint('Biometric authentication error: $e');
+        if (mounted) {
+          _showSnackBar('Failed to enable biometric authentication', isError: true);
+        }
       }
     } else {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('biometric_enabled', false);
-      setState(() => _biometricEnabled = false);
-      _showSnackBar('Biometric authentication disabled', isError: false);
+      if (mounted) {
+        setState(() => _biometricEnabled = false);
+        _showSnackBar('Biometric authentication disabled', isError: false);
+      }
     }
+  }
+
+  // Change PIN Method
+  Future<void> _changePIN() async {
+    final authService = context.read<AuthService>();
+
+    // First check if user has a PIN
+    final hasPIN = await authService.hasPIN();
+    if (!hasPIN) {
+      if (!mounted) return;
+      _showSnackBar('No PIN set. Please set a PIN from the onboarding screen.', isError: true);
+      return;
+    }
+
+    if (!mounted) return;
+
+    // Step 1: Verify old PIN
+    final oldPin = await PINDialog.showVerify(context);
+    if (!mounted) return;
+
+    if (oldPin == null) {
+      return; // User cancelled
+    }
+
+    // Handle Forgot PIN
+    if (oldPin == 'FORGOT_PIN') {
+      await _showForgotPINDialog();
+      return;
+    }
+
+    // Verify the old PIN
+    final storedPinHash = await authService.verifyPIN(oldPin);
+    if (!storedPinHash) {
+      if (!mounted) return;
+      _showSnackBar('Incorrect old PIN', isError: true);
+      return;
+    }
+
+    if (!mounted) return;
+
+    // Step 2: Enter new PIN (twice)
+    final newPin = await PINDialog.showSetup(context);
+    if (!mounted) return;
+
+    if (newPin == null) {
+      return; // User cancelled
+    }
+
+    // Step 3: Save new PIN
+    final success = await authService.setPIN(newPin);
+    if (!mounted) return;
+
+    if (success) {
+      _showSnackBar('PIN changed successfully', isError: false);
+    } else {
+      _showSnackBar('Failed to change PIN. Please try again.', isError: true);
+    }
+  }
+
+  // AI Alerts Methods
+  Future<void> _toggleAIAlerts(bool value) async {
+    if (value) {
+      // Request notification permissions first
+      final granted = await LocalNotificationService.requestPermissions();
+      if (!granted) {
+        if (mounted) {
+          _showSnackBar('Notification permission denied', isError: true);
+        }
+        return;
+      }
+
+      // Start background monitoring
+      await BackgroundAIMonitor.startMonitoring(
+        frequency: const Duration(minutes: 30),
+      );
+
+      // Update coins from Binance if API connected
+      await UserCoinsService().updateCoinsFromBinance();
+
+      // Get updated coin count
+      final coins = await UserCoinsService().getUserCoins();
+
+      if (mounted) {
+        setState(() {
+          _aiAlertsEnabled = true;
+          _userCoinsCount = coins.length;
+        });
+        _showSnackBar('AI Alerts enabled - monitoring ${coins.length} coins', isError: false);
+      }
+    } else {
+      // Stop background monitoring
+      await BackgroundAIMonitor.stopMonitoring();
+
+      if (mounted) {
+        setState(() => _aiAlertsEnabled = false);
+        _showSnackBar('AI Alerts disabled', isError: false);
+      }
+    }
+  }
+
+  Future<void> _updateConfidenceThreshold(double value) async {
+    await BackgroundAIMonitor.setConfidenceThreshold(value);
+    setState(() => _confidenceThreshold = value);
+  }
+
+  Future<void> _updateAlertTimeframe(String? value) async {
+    if (value == null) return;
+    await BackgroundAIMonitor.setAlertTimeframe(value);
+    setState(() => _alertTimeframe = value);
   }
 
   Future<void> _saveApiCredentials() async {
@@ -123,6 +272,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       await _binanceService.saveCredentials(apiKey, apiSecret);
+
+      // Update coins from Binance portfolio
+      await UserCoinsService().updateCoinsFromBinance();
+
       _showSnackBar('Credentials saved successfully', isError: false);
       // Keep them in the fields so they persist visually
       setState(() {});
@@ -151,20 +304,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _clearCredentials() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.surface,
-        title: Text('Confirm Deletion', style: AppTheme.headingLarge),
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Theme.of(dialogContext).brightness == Brightness.dark
+            ? AppTheme.surface
+            : Colors.white,
+        title: Text('Confirm Deletion', style: AppTheme.headingLarge.copyWith(
+          color: AppTheme.getTextPrimary(dialogContext),
+        )),
         content: Text(
           'Are you sure you want to delete your API credentials?',
-          style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
+          style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(dialogContext)),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text('Cancel', style: TextStyle(color: AppTheme.getTextSecondary(dialogContext))),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             style: TextButton.styleFrom(foregroundColor: AppTheme.error),
             child: const Text('Delete'),
           ),
@@ -176,6 +333,131 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _binanceService.clearCredentials();
       _showSnackBar('Credentials deleted', isError: false);
     }
+  }
+
+  // Forgot PIN Dialog
+  Future<void> _showForgotPINDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.surface
+            : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppTheme.spacing8),
+              decoration: BoxDecoration(
+                color: AppTheme.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+              ),
+              child: const Icon(Icons.warning_amber, color: AppTheme.error, size: 24),
+            ),
+            const SizedBox(width: AppTheme.spacing12),
+            const Expanded(
+              child: Text(
+                'Reset App?',
+                style: AppTheme.headingLarge,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This will delete ALL app data including:',
+              style: AppTheme.bodyMedium.copyWith(
+                color: AppTheme.getTextPrimary(context),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: AppTheme.spacing12),
+            _buildResetItem('Your PIN code'),
+            _buildResetItem('API credentials'),
+            _buildResetItem('All settings and preferences'),
+            const SizedBox(height: AppTheme.spacing16),
+            Text(
+              'You will need to set up the app again from scratch.',
+              style: AppTheme.bodySmall.copyWith(
+                color: AppTheme.getTextSecondary(context),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.getTextSecondary(context)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+              ),
+            ),
+            child: const Text('Reset App'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final authService = context.read<AuthService>();
+      await authService.deleteAccount();
+      if (!mounted) return;
+
+      // Sign out and return to onboarding
+      await authService.signOut();
+      if (!mounted) return;
+
+      Navigator.of(context).pushNamedAndRemoveUntil('/onboarding', (route) => false);
+
+      // Show success message on next screen
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('App data cleared. Please set up a new PIN.'),
+              backgroundColor: AppTheme.success,
+              duration: Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      });
+    }
+  }
+
+  Widget _buildResetItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppTheme.spacing8),
+      child: Row(
+        children: [
+          const Icon(Icons.close, color: AppTheme.error, size: 16),
+          const SizedBox(width: AppTheme.spacing8),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTheme.bodySmall.copyWith(
+                color: AppTheme.getTextSecondary(context),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showSnackBar(String message, {required bool isError}) {
@@ -195,11 +477,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.surface
+            : Colors.grey[50],
         elevation: 0,
-        title: Text('Settings', style: AppTheme.headingLarge),
+        title: Text('Settings', style: AppTheme.headingLarge.copyWith(
+          color: AppTheme.getTextPrimary(context),
+        )),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+          icon: Icon(Icons.arrow_back, color: AppTheme.getTextPrimary(context)),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -215,7 +501,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   SwitchListTile(
                     title: Text('Biometric Authentication', style: AppTheme.bodyLarge),
                     subtitle: Text(
-                      'Lock app with Face ID / Fingerprint',
+                      'Lock app with fingerprint or face unlock',
                       style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
                     ),
                     value: _biometricEnabled,
@@ -246,6 +532,178 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
                     ),
                   ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(AppTheme.spacing8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                    ),
+                    child: const Icon(Icons.lock_reset, color: AppTheme.primary),
+                  ),
+                  title: Text('Change PIN Code', style: AppTheme.bodyLarge),
+                  subtitle: Text(
+                    'Update your PIN for app access',
+                    style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
+                  ),
+                  trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+                  onTap: _changePIN,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: AppTheme.spacing24),
+
+          // AI Alerts Section
+          _buildSectionHeader('AI Opportunity Alerts', Icons.notifications_active),
+          GlassCard(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: Text('Enable AI Alerts', style: AppTheme.bodyLarge),
+                  subtitle: Text(
+                    _aiAlertsEnabled
+                        ? 'Monitoring $_userCoinsCount ${_coinsSource == "api" ? "portfolio" : "popular"} coins'
+                        : 'Get notified when AI detects opportunities',
+                    style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
+                  ),
+                  value: _aiAlertsEnabled,
+                  onChanged: _toggleAIAlerts,
+                  activeThumbColor: AppTheme.primary,
+                  secondary: Container(
+                    padding: const EdgeInsets.all(AppTheme.spacing8),
+                    decoration: BoxDecoration(
+                      color: _aiAlertsEnabled
+                          ? AppTheme.primary.withValues(alpha: 0.1)
+                          : AppTheme.holdYellow.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                    ),
+                    child: Icon(
+                      _aiAlertsEnabled ? Icons.notifications_active : Icons.notifications_off,
+                      color: _aiAlertsEnabled ? AppTheme.primary : AppTheme.holdYellow,
+                    ),
+                  ),
+                ),
+
+                // Expandable options when enabled
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  child: _aiAlertsEnabled
+                      ? Column(
+                          children: [
+                            const Divider(height: 1),
+                            Padding(
+                              padding: const EdgeInsets.all(AppTheme.spacing16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Confidence Threshold Slider
+                                  Text(
+                                    'Confidence Threshold',
+                                    style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  const SizedBox(height: AppTheme.spacing8),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Slider(
+                                          value: _confidenceThreshold,
+                                          min: 0.50,
+                                          max: 0.70,
+                                          divisions: 20,
+                                          label: '${(_confidenceThreshold * 100).toStringAsFixed(0)}%',
+                                          onChanged: _updateConfidenceThreshold,
+                                          activeColor: AppTheme.primary,
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AppTheme.spacing12,
+                                          vertical: AppTheme.spacing8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primary.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                                        ),
+                                        child: Text(
+                                          '${(_confidenceThreshold * 100).toStringAsFixed(0)}%',
+                                          style: AppTheme.bodyMedium.copyWith(
+                                            color: AppTheme.primary,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    'Alert when confidence exceeds this threshold',
+                                    style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
+                                  ),
+
+                                  const SizedBox(height: AppTheme.spacing20),
+
+                                  // Timeframe Dropdown
+                                  Text(
+                                    'Timeframe',
+                                    style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  const SizedBox(height: AppTheme.spacing8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacing12),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.glassWhite,
+                                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                                      border: Border.all(color: AppTheme.glassBorder),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: _alertTimeframe,
+                                        isExpanded: true,
+                                        items: const [
+                                          DropdownMenuItem(value: '15m', child: Text('15 Minutes')),
+                                          DropdownMenuItem(value: '1h', child: Text('1 Hour')),
+                                          DropdownMenuItem(value: '4h', child: Text('4 Hours (Recommended)')),
+                                        ],
+                                        onChanged: _updateAlertTimeframe,
+                                      ),
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: AppTheme.spacing20),
+
+                                  // Coins Info
+                                  Container(
+                                    padding: const EdgeInsets.all(AppTheme.spacing12),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primary.withValues(alpha: 0.05),
+                                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                                      border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.info_outline, color: AppTheme.primary, size: 20),
+                                        const SizedBox(width: AppTheme.spacing8),
+                                        Expanded(
+                                          child: Text(
+                                            _coinsSource == 'api'
+                                                ? 'Monitoring your portfolio coins from Binance API'
+                                                : 'Monitoring TOP 10 popular coins (connect Binance API to track your portfolio)',
+                                            style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      : const SizedBox.shrink(),
+                ),
               ],
             ),
           ),
@@ -292,7 +750,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   Text(
                                     'You have access to all features',
                                     style: AppTheme.bodySmall.copyWith(
-                                      color: AppTheme.textSecondary,
+                                      color: AppTheme.getTextSecondary(context),
                                     ),
                                   ),
                                 ],
@@ -364,7 +822,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Text(
                     'Connect your Binance account to view your portfolio',
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
+                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
                   ),
                   const SizedBox(height: AppTheme.spacing16),
                   // Portfolio Tracker - Read-Only API
@@ -436,9 +894,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.info_outline,
-                          color: AppTheme.textSecondary,
+                          color: AppTheme.getTextSecondary(context),
                           size: 20,
                         ),
                         const SizedBox(width: AppTheme.spacing12),
@@ -446,7 +904,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: Text(
                             'MyTradeMate connects to Binance via read-only API to track your portfolio. We never hold your funds or access your private keys.',
                             style: AppTheme.bodySmall.copyWith(
-                              color: AppTheme.textSecondary,
+                              color: AppTheme.getTextSecondary(context),
                             ),
                           ),
                         ),
@@ -470,7 +928,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Text(
                     'Select the currency for prices and totals (Binance supported)',
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
+                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
                   ),
                   const SizedBox(height: AppTheme.spacing16),
                   Wrap(
@@ -526,19 +984,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   TextField(
                     controller: _apiKeyController,
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.textPrimary),
+                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextPrimary(context)),
                     decoration: InputDecoration(
                       labelText: 'API Key',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: AppTheme.getTextSecondary(context)),
                       filled: true,
-                      fillColor: AppTheme.surface,
+                      fillColor: Theme.of(context).brightness == Brightness.dark
+                          ? AppTheme.surface
+                          : Colors.grey[100],
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                         borderSide: BorderSide(color: AppTheme.glassBorder),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                        borderSide: BorderSide(color: AppTheme.glassBorder),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppTheme.glassBorder
+                              : Colors.grey[300]!,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
@@ -557,19 +1021,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   TextField(
                     controller: _apiSecretController,
                     obscureText: _obscureSecret,
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.textPrimary),
+                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextPrimary(context)),
                     decoration: InputDecoration(
                       labelText: 'Secret Key',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: AppTheme.getTextSecondary(context)),
                       filled: true,
-                      fillColor: AppTheme.surface,
+                      fillColor: Theme.of(context).brightness == Brightness.dark
+                          ? AppTheme.surface
+                          : Colors.grey[100],
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                         borderSide: BorderSide(color: AppTheme.glassBorder),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                        borderSide: BorderSide(color: AppTheme.glassBorder),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppTheme.glassBorder
+                              : Colors.grey[300]!,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
@@ -579,7 +1049,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureSecret ? Icons.visibility : Icons.visibility_off,
-                          color: AppTheme.textSecondary,
+                          color: AppTheme.getTextSecondary(context),
                         ),
                         onPressed: () => setState(() => _obscureSecret = !_obscureSecret),
                       ),
@@ -648,7 +1118,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Theme Mode', style: AppTheme.headingSmall),
+                  Text('Theme Mode', style: AppTheme.headingSmall.copyWith(
+                    color: AppTheme.getTextPrimary(context),
+                  )),
                   const SizedBox(height: AppTheme.spacing16),
                   Wrap(
                     spacing: AppTheme.spacing8,
@@ -714,23 +1186,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // Show confirmation dialog
                 final confirmed = await showDialog<bool>(
                   context: context,
-                  builder: (context) => AlertDialog(
-                    backgroundColor: AppTheme.surface,
+                  builder: (dialogContext) => AlertDialog(
+                    backgroundColor: Theme.of(dialogContext).brightness == Brightness.dark
+                        ? AppTheme.surface
+                        : Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppTheme.radiusLG),
                     ),
-                    title: Text('Sign Out', style: AppTheme.headingLarge),
+                    title: Text('Sign Out', style: AppTheme.headingLarge.copyWith(
+                      color: AppTheme.getTextPrimary(dialogContext),
+                    )),
                     content: Text(
                       'Are you sure you want to sign out?',
-                      style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
+                      style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(dialogContext)),
                     ),
                     actions: [
                       TextButton(
-                        onPressed: () => Navigator.pop(context, false),
+                        onPressed: () => Navigator.pop(dialogContext, false),
                         child: const Text('Cancel'),
                       ),
                       ElevatedButton(
-                        onPressed: () => Navigator.pop(context, true),
+                        onPressed: () => Navigator.pop(dialogContext, true),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.error,
                           foregroundColor: Colors.white,
@@ -820,6 +1296,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: const Icon(Icons.open_in_new, color: AppTheme.textTertiary),
                   onTap: () => _openWebsite(),
                 ),
+                // ML Debug & Testing - Hidden for production
+                // const Divider(color: AppTheme.glassBorder),
+                // ListTile(
+                //   leading: const Icon(Icons.bug_report, color: AppTheme.primary),
+                //   title: Text('ML Debug & Testing', style: AppTheme.bodyMedium),
+                //   subtitle: Text('Test AI models accuracy', style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary)),
+                //   trailing: const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
+                //   onTap: () => Navigator.push(
+                //     context,
+                //     MaterialPageRoute(builder: (context) => const MLDebugScreen()),
+                //   ),
+                // ),
               ],
             ),
           ),
@@ -1041,7 +1529,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(width: AppTheme.spacing8),
           Text(
             title,
-            style: AppTheme.headingMedium.copyWith(color: AppTheme.textSecondary),
+            style: AppTheme.headingMedium.copyWith(color: AppTheme.getTextSecondary(context)),
           ),
         ],
       ),

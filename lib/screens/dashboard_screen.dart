@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
+import '../services/user_coins_service.dart';
 import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
@@ -23,10 +24,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Show trial dialog after build completes (if needed)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeShowTrialDialog();
-    });
+    // DISABLED: Trial dialog not used in Portfolio Lite edition
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _maybeShowTrialDialog();
+    // });
     // Listen to quote currency changes and rebuild all tiles
     AppSettingsService().addListener(_onSettingsChanged);
   }
@@ -73,7 +74,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Responsive.constrainWidth(
           context,
           CustomScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
           slivers: [
             // Header
             SliverToBoxAdapter(
@@ -338,17 +339,8 @@ class AIModelsStatusCard extends StatefulWidget {
 class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _pulseAnimation;
-  int _activityIndex = 0;
   int _progressKey = 0;
-
-  final List<String> _activities = [
-    'Analyzing market patterns',
-    'Processing technical indicators',
-    'Evaluating price movements',
-    'Detecting trend reversals',
-    'Calculating risk factors',
-    'Monitoring volatility signals',
-  ];
+  bool _hasLoadedOnce = false;  // Track if models loaded once
 
   @override
   void initState() {
@@ -364,17 +356,7 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
 
-    // Cycle through activities every 5 seconds
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 5));
-      if (mounted) {
-        setState(() {
-          _activityIndex = (_activityIndex + 1) % _activities.length;
-        });
-        return true;
-      }
-      return false;
-    });
+    // Removed: Activity cycling animation (was giving impression of constant work)
   }
 
   @override
@@ -559,27 +541,12 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
                     ),
                     const SizedBox(width: AppTheme.spacing8),
                     Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 800),
-                        transitionBuilder: (Widget child, Animation<double> animation) {
-                          return FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0, 0.2),
-                                end: Offset.zero,
-                              ).animate(animation),
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: Text(
-                          isActive ? _activities[_activityIndex] : 'Initializing neural engine...',
-                          key: ValueKey<String>(isActive ? _activities[_activityIndex] : 'loading'),
-                          style: AppTheme.bodyMedium.copyWith(
-                            color: isActive ? AppTheme.textPrimary : AppTheme.textTertiary,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      // Static text (no cycling animation)
+                      child: Text(
+                        isActive ? 'AI Models: Active & Ready' : 'Initializing neural engine...',
+                        style: AppTheme.bodyMedium.copyWith(
+                          color: isActive ? AppTheme.textPrimary : AppTheme.textTertiary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -589,36 +556,43 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
                 if (isActive) ...[
                   const SizedBox(height: AppTheme.spacing12),
 
-                  // Processing bar animation (slower)
+                  // Processing bar (animate once on first load, then static)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                    child: TweenAnimationBuilder<double>(
-                      key: ValueKey<int>(_progressKey),
-                      duration: const Duration(seconds: 3),
-                      curve: Curves.easeInOut,
-                      tween: Tween<double>(
-                        begin: 0.0,
-                        end: 1.0,
-                      ),
-                      onEnd: () {
-                        // Restart animation when it ends
-                        if (mounted) {
-                          setState(() {
-                            _progressKey++;
-                          });
-                        }
-                      },
-                      builder: (context, value, _) {
-                        return LinearProgressIndicator(
-                          value: value,
-                          backgroundColor: AppTheme.glassBorder,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            AppTheme.primary.withOpacity(0.8),
+                    child: !_hasLoadedOnce
+                        ? TweenAnimationBuilder<double>(
+                            duration: const Duration(seconds: 2),
+                            curve: Curves.easeInOut,
+                            tween: Tween<double>(
+                              begin: 0.0,
+                              end: 1.0,
+                            ),
+                            onEnd: () {
+                              // Mark as loaded, stop animation
+                              if (mounted) {
+                                setState(() {
+                                  _hasLoadedOnce = true;
+                                });
+                              }
+                            },
+                            builder: (context, value, _) {
+                              return LinearProgressIndicator(
+                                value: value,
+                                backgroundColor: AppTheme.glassBorder,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppTheme.primary.withOpacity(0.8),
+                                ),
+                                minHeight: 3,
+                              );
+                            },
+                          )
+                        : Container(
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: AppTheme.success.withOpacity(0.4),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
                           ),
-                          minHeight: 3,
-                        );
-                      },
-                    ),
                   ),
 
                   const SizedBox(height: AppTheme.spacing12),
@@ -692,18 +666,44 @@ class PnLTodaySection extends StatefulWidget {
 
 class _PnLTodaySectionState extends State<PnLTodaySection> {
   final BinanceService _binance = BinanceService();
-  Map<String, double>? _btc;
-  Map<String, double>? _eth;
-  Map<String, double>? _bnb;
-  Map<String, double>? _sol;
-  Map<String, double>? _wif;
-  Map<String, double>? _trump;
+  List<String> _userCoins = []; // Dynamic coins from UserCoinsService
+  Map<String, Map<String, double>> _tickers = {}; // Coin -> ticker data
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _refresh();
+    debugPrint('📍 Dashboard: initState() - adding UserCoinsService listener');
+    _loadUserCoinsAndRefresh();
+
+    // Listen to UserCoinsService changes (when API added/removed in Settings)
+    UserCoinsService().addListener(_onCoinsChanged);
+    debugPrint('✅ Dashboard: UserCoinsService listener added');
+  }
+
+  @override
+  void dispose() {
+    // Remove listener to prevent memory leaks
+    UserCoinsService().removeListener(_onCoinsChanged);
+    super.dispose();
+  }
+
+  /// Called when UserCoinsService notifies that coins changed
+  void _onCoinsChanged() {
+    debugPrint('📢 Dashboard: Coins changed, reloading...');
+    _loadUserCoinsAndRefresh();
+  }
+
+  Future<void> _loadUserCoinsAndRefresh() async {
+    // Clear cache to get fresh coins (in case API was added/removed)
+    UserCoinsService().clearCache();
+
+    // Load user coins first
+    final coins = await UserCoinsService().getUserCoins();
+    if (mounted) {
+      setState(() => _userCoins = coins);
+      _refresh();
+    }
   }
 
   Future<void> _refresh() async {
@@ -711,13 +711,20 @@ class _PnLTodaySectionState extends State<PnLTodaySection> {
     try {
       final quote = AppSettingsService().quoteCurrency.toUpperCase();
 
-      // Use fallback lists for all coins to support EUR, USD, USDT, USDC
-      _btc = await _binance.fetchTicker24hWithFallback(['BTC$quote', 'BTCUSDT', 'BTCEUR', 'BTCUSDC']);
-      _eth = await _binance.fetchTicker24hWithFallback(['ETH$quote', 'ETHUSDT', 'ETHEUR', 'ETHUSDC']);
-      _bnb = await _binance.fetchTicker24hWithFallback(['BNB$quote', 'BNBUSDT', 'BNBEUR', 'BNBUSDC']);
-      _sol = await _binance.fetchTicker24hWithFallback(['SOL$quote', 'SOLUSDT', 'SOLEUR', 'SOLUSDC']);
-      _wif = await _binance.fetchTicker24hWithFallback(['WLFI$quote', 'WLFIUSDT', 'WLFIEUR', 'WLFIUSDC']);
-      _trump = await _binance.fetchTicker24hWithFallback(['TRUMP$quote', 'TRUMPUSDT', 'DJTUSDT']);
+      // Fetch tickers for all user coins dynamically
+      for (final coin in _userCoins) {
+        try {
+          final ticker = await _binance.fetchTicker24hWithFallback([
+            '$coin$quote',
+            '${coin}USDT',
+            '${coin}EUR',
+            '${coin}USDC',
+          ]);
+          _tickers[coin] = ticker;
+        } catch (e) {
+          print('Dashboard: Error fetching $coin: $e');
+        }
+      }
     } catch (e) {
       print('Dashboard: Error fetching market data: $e');
     }
@@ -772,7 +779,7 @@ class _PnLTodaySectionState extends State<PnLTodaySection> {
 
           const SizedBox(height: AppTheme.spacing16),
 
-          // Coin list
+          // Coin list - dynamically display all coins from UserCoinsService
           if (_isLoading)
             const Center(
               child: Padding(
@@ -780,39 +787,29 @@ class _PnLTodaySectionState extends State<PnLTodaySection> {
                 child: CircularProgressIndicator(),
               ),
             )
-          else ...[
-            if (_btc != null) ...[
-              _buildPnLRow('BTC', _btc),
-              if (_eth != null || _bnb != null || _sol != null || _wif != null || _trump != null) _buildDivider(),
-            ],
-            if (_eth != null) ...[
-              _buildPnLRow('ETH', _eth),
-              if (_bnb != null || _sol != null || _wif != null || _trump != null) _buildDivider(),
-            ],
-            if (_bnb != null) ...[
-              _buildPnLRow('BNB', _bnb),
-              if (_sol != null || _wif != null || _trump != null) _buildDivider(),
-            ],
-            if (_sol != null) ...[
-              _buildPnLRow('SOL', _sol),
-              if (_wif != null || _trump != null) _buildDivider(),
-            ],
-            if (_wif != null) ...[
-              _buildPnLRow('WLFI', _wif),
-              if (_trump != null) _buildDivider(),
-            ],
-            if (_trump != null) _buildPnLRow('TRUMP', _trump),
-            if (_btc == null && _eth == null && _bnb == null && _sol == null && _wif == null && _trump == null)
-              Padding(
-                padding: const EdgeInsets.all(AppTheme.spacing20),
-                child: Center(
-                  child: Text(
-                    'No market data available',
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.textTertiary),
-                  ),
+          else if (_tickers.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(AppTheme.spacing20),
+              child: Center(
+                child: Text(
+                  'No market data available',
+                  style: AppTheme.bodyMedium.copyWith(color: AppTheme.textTertiary),
                 ),
               ),
-          ],
+            )
+          else
+            ...() {
+              final entries = _tickers.entries.toList();
+              final widgets = <Widget>[];
+              for (var i = 0; i < entries.length; i++) {
+                final entry = entries[i];
+                widgets.add(_buildPnLRow(entry.key, entry.value));
+                if (i < entries.length - 1) {
+                  widgets.add(_buildDivider());
+                }
+              }
+              return widgets;
+            }(),
         ],
       ),
     );

@@ -172,12 +172,10 @@ class RSIMLHybridStrategy extends HybridStrategy {
 
       debugPrint('[RSI/ML Hybrid] Fetching CryptoML prediction for $coin @$interval');
 
-      // Fetch price data (60x76 features) from Binance
-      final priceData = await BinanceService().getFeaturesForModel(symbol, interval: interval);
-
+      // NEW: CryptoMLService now fetches candles for EACH model's timeframe
       final prediction = await CryptoMLService().getPrediction(
         coin: coin,
-        priceData: priceData,
+        symbol: symbol,
         timeframe: interval,
       );
 
@@ -297,12 +295,10 @@ class MomentumScalperStrategy extends HybridStrategy {
     try {
       final coin = symbol.replaceAll(RegExp(r'(EUR|USDT|USDC)$'), '');
 
-      // Fetch price data (60x76 features) from Binance
-      final priceData = await BinanceService().getFeaturesForModel(symbol, interval: interval);
-
+      // NEW: CryptoMLService now fetches candles for EACH model's timeframe
       final prediction = await CryptoMLService().getPrediction(
         coin: coin,
-        priceData: priceData,
+        symbol: symbol,
         timeframe: interval,
       );
 
@@ -465,12 +461,10 @@ class BreakoutStrategy extends HybridStrategy {
     try {
       final coin = symbol.replaceAll(RegExp(r'(EUR|USDT|USDC)$'), '');
 
-      // Fetch price data (60x76 features) from Binance
-      final priceData = await BinanceService().getFeaturesForModel(symbol, interval: interval);
-
+      // NEW: CryptoMLService now fetches candles for EACH model's timeframe
       final prediction = await CryptoMLService().getPrediction(
         coin: coin,
-        priceData: priceData,
+        symbol: symbol,
         timeframe: interval,
       );
 
@@ -568,12 +562,10 @@ class MeanReversionStrategy extends HybridStrategy {
     try {
       final coin = symbol.replaceAll(RegExp(r'(EUR|USDT|USDC)$'), '');
 
-      // Fetch price data (60x76 features) from Binance
-      final priceData = await BinanceService().getFeaturesForModel(symbol, interval: interval);
-
+      // NEW: CryptoMLService now fetches candles for EACH model's timeframe
       final prediction = await CryptoMLService().getPrediction(
         coin: coin,
-        priceData: priceData,
+        symbol: symbol,
         timeframe: interval,
       );
 

@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'dart:convert';
-import 'dart:math' show log, max;
+import 'dart:math' show exp, log, sqrt;
 import 'package:mytrademate/services/binance_service.dart';
 import 'package:mytrademate/ml/ensemble_weights_v2.dart';
 
@@ -30,13 +30,13 @@ class CryptoMLService {
   // PHASE 3 PILOT: Feature flag for gradual rollout
   static const Set<String> _phase3EnabledCoins = {'BTC', 'ETH', 'BNB', 'SOL', 'WLFI', 'TRUMP'};
   static const Set<String> _phase3EnabledTimeframes = {'5m', '15m', '1h', '4h'};
-  
+
   // PHASE 3 PILOT: Exclusions (WLFI@1d has insufficient history)
   static bool _isPhase3Enabled(String coin, String timeframe) {
     if (coin.toUpperCase() == 'WLFI' && timeframe == '1d') {
       return false; // WLFI doesn't have enough 1d history
     }
-    return _phase3EnabledCoins.contains(coin.toUpperCase()) && 
+    return _phase3EnabledCoins.contains(coin.toUpperCase()) &&
            _phase3EnabledTimeframes.contains(timeframe);
   }
 
@@ -289,12 +289,12 @@ class CryptoMLService {
   }
 
   /// Obține predicția pentru o monedă (MULTI-TIMEFRAME WEIGHTED ENSEMBLE)
+  /// NOW fetches candles for EACH model's timeframe!
   Future<CryptoPrediction> getPrediction({
     required String coin,
-    required List<List<double>> priceData,
+    required String symbol, // NEW: Binance symbol (e.g., BTCEUR)
     String timeframe = '5m',
     bool silent = false,
-    double? atr, // PHASE 3: Optional real ATR from caller (if null, calculate from priceData)
   }) async {
     // ignore: avoid_print
     print('');
@@ -316,12 +316,8 @@ class CryptoMLService {
       print('🚀 Phase 3 PILOT ACTIVE for ${coin.toUpperCase()}@$timeframe');
     }
 
-    // PHASE 3: Use provided ATR or calculate from priceData for volatility-based weight adjustments
-    final double volatility = atr ?? EnsembleWeightsV2.calculateATR(candles: priceData, period: 14);
-    if (!silent) {
-      // ignore: avoid_print
-      print('📈 ATR (volatility): ${(volatility * 100).toStringAsFixed(2)}%${atr != null ? ' (from candles)' : ' (from features)'}');
-    }
+    // PHASE 3: We'll calculate ATR when we fetch candles for the requested timeframe
+    double volatility = 0.02; // Default 2% volatility
 
     // PHASE 3: Fetch volume percentile with caching (5 min TTL) - only if pilot active
     double volumePercentile = 0.5; // Default to median
@@ -381,17 +377,32 @@ class CryptoMLService {
     }
 
     // STEP 1: Load ALL coin-specific models across ALL timeframes
+    // NEW: Fetch candles for EACH model's timeframe!
     final allTimeframes = ['5m', '15m', '1h', '4h', '1d'];
 
     for (final tf in allTimeframes) {
       final coinKey = '${coin.toLowerCase()}_$tf';
       if (_interpreters.containsKey(coinKey)) {
         try {
+          // Fetch candles for THIS model's timeframe
+          final result = await _binanceService.getFeaturesWithATRFallback(symbol, interval: tf);
+
+          // Calculate ATR for the requested timeframe (for weights)
+          if (tf == timeframe) {
+            volatility = result.atr;
+            if (!silent) {
+              // ignore: avoid_print
+              print('📈 ATR (volatility): ${(volatility * 100).toStringAsFixed(2)}% (from $tf candles)');
+            }
+          }
+
           final pred = await _getPredictionWithModel(
             coinKey,
-            priceData,
+            result.features,
             coin: coin,
             timeframe: tf,
+            atr: volatility,
+            volumePercentile: volumePercentile,
           );
           
           // PHASE 3 PILOT: Apply Phase 3 weights if enabled for this coin+timeframe
@@ -423,16 +434,22 @@ class CryptoMLService {
     }
 
     // STEP 2: Load ALL general models
+    // NEW: Fetch candles for EACH general model's timeframe!
 
     for (final tf in ['5m', '1d']) {
       final generalKey = 'general_$tf';
       if (_interpreters.containsKey(generalKey)) {
         try {
+          // Fetch candles for THIS general model's timeframe
+          final result = await _binanceService.getFeaturesWithATRFallback(symbol, interval: tf);
+
           final pred = await _getPredictionWithModel(
             generalKey,
-            priceData,
+            result.features,
             coin: coin,
             timeframe: timeframe, // Use requested timeframe for confidence
+            atr: result.atr,
+            volumePercentile: volumePercentile,
           );
           
           // PHASE 3 PILOT: Apply Phase 3 weights if enabled for this coin+timeframe
@@ -475,7 +492,88 @@ class CryptoMLService {
     }
 
     // STEP 4: Combine using WEIGHTED ENSEMBLE
-    final ensemble = getWeightedEnsemblePrediction(weightedPredictions);
+    var ensemble = getWeightedEnsemblePrediction(
+      weightedPredictions,
+      atr: volatility,
+      volumePercentile: volumePercentile,
+    );
+
+    // PHASE 4: FINAL DECISION ENGINE
+    // Anti-chop filter + Trend boost + Micro-trend confirmation
+    final atrPercent = volatility * 100;
+    final volPercentile = volumePercentile;
+    var finalAction = ensemble.action;
+    var finalConfidence = ensemble.confidence;
+    String decisionReason = 'Normal market conditions';
+
+    // 1. ANTI-CHOP FILTER: Low volatility + High liquidity + Low confidence → HOLD
+    if (atrPercent < 0.15 && volPercentile > 85.0 && finalConfidence < 0.55) {
+      if (!silent) {
+        // ignore: avoid_print
+        print('🚫 ANTI-CHOP TRIGGERED: ATR=${atrPercent.toStringAsFixed(2)}%, Vol=${volPercentile.toStringAsFixed(0)}%, Conf=${(finalConfidence*100).toStringAsFixed(1)}%');
+        // ignore: avoid_print
+        print('   → Forcing HOLD to avoid whipsaw');
+      }
+
+      finalAction = 'HOLD';
+      finalConfidence = 0.38;
+      decisionReason = 'Chop zone: low ATR + high liquidity → avoid false signal';
+    }
+    // 2. TREND BOOST: High volatility → Boost dominant direction only
+    else if (atrPercent > 0.30) {
+      // FIX: Only boost the DOMINANT direction (buy > sell OR sell > buy)
+      final buy = ensemble.probabilities['BUY'] ?? 0.0;
+      final sell = ensemble.probabilities['SELL'] ?? 0.0;
+
+      // Only apply trend boost if there's a clear direction (NOT when buy ≈ sell)
+      if ((buy > sell && finalAction == 'BUY') || (sell > buy && finalAction == 'SELL')) {
+        final boost = 1.20; // +20% confidence in strong trends
+        finalConfidence = (finalConfidence * boost).clamp(0.0, 0.95);
+        decisionReason = 'High volatility - strong trend detected';
+
+        if (!silent) {
+          // ignore: avoid_print
+          print('📈 TREND BOOST: ATR=${atrPercent.toStringAsFixed(2)}% → +20% confidence on ${finalAction}');
+        }
+      } else {
+        // No boost when direction is unclear or HOLD
+        decisionReason = 'High volatility but no clear direction';
+        if (!silent) {
+          // ignore: avoid_print
+          print('⚠️ TREND BOOST SKIPPED: ATR=${atrPercent.toStringAsFixed(2)}% but BUY≈SELL or HOLD');
+        }
+      }
+    }
+    // 3. MICRO-TREND CONFIRMATION: Moderate volatility + Good confidence → Small boost
+    else if (atrPercent > 0.18 && finalConfidence > 0.48) {
+      final boost = 1.08; // +8% confidence for confirmed micro-trends
+      finalConfidence = (finalConfidence * boost).clamp(0.0, 0.90);
+      decisionReason = 'Micro-trend confirmed - moderate volatility';
+
+      if (!silent) {
+        // ignore: avoid_print
+        print('📊 MICRO-TREND CONFIRMED: ATR=${atrPercent.toStringAsFixed(2)}% → +8% confidence');
+      }
+    }
+    else {
+      decisionReason = atrPercent < 0.20
+          ? 'Low volatility - moderate confidence'
+          : 'Normal market conditions';
+    }
+
+    // Update ensemble with final decision
+    ensemble = CryptoPrediction(
+      action: finalAction,
+      confidence: finalConfidence,
+      probabilities: ensemble.probabilities,
+      signalStrength: ensemble.signalStrength,
+      modelAccuracy: ensemble.modelAccuracy,
+      timestamp: ensemble.timestamp,
+      atr: ensemble.atr,
+      volumePercentile: ensemble.volumePercentile,
+      isEnsemble: ensemble.isEnsemble,
+      decisionReason: decisionReason, // Pass decision reason from Phase 4
+    );
 
     // ignore: avoid_print
     print('');
@@ -503,9 +601,19 @@ class CryptoMLService {
       print('🔮 Phase 4 preview: ATR=${(volatility * 100).toStringAsFixed(2)}%, liquidity=${(volumePercentile * 100).toStringAsFixed(0)}%');
       // ignore: avoid_print
       print('');
+
+      // FINAL DECISION SUMMARY
+      // ignore: avoid_print
+      print('📊 FINAL DECISION: ${ensemble.action} (${(ensemble.confidence * 100).toStringAsFixed(1)}%) | Reason: $decisionReason');
+      // ignore: avoid_print
+      print('   Signal Strength: ${(ensemble.signalStrength * 100).toStringAsFixed(1)}%');
+      // ignore: avoid_print
+      print('   ATR: ${(volatility * 100).toStringAsFixed(2)}% | Volume Percentile: ${(volumePercentile * 100).toStringAsFixed(0)}%');
+      // ignore: avoid_print
+      print('');
     }
 
-    // PHASE 4: Return prediction with market context (ATR + volume)
+    // PHASE 4: Return prediction with market context (ATR + volume + decision reason)
     return CryptoPrediction(
       action: ensemble.action,
       confidence: ensemble.confidence,
@@ -516,6 +624,7 @@ class CryptoMLService {
       isEnsemble: ensemble.isEnsemble,
       atr: volatility,
       volumePercentile: volumePercentile,
+      decisionReason: ensemble.decisionReason, // Already set in Phase 4
     );
   }
 
@@ -543,6 +652,8 @@ class CryptoMLService {
       bool silent = false,
       String? coin,
       String? timeframe,
+      double? atr,
+      double? volumePercentile,
     }
   ) async {
     final interpreter = _interpreters[modelKey]!;
@@ -560,6 +671,39 @@ class CryptoMLService {
       throw Exception('Need exactly $expectedFeatures features per timestep, got ${priceData[0].length}');
     }
 
+    // Calculate signal strength (% of non-zero features) BEFORE normalization
+    // PATCH 3: Dynamic Signal Strength - doar ultimele 15 timesteps (mai sensibil la schimbări recente)
+    const threshold = 0.1; // Threshold mai ridicat pentru features "active"
+    const recentWindow = 15; // Doar ultimele 15 timesteps
+
+    int activeCount = 0;
+    int totalFeatures = 0;
+    final recentData = priceData.length > recentWindow
+        ? priceData.sublist(priceData.length - recentWindow)
+        : priceData;
+
+    for (final row in recentData) {
+      for (final val in row) {
+        if (val.abs() > threshold) activeCount++;
+        totalFeatures++;
+      }
+    }
+    final signalStrength = totalFeatures > 0
+        ? (activeCount / totalFeatures * 100).clamp(0.0, 100.0) / 100.0
+        : 0.0;
+
+    // DEBUG RAW INPUT (before normalization)
+    if (!silent && priceData.isNotEmpty) {
+      final firstRowRaw = priceData.first;
+      final lastRowRaw = priceData.last;
+      // ignore: avoid_print
+      print('🔬 DEBUG RAW INPUT: First row [0-5]: [${firstRowRaw.take(6).map((v) => v.toStringAsFixed(4)).join(', ')}]');
+      // ignore: avoid_print
+      print('🔬 DEBUG RAW INPUT: Last row [0-5]: [${lastRowRaw.take(6).map((v) => v.toStringAsFixed(4)).join(', ')}]');
+      // ignore: avoid_print
+      print('🎯 SIGNAL STRENGTH (last $recentWindow timesteps): ${(signalStrength * 100).toStringAsFixed(1)}% features active ($activeCount / $totalFeatures)');
+    }
+
     // Normalizare
     final normalizedData = _normalizeData(priceData, scaler);
 
@@ -568,9 +712,9 @@ class CryptoMLService {
       final firstRow = normalizedData.first;
       final lastRow = normalizedData.last;
       // ignore: avoid_print
-      print('🔬 DEBUG INPUT: First row features [0-5]: [${firstRow.take(6).map((v) => v.toStringAsFixed(4)).join(', ')}]');
+      print('🔬 DEBUG NORMALIZED: First row [0-5]: [${firstRow.take(6).map((v) => v.toStringAsFixed(4)).join(', ')}]');
       // ignore: avoid_print
-      print('🔬 DEBUG INPUT: Last row features [0-5]: [${lastRow.take(6).map((v) => v.toStringAsFixed(4)).join(', ')}]');
+      print('🔬 DEBUG NORMALIZED: Last row [0-5]: [${lastRow.take(6).map((v) => v.toStringAsFixed(4)).join(', ')}]');
     }
 
     // Input: [1, 60, 76]
@@ -591,7 +735,64 @@ class CryptoMLService {
       print('🔬 DEBUG OUTPUT ($modelKey): RAW probabilities = [${output[0].map((v) => v.toStringAsFixed(6)).join(', ')}]');
     }
 
-    final probabilities = output[0];
+    // Apply DYNAMIC temperature scaling based on signal strength
+    // More active features → lower T (trust model more)
+    // Fewer active features → higher T (model less reliable)
+    var probabilities = output[0];
+
+    // Calculate dynamic temperature: T = 1.0 + 14.0 * (1 - signalStrength)
+    // Examples:
+    //   - 100% features active → T = 1.0 (no scaling)
+    //   - 50% features active → T = 8.0 (moderate scaling)
+    //   - 10% features active → T = 13.6 (aggressive scaling)
+    const double minT = 1.0;
+    const double maxT = 15.0;
+    final temperature = minT + maxT * (1.0 - signalStrength);
+
+    final maxProb = probabilities.reduce((a, b) => a > b ? a : b);
+
+    // Always apply temperature scaling if confidence > 75% OR signal strength < 50%
+    if (maxProb > 0.75 || signalStrength < 0.50) {
+      if (!silent) {
+        // ignore: avoid_print
+        print('   🔥 BEFORE scaling: [${probabilities.map((p) => p.toStringAsFixed(4)).join(", ")}]');
+      }
+
+      probabilities = _applyTemperatureScaling(probabilities, temperature);
+
+      if (!silent) {
+        // ignore: avoid_print
+        print('   🌡️  Dynamic T=${temperature.toStringAsFixed(1)} (signal=${(signalStrength*100).toStringAsFixed(1)}%) - was ${(maxProb * 100).toStringAsFixed(1)}% confident');
+        // ignore: avoid_print
+        print('   ✅ AFTER scaling: [${probabilities.map((p) => p.toStringAsFixed(4)).join(", ")}]');
+      }
+    }
+
+    // STEP 1: Apply bullish bias on individual model predictions
+    // (before combining in ensemble)
+    final atrPercent = (atr ?? 0.02) * 100;
+    final volPercent = (volumePercentile ?? 0.5) * 100;
+
+    if (volPercent > 90.0 && atrPercent < 50.0) {
+      // Get current BUY and SELL probabilities
+      final currentBuy = probabilities.length == 3 ? probabilities[2] : (probabilities.length == 2 ? probabilities[1] : 0.0);
+      final currentSell = probabilities[0];
+
+      if (currentBuy > currentSell) {
+        // Apply +10% bullish bias to BUY probability
+        if (probabilities.length == 3) {
+          probabilities[2] = (probabilities[2] + 0.10).clamp(0.0, 1.0);
+        } else if (probabilities.length == 2) {
+          probabilities[1] = (probabilities[1] + 0.10).clamp(0.0, 1.0);
+        }
+
+        if (!silent) {
+          // ignore: avoid_print
+          print('📈 BULLISH BIAS APPLIED in $modelKey: +10% to BUY (vol=${volPercent.toStringAsFixed(0)}%, ATR=${atrPercent.toStringAsFixed(2)}%)');
+        }
+      }
+    }
+
     final maxIndex = _argmax(probabilities);
 
     // Extract coin and timeframe from modelKey if not provided
@@ -634,30 +835,44 @@ class CryptoMLService {
       };
     }
 
-    final signalStrength = _calculateSignalStrength(probabilities);
+    final predictionEntropy = _calculateSignalStrength(probabilities);
     final accuracy = (metadata['test_accuracy'] as num?)?.toDouble() ?? 0.0;
 
     return CryptoPrediction(
       action: action,
       confidence: confidence,
       probabilities: probMap,
-      signalStrength: signalStrength,
+      signalStrength: predictionEntropy,
       modelAccuracy: accuracy,
       timestamp: DateTime.now(),
     );
   }
 
-  /// Normalizează datele folosind StandardScaler
+  /// PATCH 2: Rolling normalization - normalizează pe fereastră glisantă (ultimele 30 candles)
+  /// Mai rapid și mai sensibil la schimbările recente de preț
   List<List<double>> _normalizeData(
     List<List<double>> data,
     Map<String, dynamic> scaler,
   ) {
-    final mean = (scaler['mean'] as List).cast<double>();
-    final std = (scaler['std'] as List).cast<double>();
+    const lookback = 30; // Rolling window de 30 candles
+    final normalized = <List<double>>[];
 
-    return data
-        .map((row) => List<double>.generate(row.length, (i) => (row[i] - mean[i]) / (std[i] + 1e-8)))
-        .toList();
+    for (int t = 0; t < data.length; t++) {
+      final start = t >= lookback ? t - lookback + 1 : 0;
+      final window = data.sublist(start, t + 1);
+
+      final row = <double>[];
+      for (int f = 0; f < data[0].length; f++) {
+        final col = window.map((r) => r[f]).toList();
+        final mean = col.reduce((a, b) => a + b) / col.length;
+        final variance = col.map((x) => (x - mean) * (x - mean)).reduce((a, b) => a + b) / col.length;
+        final std = variance > 0 ? sqrt(variance) : 0.0;
+        final value = std > 1e-8 ? (data[t][f] - mean) / std : 0.0;
+        row.add(double.parse(value.toStringAsFixed(6)));
+      }
+      normalized.add(row);
+    }
+    return normalized;
   }
 
   /// Găsește indexul valorii maxime
@@ -671,6 +886,30 @@ class CryptoMLService {
       }
     }
     return maxIndex;
+  }
+
+  /// Apply temperature scaling to soften overconfident predictions
+  /// Temperature > 1.0 makes distribution more uniform (less extreme)
+  /// Temperature < 1.0 makes distribution more peaked (more extreme)
+  ///
+  /// Formula: softmax(log(probs) / T)
+  List<double> _applyTemperatureScaling(List<double> probs, double temperature) {
+    if (temperature == 1.0) return probs;
+
+    final epsilon = 1e-10; // Prevent log(0)
+
+    // Convert probabilities to logits: log(p)
+    final logits = probs.map((p) => log(p + epsilon)).toList();
+
+    // Apply temperature: logits / T
+    final scaledLogits = logits.map((l) => l / temperature).toList();
+
+    // Apply softmax with numerical stability (subtract max)
+    final maxLogit = scaledLogits.reduce((a, b) => a > b ? a : b);
+    final expValues = scaledLogits.map((l) => exp(l - maxLogit)).toList();
+    final sumExp = expValues.reduce((a, b) => a + b);
+
+    return expValues.map((e) => e / sumExp).toList();
   }
 
   /// Calculează puterea semnalului (0-100)
@@ -747,15 +986,15 @@ class CryptoMLService {
 
   /// Obține predicții pentru toate monedele
   Future<Map<String, CryptoPrediction>> getAllPredictions({
-    required Map<String, List<List<double>>> priceDataMap,
+    required Map<String, String> symbolMap, // NEW: coin -> symbol mapping (e.g., 'btc' -> 'BTCEUR')
     String timeframe = '5m',
   }) async {
     final results = <String, CryptoPrediction>{};
-    for (final coin in priceDataMap.keys) {
+    for (final coin in symbolMap.keys) {
       try {
         results[coin] = await getPrediction(
           coin: coin,
-          priceData: priceDataMap[coin]!,
+          symbol: symbolMap[coin]!,
           timeframe: timeframe,
         );
       } catch (e) {
@@ -818,7 +1057,11 @@ class CryptoMLService {
   }
 
   /// WEIGHTED ENSEMBLE - combines predictions with timeframe-based weights
-  CryptoPrediction getWeightedEnsemblePrediction(List<_WeightedPrediction> weightedPredictions) {
+  CryptoPrediction getWeightedEnsemblePrediction(
+    List<_WeightedPrediction> weightedPredictions, {
+    double? atr,
+    double? volumePercentile,
+  }) {
     if (weightedPredictions.isEmpty) {
       throw Exception('No predictions to ensemble');
     }
@@ -837,34 +1080,45 @@ class CryptoMLService {
       avgProb['BUY'] = avgProb['BUY']! + (wp.prediction.probabilities['BUY']! * weight);
     }
 
-    // Find action with highest weighted probability
-    var finalAction = 'HOLD';
-    var maxProb = 0.0;
-    avgProb.forEach((action, prob) {
-      if (prob > maxProb) {
-        maxProb = prob;
-        finalAction = action;
-      }
-    });
+    // PATCH 1: Dynamic confidence cu micro-boost bazat pe ATR și volum
+    final sell = avgProb['SELL']!;
+    final hold = avgProb['HOLD']!;
+    final buy = avgProb['BUY']!;
 
-    // Weighted average confidence and signal strength
-    var avgConfidence = 0.0;
+    // STEP 3: Choose action based on argmax (highest probability wins)
+    // FIX: Alege BUY dacă buy > sell, chiar dacă < 0.50
+    var finalAction = 'HOLD';
+    var finalConfidence = 0.0;
+
+    if (buy > sell && buy > hold) {
+      finalAction = 'BUY';
+      finalConfidence = buy;
+    } else if (sell > buy && sell > hold) {
+      finalAction = 'SELL';
+      finalConfidence = sell;
+    } else {
+      finalAction = 'HOLD';
+      finalConfidence = hold;
+    }
+
+    // Weighted average signal strength
     var avgSignalStrength = 0.0;
     for (var i = 0; i < weightedPredictions.length; i++) {
       final wp = weightedPredictions[i];
       final weight = normalizedWeights[i];
-      avgConfidence += wp.prediction.confidence * weight;
       avgSignalStrength += wp.prediction.signalStrength * weight;
     }
 
     return CryptoPrediction(
       action: finalAction,
-      confidence: maxProb,
+      confidence: finalConfidence,
       probabilities: avgProb,
       signalStrength: avgSignalStrength,
-      modelAccuracy: avgConfidence,
+      modelAccuracy: finalConfidence, // Use final confidence as accuracy
       timestamp: DateTime.now(),
       isEnsemble: true,
+      atr: atr,
+      volumePercentile: volumePercentile,
     );
   }
 
@@ -959,6 +1213,7 @@ class CryptoPrediction {
   // PHASE 4: Market context for UI display
   final double? atr; // Average True Range (volatility)
   final double? volumePercentile; // 0.0-1.0 (market liquidity rank)
+  final String? decisionReason; // Reason for the final decision (Phase 4)
 
   CryptoPrediction({
     required this.action,
@@ -970,6 +1225,7 @@ class CryptoPrediction {
     this.isEnsemble = false,
     this.atr,
     this.volumePercentile,
+    this.decisionReason,
   });
 
   bool get isStrongSignal => confidence > 0.70;
@@ -1015,14 +1271,12 @@ class CryptoMLExample {
     final mlService = CryptoMLService();
     await mlService.initialize();
 
-    final testData = List<List<double>>.generate(
-      60,
-      (i) => List<double>.generate(25, (j) => 0.5 + (i * 0.01) + (j * 0.001)),
-    );
+    // DEPRECATED TEST CODE - New architecture requires real Binance symbols
+    // Use ai_strategies_screen.dart or ai_prediction_page.dart for real testing
 
     final btcPrediction = await mlService.getPrediction(
       coin: 'btc',
-      priceData: testData,
+      symbol: 'BTCEUR', // Now requires actual Binance symbol
       timeframe: '5m',
     );
 
@@ -1030,10 +1284,10 @@ class CryptoMLExample {
     print('BTC Prediction: $btcPrediction');
 
     final allPredictions = await mlService.getAllPredictions(
-      priceDataMap: {
-        'btc': testData,
-        'eth': testData,
-        'bnb': testData,
+      symbolMap: {
+        'btc': 'BTCEUR',
+        'eth': 'ETHEUR',
+        'bnb': 'BNBEUR',
       },
       timeframe: '5m',
     );

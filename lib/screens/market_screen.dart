@@ -4,6 +4,7 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 import '../models/candle.dart';
 import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
+import '../services/user_coins_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/crypto_avatar.dart';
@@ -28,33 +29,59 @@ class _MarketScreenState extends State<MarketScreen> {
   bool _loadingChart = true;
   bool _loadingTickers = true;
   String _chartError = '';
+  List<String> _userCoins = []; // Dynamic coin list from UserCoinsService
 
   List<List<String>> get _symbols {
     final q = AppSettingsService().quoteCurrency.toUpperCase();
-    return [
-      ['BTC$q', 'BTCUSDT', 'BTCEUR', 'BTCUSDC'],
-      ['ETH$q', 'ETHUSDT', 'ETHEUR', 'ETHUSDC'],
-      ['BNB$q', 'BNBUSDT', 'BNBEUR', 'BNBUSDC'],
-      ['SOL$q', 'SOLUSDT', 'SOLEUR', 'SOLUSDC'],
-      ['WLFI$q', 'WLFIUSDT', 'WLFIEUR', 'WLFIUSDC'],
-      ['TRUMP$q', 'TRUMPUSDT', 'DJTUSDT'],
-    ];
+    // Use UserCoinsService coins or fallback to default TOP 10
+    final coins = _userCoins.isNotEmpty ? _userCoins : UserCoinsService.defaultCoins;
+    return coins.map((coin) => [
+      '$coin$q',
+      '${coin}USDT',
+      '${coin}EUR',
+      '${coin}USDC',
+    ]).toList();
   }
 
   @override
   void initState() {
     super.initState();
+    debugPrint('📍 Market: initState() - adding UserCoinsService listener');
     final q = AppSettingsService().quoteCurrency.toUpperCase();
     _selectedSymbol = 'BTC$q';
-    _refreshTickers();
-    _loadChart();
+    _loadUserCoins();
+
     // Listen to quote currency changes and reload data
     AppSettingsService().addListener(_onSettingsChanged);
+
+    // Listen to UserCoinsService changes (when API added/removed in Settings)
+    UserCoinsService().addListener(_onCoinsChanged);
+    debugPrint('✅ Market: UserCoinsService listener added');
+  }
+
+  /// Called when UserCoinsService notifies that coins changed
+  void _onCoinsChanged() {
+    debugPrint('📢 Market: Coins changed, reloading...');
+    _loadUserCoins();
+  }
+
+  Future<void> _loadUserCoins() async {
+    // Clear cache to get fresh coins (in case API was added/removed)
+    UserCoinsService().clearCache();
+
+    final coins = await UserCoinsService().getUserCoins();
+    if (mounted) {
+      setState(() => _userCoins = coins);
+      // AFTER coins are loaded, refresh tickers and chart
+      _refreshTickers();
+      _loadChart();
+    }
   }
 
   @override
   void dispose() {
     AppSettingsService().removeListener(_onSettingsChanged);
+    UserCoinsService().removeListener(_onCoinsChanged);
     super.dispose();
   }
 
@@ -169,7 +196,7 @@ class _MarketScreenState extends State<MarketScreen> {
         child: Responsive.constrainWidth(
           context,
           CustomScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
           slivers: [
             // Header
             SliverToBoxAdapter(
@@ -512,14 +539,9 @@ class _MarketScreenState extends State<MarketScreen> {
       );
     }
 
-    return [
-      buildCard('BTC', 'BTC$q'),
-      buildCard('ETH', 'ETH$q'),
-      buildCard('BNB', 'BNB$q'),
-      buildCard('SOL', 'SOL$q'),
-      buildCard('WLFI', 'WLFI$q'),
-      buildCard('TRUMP', 'TRUMP$q'),
-    ];
+    // Use _userCoins dynamically (TOP 10 default or user's coins from API)
+    final coins = _userCoins.isNotEmpty ? _userCoins : UserCoinsService.defaultCoins;
+    return coins.map((coin) => buildCard(coin, '$coin$q')).toList();
   }
 }
 
