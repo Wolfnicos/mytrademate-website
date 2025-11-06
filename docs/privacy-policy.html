@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="tiktok-developers-site-verification" content="Luy8rzll7pFtcSYKHuachTHf6kLrsYoX">
+    <meta name="description" content="MyTradeMate Privacy Policy - Zero data collection, local AI processing, no tracking or analytics.">
+    <meta name="robots" content="index, follow">
+    <title>Privacy Policy - MyTradeMate</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="index-rebuilt.html" class="logo">
+                    <span class="logo-icon">📊</span>
+                    <span class="logo-text">MyTradeMate</span>
+                </a>
+                <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <ul class="nav-links">
+                    <li><a href="index-rebuilt.html#features">Features</a></li>
+                    <li><a href="index-rebuilt.html#comparison">Compare</a></li>
+                    <li><a href="index-rebuilt.html#pricing">Pricing</a></li>
+                    <li><a href="index-rebuilt.html#faq">FAQ</a></li>
+                    <li><a href="how-it-works.html">How It Works</a></li>
+                    <li><a href="index-rebuilt.html#waitlist" class="btn btn-secondary btn-sm">Join Waitlist</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Legal Content -->
+    <main class="legal-page">
+        <div class="container">
+            <div class="legal-content">
+                <div class="legal-header">
+                    <h1>Privacy Policy</h1>
+                    <p class="legal-meta">Last Updated: November 6, 2025</p>
+                </div>
+
+                <div class="legal-intro">
+                    <p class="lead">
+                        At MyTradeMate, privacy isn't a feature—it's our foundation. This policy explains how we protect your data by never collecting it in the first place.
+                    </p>
+                    <div class="highlight-box">
+                        <h3>Our Zero-Collection Guarantee</h3>
+                        <p>We do not collect, store, transmit, or sell any personal data, usage analytics, or behavioral information. Your portfolio data, API keys, and insights are encrypted with AES-256 and stored exclusively on your device. Not even we can access your information.</p>
+                    </div>
+                </div>
+
+                <div class="legal-section">
+                    <h2>1. Information We Do NOT Collect</h2>
+                    <p>MyTradeMate operates on a strict zero-collection principle. We do not collect:</p>
+                    <ul>
+                        <li><strong>Personal Information:</strong> No names, email addresses, phone numbers, or any personally identifiable information (PII).</li>
+                        <li><strong>Portfolio Data:</strong> Your cryptocurrency holdings, transaction history, balances, and profit/loss calculations remain entirely on your device.</li>
+                        <li><strong>API Keys:</strong> Exchange API keys are encrypted with AES-256 and stored locally. We never transmit or store them on any server.</li>
+                        <li><strong>Usage Analytics:</strong> No Google Analytics, Firebase Analytics, Mixpanel, or any third-party analytics tools.</li>
+                        <li><strong>Behavioral Data:</strong> We don't track how you use the app, which features you access, or how long you spend in the app.</li>
+                        <li><strong>Device Information:</strong> No device IDs, advertising identifiers (IDFA/AAID), IP addresses, or hardware specifications.</li>
+                        <li><strong>Location Data:</strong> We do not request or collect geolocation information.</li>
+                        <li><strong>Biometric Data:</strong> Face ID and Touch ID authentication is handled entirely by your device's operating system. We never see or store your biometric data.</li>
+                        <li><strong>Crash Reports:</strong> We do not use crash reporting services like Crashlytics or Sentry.</li>
+                    </ul>
+                </div>
+
+                <div class="legal-section">
+                    <h2>2. How Local AI Processing Works</h2>
+                    <p>MyTradeMate uses 26 TensorFlow Lite models to analyze your portfolio and provide educational insights. All AI processing happens entirely on your device:</p>
+                    <ul>
+                        <li><strong>On-Device Computation:</strong> All 26 AI models (20 active + 6 legacy) run locally using your phone's CPU/GPU. No data is sent to external servers for processing.</li>
+                        <li><strong>Pattern Recognition:</strong> LSTM and CNN models analyze candlestick patterns and price trends without internet connectivity.</li>
+                        <li><strong>Technical Indicators:</strong> All 76 indicators (25 candlestick patterns + 51 technical indicators) are calculated locally across 5 timeframes (5m, 15m, 1h, 4h, 1D).</li>
+                        <li><strong>Risk Scoring:</strong> Risk assessments and volatility analysis are performed on your device using locally stored price data.</li>
+                    </ul>
+                    <p>You can verify this by inspecting network traffic with tools like Charles Proxy or mitmproxy. You will see only API calls to cryptocurrency exchanges for price data—no telemetry or analytics requests.</p>
+                </div>
+
+                <div class="legal-section">
+                    <h2>3. Data You Provide to Us</h2>
+                    <p>The only information you may voluntarily provide to MyTradeMate is:</p>
+                    <ul>
+                        <li><strong>Waitlist Email:</strong> If you join our waitlist via the <code>mailto:</code> link on our website, your email is sent directly to us (mytrademate.app@gmail.com). We use this solely to notify you when the app launches. We do not share, sell, or use your email for marketing beyond launch notifications.</li>
+                        <li><strong>Support Inquiries:</strong> If you contact us for support, we may temporarily store your email and message to resolve your issue. This data is deleted after your inquiry is resolved.</li>
+                    </ul>
+                    <p><strong>Important:</strong> Your email is never linked to your app usage, portfolio data, or any other information. We cannot and do not correlate waitlist emails with in-app activity.</p>
+                </div>
+
+                <div class="legal-section">
+                    <h2>4. How Your Data is Secured</h2>
+                    <p>Even though we don't collect your data, we implement strong security measures to protect what's stored on your device:</p>
+
+                    <h3>4.1 Encryption</h3>
+                    <ul>
+                        <li><strong>AES-256 Encryption:</strong> All sensitive data (API keys, portfolio holdings, transaction history) is encrypted with AES-256, the same military-grade encryption used by governments and financial institutions.</li>
+                        <li><strong>Local Storage:</strong> Encrypted data is stored in your device's secure storage (iOS Keychain or Android Keystore).</li>
+                        <li><strong>No Cloud Backup:</strong> MyTradeMate does not use iCloud, Google Drive, or any cloud backup services. Your data remains exclusively on your device.</li>
+                    </ul>
+
+                    <h3>4.2 Authentication</h3>
+                    <ul>
+                        <li><strong>Biometric Authentication:</strong> Access to MyTradeMate is protected by Face ID (iOS) or Touch ID/Fingerprint (Android). These biometric systems are managed by your device's operating system—we never access or store your biometric data.</li>
+                        <li><strong>Device-Level Security:</strong> If you lose your device, your data is protected by device-level encryption and biometric locks.</li>
+                    </ul>
+
+                    <h3>4.3 API Key Security</h3>
+                    <ul>
+                        <li><strong>Read-Only Keys:</strong> We recommend using read-only API keys that cannot execute trades or withdrawals.</li>
+                        <li><strong>Never Transmitted:</strong> API keys are never sent to MyTradeMate servers (because we don't have servers). They're only used to fetch price data directly from exchanges.</li>
+                        <li><strong>User Responsibility:</strong> You are responsible for securing your API keys. We recommend using API key rotation and IP whitelisting features provided by your exchange.</li>
+                    </ul>
+                </div>
+
+                <div class="legal-section">
+                    <h2>5. Third-Party Services</h2>
+                    <p>MyTradeMate connects to cryptocurrency exchanges solely to fetch real-time price data. These connections are necessary for the app to function:</p>
+                    <ul>
+                        <li><strong>Exchange APIs:</strong> The app makes direct API calls to cryptocurrency exchanges (e.g., Binance, Coinbase) to retrieve market prices. These exchanges may log API requests according to their own privacy policies.</li>
+                        <li><strong>No Data Sharing:</strong> We do not share your data with exchanges. API calls are initiated by your device using your API keys.</li>
+                        <li><strong>No Analytics SDKs:</strong> We do not integrate Google Analytics, Facebook Pixel, or any third-party tracking or advertising SDKs.</li>
+                    </ul>
+                </div>
+
+                <div class="legal-section">
+                    <h2>6. Children's Privacy</h2>
+                    <p>MyTradeMate is not intended for users under the age of 18. We do not knowingly collect information from children. If you are under 18, do not use this app or provide any information to us. Cryptocurrency trading carries significant financial risk and is not suitable for minors.</p>
+                </div>
+
+                <div class="legal-section">
+                    <h2>7. GDPR & CCPA Compliance</h2>
+                    <p>Because we do not collect personal data, MyTradeMate is compliant with the General Data Protection Regulation (GDPR) and the California Consumer Privacy Act (CCPA) by design:</p>
+
+                    <h3>7.1 GDPR Rights</h3>
+                    <p>Under GDPR, you have the right to:</p>
+                    <ul>
+                        <li><strong>Access:</strong> We have no data to provide.</li>
+                        <li><strong>Rectification:</strong> We have no data to correct.</li>
+                        <li><strong>Erasure:</strong> Simply delete the app from your device.</li>
+                        <li><strong>Data Portability:</strong> All data is already on your device.</li>
+                        <li><strong>Object to Processing:</strong> We don't process your data.</li>
+                    </ul>
+
+                    <h3>7.2 CCPA Rights</h3>
+                    <p>Under CCPA, California residents have the right to:</p>
+                    <ul>
+                        <li><strong>Know:</strong> We collect no personal information to disclose.</li>
+                        <li><strong>Delete:</strong> We have no data to delete.</li>
+                        <li><strong>Opt-Out of Sale:</strong> We do not sell personal information.</li>
+                    </ul>
+                </div>
+
+                <div class="legal-section">
+                    <h2>8. International Users</h2>
+                    <p>MyTradeMate is available worldwide. Because all processing occurs on your device, there are no cross-border data transfers, data localization concerns, or jurisdictional privacy issues. Your data never leaves your device, regardless of where you are located.</p>
+                </div>
+
+                <div class="legal-section">
+                    <h2>9. Changes to This Privacy Policy</h2>
+                    <p>We may update this Privacy Policy from time to time to reflect changes in our practices or legal requirements. If we make material changes, we will notify users via:</p>
+                    <ul>
+                        <li>An in-app notification (if technically feasible without tracking)</li>
+                        <li>A prominent notice on our website</li>
+                    </ul>
+                    <p>The "Last Updated" date at the top of this policy indicates when it was last revised. Continued use of MyTradeMate after changes constitutes your acceptance of the updated policy.</p>
+                </div>
+
+                <div class="legal-section">
+                    <h2>10. Contact Us</h2>
+                    <p>If you have questions about this Privacy Policy or how MyTradeMate handles your data (or rather, doesn't), please contact us:</p>
+                    <div class="contact-box">
+                        <p><strong>Email:</strong> <a href="mailto:mytrademate.app@gmail.com">mytrademate.app@gmail.com</a></p>
+                    </div>
+                    <p>We typically respond within 48 hours.</p>
+                </div>
+
+                <div class="legal-section">
+                    <h2>11. Verification</h2>
+                    <p>We encourage technically savvy users to verify our zero-tracking claims:</p>
+                    <ul>
+                        <li><strong>Network Monitoring:</strong> Use Charles Proxy, mitmproxy, or Wireshark to inspect network traffic. You'll see only API calls to exchanges—no analytics, telemetry, or tracking requests.</li>
+                        <li><strong>Source Code:</strong> While MyTradeMate is not open-source, we welcome security researchers to audit the app. Contact us for details.</li>
+                        <li><strong>Third-Party Audits:</strong> We plan to commission independent security and privacy audits in the future.</li>
+                    </ul>
+                </div>
+
+                <div class="legal-footer">
+                    <p><strong>Summary:</strong> MyTradeMate is built on a simple principle—your data is yours. We can't lose what we never have. We can't be hacked if there's nothing to steal. We can't sell what we don't collect. Privacy by design, privacy by default.</p>
+                </div>
+
+                <div class="legal-nav">
+                    <a href="terms-of-service.html" class="btn btn-outline">Read Terms of Service</a>
+                    <a href="index-rebuilt.html" class="btn btn-primary">Back to Home</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <div class="footer-logo">
+                        <span class="logo-icon">📊</span>
+                        <span class="logo-text">MyTradeMate</span>
+                    </div>
+                    <p class="footer-description">
+                        Privacy-first portfolio tracker with 26 local AI models. Your data never leaves your device.
+                    </p>
+                    <div class="footer-social">
+                        <a href="https://twitter.com/mytrademate" aria-label="Twitter" target="_blank" rel="noopener noreferrer">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                            </svg>
+                        </a>
+                        <a href="https://instagram.com/mytrademate" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2c2.717 0 3.056.01 4.122.06 1.065.05 1.79.217 2.428.465.66.254 1.216.598 1.772 1.153a4.908 4.908 0 0 1 1.153 1.772c.247.637.415 1.363.465 2.428.047 1.066.06 1.405.06 4.122 0 2.717-.01 3.056-.06 4.122-.05 1.065-.218 1.79-.465 2.428a4.883 4.883 0 0 1-1.153 1.772 4.915 4.915 0 0 1-1.772 1.153c-.637.247-1.363.415-2.428.465-1.066.047-1.405.06-4.122.06-2.717 0-3.056-.01-4.122-.06-1.065-.05-1.79-.218-2.428-.465a4.89 4.89 0 0 1-1.772-1.153 4.904 4.904 0 0 1-1.153-1.772c-.248-.637-.415-1.363-.465-2.428C2.013 15.056 2 14.717 2 12c0-2.717.01-3.056.06-4.122.05-1.066.217-1.79.465-2.428a4.88 4.88 0 0 1 1.153-1.772A4.897 4.897 0 0 1 5.45 2.525c.638-.248 1.362-.415 2.428-.465C8.944 2.013 9.283 2 12 2zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm6.5-.25a1.25 1.25 0 0 0-2.5 0 1.25 1.25 0 0 0 2.5 0zM12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/>
+                            </svg>
+                        </a>
+                        <a href="https://tiktok.com/@mytrademate" aria-label="TikTok" target="_blank" rel="noopener noreferrer">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                            </svg>
+                        </a>
+                        <a href="https://youtube.com/@mytrademate" aria-label="YouTube" target="_blank" rel="noopener noreferrer">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="footer-col">
+                    <h4 class="footer-title">Product</h4>
+                    <ul class="footer-links">
+                        <li><a href="index-rebuilt.html#features">Features</a></li>
+                        <li><a href="index-rebuilt.html#pricing">Pricing</a></li>
+                        <li><a href="how-it-works.html">How It Works</a></li>
+                        <li><a href="index-rebuilt.html#faq">FAQ</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4 class="footer-title">Legal</h4>
+                    <ul class="footer-links">
+                        <li><a href="privacy-policy.html">Privacy Policy</a></li>
+                        <li><a href="terms-of-service.html">Terms of Service</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4 class="footer-title">Contact</h4>
+                    <ul class="footer-links">
+                        <li><a href="mailto:mytrademate.app@gmail.com">mytrademate.app@gmail.com</a></li>
+                        <li><a href="index-rebuilt.html#waitlist">Join Waitlist</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p class="footer-copyright">
+                    &copy; 2025 MyTradeMate. All rights reserved.
+                </p>
+                <p class="footer-disclaimer">
+                    <strong>Disclaimer:</strong> MyTradeMate provides educational insights only. Not financial advice. Cryptocurrency trading carries significant risk. Do your own research.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+</body>
+</html>

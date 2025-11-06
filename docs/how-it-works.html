@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="tiktok-developers-site-verification" content="Luy8rzll7pFtcSYKHuachTHf6kLrsYoX">
+    <meta name="description" content="Learn how MyTradeMate's local AI processing, 76 indicators, and privacy-first architecture protect your data while providing powerful portfolio insights.">
+    <meta name="keywords" content="local AI, TensorFlow Lite, technical indicators, portfolio tracker, privacy, encryption">
+    <title>How It Works - MyTradeMate</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="index-rebuilt.html" class="logo">
+                    <span class="logo-icon">📊</span>
+                    <span class="logo-text">MyTradeMate</span>
+                </a>
+                <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <ul class="nav-links">
+                    <li><a href="index-rebuilt.html#features">Features</a></li>
+                    <li><a href="index-rebuilt.html#comparison">Compare</a></li>
+                    <li><a href="index-rebuilt.html#pricing">Pricing</a></li>
+                    <li><a href="index-rebuilt.html#faq">FAQ</a></li>
+                    <li><a href="how-it-works.html">How It Works</a></li>
+                    <li><a href="index-rebuilt.html#waitlist" class="btn btn-secondary btn-sm">Join Waitlist</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero hero-secondary">
+        <div class="container">
+            <div class="hero-content">
+                <h1 class="hero-title">
+                    How MyTradeMate Works
+                </h1>
+                <p class="hero-description">
+                    The only portfolio tracker that runs 26 AI models and 76 indicators entirely on your device. Here's exactly how we protect your privacy while delivering powerful insights.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Local-First Architecture</h2>
+                <p class="section-description">
+                    Cloud trackers send your data to their servers. We don't. Everything runs on your phone.
+                </p>
+            </div>
+
+            <div class="how-it-works-grid">
+                <div class="how-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>You Add Your API Keys</h3>
+                        <p>Connect your exchange accounts using read-only API keys (no trading permissions). Keys are immediately encrypted with AES-256 and stored in your device's secure storage (iOS Keychain or Android Keystore).</p>
+                        <div class="step-detail">
+                            <strong>Security Note:</strong> API keys never leave your device. We don't have servers to send them to. Even we can't access your keys.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="how-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Fetch Price Data</h3>
+                        <p>MyTradeMate uses your API keys to fetch real-time price data directly from exchanges. This is the only network activity—we never send your portfolio data anywhere.</p>
+                        <div class="step-detail">
+                            <strong>What's Fetched:</strong> Current prices, historical OHLCV (Open, High, Low, Close, Volume) data, and order book depth. All calculations happen locally.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="how-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>AI Models Analyze Locally</h3>
+                        <p>26 TensorFlow Lite models run on your phone's CPU/GPU to analyze patterns, trends, and risks. No cloud processing. No internet required (after data is cached).</p>
+                        <div class="step-detail">
+                            <strong>Models Include:</strong> LSTM for sequence prediction, CNN for pattern recognition, volatility forecasting, risk scoring, and sentiment analysis (all local).
+                        </div>
+                    </div>
+                </div>
+
+                <div class="how-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>76 Indicators Calculated</h3>
+                        <p>All 76 technical indicators (25 candlestick patterns + 51 technical indicators) are calculated locally across 5 timeframes: 5-minute, 15-minute, 1-hour, 4-hour, and 1-day.</p>
+                        <div class="step-detail">
+                            <strong>Examples:</strong> RSI, MACD, Bollinger Bands, Ichimoku Cloud, Fibonacci retracements, Doji, Hammer, Engulfing patterns, and more.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="how-step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h3>You Get Educational Insights</h3>
+                        <p>View your portfolio performance, AI-detected patterns, risk scores, and indicator signals—all presented in an easy-to-understand interface. Every insight is for educational purposes only.</p>
+                        <div class="step-detail">
+                            <strong>Not Financial Advice:</strong> MyTradeMate provides insights based on historical data and technical analysis. You make all investment decisions.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="how-step">
+                    <div class="step-number">6</div>
+                    <div class="step-content">
+                        <h3>Data Stays on Your Device</h3>
+                        <p>Your portfolio data, transaction history, and insights are encrypted and stored only on your device. Uninstall the app? Your data is gone forever. We can't recover it because we never had it.</p>
+                        <div class="step-detail">
+                            <strong>Zero Tracking:</strong> No analytics, no telemetry, no cloud sync. Your privacy is absolute.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI Models Section -->
+    <section class="section section-dark">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">26 AI Models Explained</h2>
+                <p class="section-description">
+                    Here's what's running on your device
+                </p>
+            </div>
+
+            <div class="ai-models-grid">
+                <div class="ai-model-card">
+                    <div class="model-icon">🧠</div>
+                    <h3>Pattern Recognition Models (8)</h3>
+                    <ul>
+                        <li><strong>LSTM Networks:</strong> Detect trends and price sequences</li>
+                        <li><strong>CNN Models:</strong> Identify candlestick patterns visually</li>
+                        <li><strong>RNN Variants:</strong> Predict short-term price movements</li>
+                        <li><strong>Ensemble Methods:</strong> Combine multiple models for accuracy</li>
+                    </ul>
+                    <p class="model-note">All trained on historical market data. Past performance ≠ future results.</p>
+                </div>
+
+                <div class="ai-model-card">
+                    <div class="model-icon">📈</div>
+                    <h3>Trend Analysis Models (6)</h3>
+                    <ul>
+                        <li><strong>Support/Resistance Detection:</strong> Identify key price levels</li>
+                        <li><strong>Breakout Prediction:</strong> Detect potential breakouts</li>
+                        <li><strong>Trend Strength Scoring:</strong> Measure trend momentum</li>
+                        <li><strong>Reversal Detection:</strong> Spot potential trend changes</li>
+                    </ul>
+                    <p class="model-note">Used for educational insights, not trading signals.</p>
+                </div>
+
+                <div class="ai-model-card">
+                    <div class="model-icon">⚠️</div>
+                    <h3>Risk Assessment Models (4)</h3>
+                    <ul>
+                        <li><strong>Volatility Forecasting:</strong> Predict price volatility</li>
+                        <li><strong>Drawdown Risk:</strong> Estimate potential losses</li>
+                        <li><strong>Correlation Analysis:</strong> Identify portfolio diversification</li>
+                        <li><strong>Sharp Ratio Calculation:</strong> Risk-adjusted returns</li>
+                    </ul>
+                    <p class="model-note">Risk scores are estimates, not guarantees.</p>
+                </div>
+
+                <div class="ai-model-card">
+                    <div class="model-icon">💹</div>
+                    <h3>Volume & Sentiment Models (2)</h3>
+                    <ul>
+                        <li><strong>Volume Profile Analysis:</strong> Detect unusual trading activity</li>
+                        <li><strong>Market Sentiment Scoring:</strong> Gauge fear/greed indicators</li>
+                    </ul>
+                    <p class="model-note">Based on on-chain and market data, not social media.</p>
+                </div>
+
+                <div class="ai-model-card">
+                    <div class="model-icon">🔧</div>
+                    <h3>Legacy Models (6)</h3>
+                    <ul>
+                        <li>Earlier versions of AI models kept for comparison</li>
+                        <li>Used to validate new model accuracy</li>
+                        <li>Not actively displayed in the UI</li>
+                    </ul>
+                    <p class="model-note">Total: 20 active + 6 legacy = 26 models.</p>
+                </div>
+            </div>
+
+            <div class="tech-note">
+                <p><strong>Technical Details:</strong> All models are quantized TensorFlow Lite models optimized for mobile CPUs/GPUs. Typical inference time: 50-200ms per model. No GPU acceleration required (but faster with it).</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Indicators Section -->
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">76 Technical Indicators</h2>
+                <p class="section-description">
+                    Every tool a trader needs—calculated locally in real-time
+                </p>
+            </div>
+
+            <div class="indicators-grid">
+                <div class="indicator-category">
+                    <h3>Candlestick Patterns (25)</h3>
+                    <div class="indicator-list">
+                        <div class="indicator-group">
+                            <h4>Reversal Patterns</h4>
+                            <ul>
+                                <li>Doji (Standard, Dragonfly, Gravestone)</li>
+                                <li>Hammer & Inverted Hammer</li>
+                                <li>Hanging Man & Shooting Star</li>
+                                <li>Engulfing (Bullish & Bearish)</li>
+                                <li>Harami (Bullish & Bearish)</li>
+                                <li>Morning Star & Evening Star</li>
+                                <li>Piercing Line & Dark Cloud Cover</li>
+                            </ul>
+                        </div>
+                        <div class="indicator-group">
+                            <h4>Continuation Patterns</h4>
+                            <ul>
+                                <li>Three White Soldiers & Three Black Crows</li>
+                                <li>Rising Three & Falling Three Methods</li>
+                                <li>Spinning Top</li>
+                                <li>Marubozu (Bullish & Bearish)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="indicator-category">
+                    <h3>Trend Indicators (12)</h3>
+                    <ul class="indicator-simple-list">
+                        <li><strong>Moving Averages:</strong> SMA, EMA, WMA</li>
+                        <li><strong>MACD:</strong> Moving Average Convergence Divergence</li>
+                        <li><strong>ADX:</strong> Average Directional Index</li>
+                        <li><strong>Parabolic SAR:</strong> Stop and Reverse</li>
+                        <li><strong>Ichimoku Cloud:</strong> Full suite (Tenkan, Kijun, Senkou Span A/B)</li>
+                        <li><strong>Supertrend:</strong> Trend-following indicator</li>
+                    </ul>
+                </div>
+
+                <div class="indicator-category">
+                    <h3>Momentum Indicators (10)</h3>
+                    <ul class="indicator-simple-list">
+                        <li><strong>RSI:</strong> Relative Strength Index</li>
+                        <li><strong>Stochastic Oscillator:</strong> %K and %D</li>
+                        <li><strong>CCI:</strong> Commodity Channel Index</li>
+                        <li><strong>Williams %R:</strong> Momentum oscillator</li>
+                        <li><strong>ROC:</strong> Rate of Change</li>
+                        <li><strong>MFI:</strong> Money Flow Index</li>
+                    </ul>
+                </div>
+
+                <div class="indicator-category">
+                    <h3>Volatility Indicators (8)</h3>
+                    <ul class="indicator-simple-list">
+                        <li><strong>Bollinger Bands:</strong> Upper, Middle, Lower bands</li>
+                        <li><strong>ATR:</strong> Average True Range</li>
+                        <li><strong>Keltner Channels:</strong> Volatility-based bands</li>
+                        <li><strong>Standard Deviation:</strong> Price dispersion</li>
+                        <li><strong>Donchian Channels:</strong> Price envelope</li>
+                    </ul>
+                </div>
+
+                <div class="indicator-category">
+                    <h3>Volume Indicators (6)</h3>
+                    <ul class="indicator-simple-list">
+                        <li><strong>OBV:</strong> On-Balance Volume</li>
+                        <li><strong>VWAP:</strong> Volume Weighted Average Price</li>
+                        <li><strong>Volume Profile:</strong> Price-volume distribution</li>
+                        <li><strong>A/D Line:</strong> Accumulation/Distribution</li>
+                        <li><strong>Chaikin Money Flow:</strong> Buying/selling pressure</li>
+                    </ul>
+                </div>
+
+                <div class="indicator-category">
+                    <h3>Support/Resistance Indicators (7)</h3>
+                    <ul class="indicator-simple-list">
+                        <li><strong>Fibonacci Retracements:</strong> 23.6%, 38.2%, 50%, 61.8%</li>
+                        <li><strong>Fibonacci Extensions:</strong> 127.2%, 161.8%</li>
+                        <li><strong>Pivot Points:</strong> Standard, Fibonacci, Camarilla</li>
+                        <li><strong>Support/Resistance Lines:</strong> Auto-detected</li>
+                    </ul>
+                </div>
+
+                <div class="indicator-category">
+                    <h3>Composite Indicators (7)</h3>
+                    <ul class="indicator-simple-list">
+                        <li><strong>Heikin Ashi:</strong> Smoothed candlesticks</li>
+                        <li><strong>Renko Charts:</strong> Price movement focus</li>
+                        <li><strong>Elder-Ray Index:</strong> Bull/bear power</li>
+                        <li><strong>Aroon Indicator:</strong> Trend strength</li>
+                        <li><strong>Know Sure Thing (KST):</strong> Momentum oscillator</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="indicator-footer">
+                <p><strong>Total: 76 Indicators</strong> (25 candlestick patterns + 51 technical indicators)</p>
+                <p>All calculated locally across <strong>5 timeframes:</strong> 5-minute, 15-minute, 1-hour, 4-hour, 1-day</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Security Section -->
+    <section class="section section-dark">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Security Architecture</h2>
+                <p class="section-description">
+                    How we protect your data without ever seeing it
+                </p>
+            </div>
+
+            <div class="security-grid">
+                <div class="security-layer">
+                    <div class="layer-number">Layer 1</div>
+                    <h3>Biometric Authentication</h3>
+                    <p>Face ID (iOS) or Touch ID/Fingerprint (Android) protects app access. Biometric data is handled by your device's OS—we never access or store it.</p>
+                    <div class="security-tech">
+                        <strong>Technology:</strong> iOS Secure Enclave / Android TEE (Trusted Execution Environment)
+                    </div>
+                </div>
+
+                <div class="security-layer">
+                    <div class="layer-number">Layer 2</div>
+                    <h3>AES-256 Encryption</h3>
+                    <p>All sensitive data (API keys, portfolio holdings, transaction history) is encrypted with AES-256 before being stored on your device.</p>
+                    <div class="security-tech">
+                        <strong>Standard:</strong> Military-grade encryption used by banks and governments
+                    </div>
+                </div>
+
+                <div class="security-layer">
+                    <div class="layer-number">Layer 3</div>
+                    <h3>Secure Storage</h3>
+                    <p>Encrypted data is stored in iOS Keychain (iOS) or Android Keystore (Android)—the most secure storage locations on mobile devices.</p>
+                    <div class="security-tech">
+                        <strong>Protection:</strong> Hardware-backed encryption, isolated from other apps
+                    </div>
+                </div>
+
+                <div class="security-layer">
+                    <div class="layer-number">Layer 4</div>
+                    <h3>No Cloud Backup</h3>
+                    <p>MyTradeMate does not use iCloud, Google Drive, or any cloud backup services. Your data remains exclusively on your device.</p>
+                    <div class="security-tech">
+                        <strong>Trade-off:</strong> Maximum privacy, but you can't recover data if you lose your device
+                    </div>
+                </div>
+
+                <div class="security-layer">
+                    <div class="layer-number">Layer 5</div>
+                    <h3>Read-Only API Keys</h3>
+                    <p>We recommend using read-only API keys that cannot execute trades or withdrawals. This limits damage if keys are ever compromised.</p>
+                    <div class="security-tech">
+                        <strong>Best Practice:</strong> Enable IP whitelisting and key rotation on your exchange
+                    </div>
+                </div>
+
+                <div class="security-layer">
+                    <div class="layer-number">Layer 6</div>
+                    <h3>Zero Network Telemetry</h3>
+                    <p>No analytics, no crash reports, no user tracking. The only network activity is fetching price data from exchanges using your API keys.</p>
+                    <div class="security-tech">
+                        <strong>Verification:</strong> Inspect with Charles Proxy, mitmproxy, or Wireshark
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Privacy Guarantees Section -->
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Our Privacy Guarantees</h2>
+                <p class="section-description">
+                    What we promise—and how you can verify it
+                </p>
+            </div>
+
+            <div class="guarantees-grid">
+                <div class="guarantee-card">
+                    <div class="guarantee-icon">✓</div>
+                    <h3>We Don't Collect Personal Data</h3>
+                    <p>No names, emails (except voluntary waitlist), phone numbers, addresses, or any personally identifiable information (PII).</p>
+                </div>
+
+                <div class="guarantee-card">
+                    <div class="guarantee-icon">✓</div>
+                    <h3>We Don't Track Usage</h3>
+                    <p>No Google Analytics, Firebase Analytics, Mixpanel, or any third-party analytics SDKs. We don't know how you use the app.</p>
+                </div>
+
+                <div class="guarantee-card">
+                    <div class="guarantee-icon">✓</div>
+                    <h3>We Don't Store Portfolio Data</h3>
+                    <p>Your holdings, balances, transaction history, and profits/losses are encrypted and stored only on your device. We never see them.</p>
+                </div>
+
+                <div class="guarantee-card">
+                    <div class="guarantee-icon">✓</div>
+                    <h3>We Don't Have Servers</h3>
+                    <p>Because all processing is local, we don't operate cloud servers to store or process your data. There's nothing to hack.</p>
+                </div>
+
+                <div class="guarantee-card">
+                    <div class="guarantee-icon">✓</div>
+                    <h3>We Don't Sell Your Data</h3>
+                    <p>We can't sell what we don't have. Your data is never monetized, shared, or sold to advertisers or third parties.</p>
+                </div>
+
+                <div class="guarantee-card">
+                    <div class="guarantee-icon">✓</div>
+                    <h3>We're GDPR & CCPA Compliant by Design</h3>
+                    <p>Because we don't collect data, we're automatically compliant with privacy regulations worldwide.</p>
+                </div>
+            </div>
+
+            <div class="verification-box">
+                <h3>Verify Our Claims</h3>
+                <p>Don't trust, verify. Here's how technically savvy users can confirm our privacy promises:</p>
+                <ul>
+                    <li><strong>Network Traffic Inspection:</strong> Use Charles Proxy, mitmproxy, or Wireshark to monitor all network requests. You'll see only API calls to exchanges—no analytics or tracking.</li>
+                    <li><strong>Device Storage Inspection:</strong> Check your device's app data directory (requires root/jailbreak). All data is encrypted—you can't read it without the app's decryption key.</li>
+                    <li><strong>Code Audit:</strong> While MyTradeMate is not open-source, we welcome security researchers to audit the app. Contact us for details.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Getting Started Section -->
+    <section class="section section-dark">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Getting Started</h2>
+                <p class="section-description">
+                    How to use MyTradeMate in 5 simple steps
+                </p>
+            </div>
+
+            <div class="getting-started-steps">
+                <div class="getting-started-step">
+                    <div class="step-icon">📱</div>
+                    <h3>1. Download & Install</h3>
+                    <p>Available on iOS (App Store) and Android (Google Play). Requires iOS 12+ or Android 6.0+.</p>
+                </div>
+
+                <div class="getting-started-step">
+                    <div class="step-icon">🔑</div>
+                    <h3>2. Generate API Keys</h3>
+                    <p>Create read-only API keys on your cryptocurrency exchanges (e.g., Binance, Coinbase). Enable IP whitelisting for extra security.</p>
+                </div>
+
+                <div class="getting-started-step">
+                    <div class="step-icon">🔐</div>
+                    <h3>3. Add Keys to MyTradeMate</h3>
+                    <p>Enter your API keys in the app. They're immediately encrypted with AES-256 and stored locally. Set up biometric authentication (Face ID/Touch ID).</p>
+                </div>
+
+                <div class="getting-started-step">
+                    <div class="step-icon">⏱️</div>
+                    <h3>4. Sync Your Portfolio</h3>
+                    <p>MyTradeMate fetches your holdings and historical price data. This may take 1-2 minutes for large portfolios. AI models then analyze your data locally.</p>
+                </div>
+
+                <div class="getting-started-step">
+                    <div class="step-icon">📊</div>
+                    <h3>5. Explore Insights</h3>
+                    <p>View your portfolio performance, AI-detected patterns, risk scores, and technical indicator signals. All insights are educational—not trading advice.</p>
+                </div>
+            </div>
+
+            <div class="cta-box">
+                <h3>Ready to Try MyTradeMate?</h3>
+                <p>Join the waitlist to get notified at launch and lock in the €3.99/month early supporter price forever.</p>
+                <a href="index-rebuilt.html#waitlist" class="btn btn-primary btn-lg">Join the Waitlist</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <div class="footer-logo">
+                        <span class="logo-icon">📊</span>
+                        <span class="logo-text">MyTradeMate</span>
+                    </div>
+                    <p class="footer-description">
+                        Privacy-first portfolio tracker with 26 local AI models. Your data never leaves your device.
+                    </p>
+                    <div class="footer-social">
+                        <a href="https://twitter.com/mytrademate" aria-label="Twitter" target="_blank" rel="noopener noreferrer">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                            </svg>
+                        </a>
+                        <a href="https://instagram.com/mytrademate" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2c2.717 0 3.056.01 4.122.06 1.065.05 1.79.217 2.428.465.66.254 1.216.598 1.772 1.153a4.908 4.908 0 0 1 1.153 1.772c.247.637.415 1.363.465 2.428.047 1.066.06 1.405.06 4.122 0 2.717-.01 3.056-.06 4.122-.05 1.065-.218 1.79-.465 2.428a4.883 4.883 0 0 1-1.153 1.772 4.915 4.915 0 0 1-1.772 1.153c-.637.247-1.363.415-2.428.465-1.066.047-1.405.06-4.122.06-2.717 0-3.056-.01-4.122-.06-1.065-.05-1.79-.218-2.428-.465a4.89 4.89 0 0 1-1.772-1.153 4.904 4.904 0 0 1-1.153-1.772c-.248-.637-.415-1.363-.465-2.428C2.013 15.056 2 14.717 2 12c0-2.717.01-3.056.06-4.122.05-1.066.217-1.79.465-2.428a4.88 4.88 0 0 1 1.153-1.772A4.897 4.897 0 0 1 5.45 2.525c.638-.248 1.362-.415 2.428-.465C8.944 2.013 9.283 2 12 2zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm6.5-.25a1.25 1.25 0 0 0-2.5 0 1.25 1.25 0 0 0 2.5 0zM12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/>
+                            </svg>
+                        </a>
+                        <a href="https://tiktok.com/@mytrademate" aria-label="TikTok" target="_blank" rel="noopener noreferrer">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                            </svg>
+                        </a>
+                        <a href="https://youtube.com/@mytrademate" aria-label="YouTube" target="_blank" rel="noopener noreferrer">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="footer-col">
+                    <h4 class="footer-title">Product</h4>
+                    <ul class="footer-links">
+                        <li><a href="index-rebuilt.html#features">Features</a></li>
+                        <li><a href="index-rebuilt.html#pricing">Pricing</a></li>
+                        <li><a href="how-it-works.html">How It Works</a></li>
+                        <li><a href="index-rebuilt.html#faq">FAQ</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4 class="footer-title">Legal</h4>
+                    <ul class="footer-links">
+                        <li><a href="privacy-policy.html">Privacy Policy</a></li>
+                        <li><a href="terms-of-service.html">Terms of Service</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4 class="footer-title">Contact</h4>
+                    <ul class="footer-links">
+                        <li><a href="mailto:mytrademate.app@gmail.com">mytrademate.app@gmail.com</a></li>
+                        <li><a href="index-rebuilt.html#waitlist">Join Waitlist</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p class="footer-copyright">
+                    &copy; 2025 MyTradeMate. All rights reserved.
+                </p>
+                <p class="footer-disclaimer">
+                    <strong>Disclaimer:</strong> MyTradeMate provides educational insights only. Not financial advice. Cryptocurrency trading carries significant risk. Do your own research.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+</body>
+</html>
