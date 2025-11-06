@@ -4,460 +4,659 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="tiktok-developers-site-verification" content="Luy8rzll7pFtcSYKHuachTHf6kLrsYoX">
-    <title>MyTradeMate Portfolio - AI-Powered Crypto Portfolio Tracker</title>
-    <meta name="description" content="Track your crypto portfolio with AI-powered market insights. Educational bearish/bullish analysis to help you understand market trends and make informed decisions.">
-    <meta name="keywords" content="crypto portfolio tracker, portfolio tracking, cryptocurrency monitor, AI crypto insights, educational crypto analysis, bearish bullish analysis">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --gold: #FFD700;
-            --gold-gradient: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-            --card-glass: rgba(255, 255, 255, 0.15);
-            --card-border: rgba(255, 255, 255, 0.25);
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.85);
-            --shadow-glow: 0 10px 40px rgba(255, 215, 0, 0.4);
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: var(--primary-gradient);
-            color: var(--text-primary);
-            overflow-x: hidden;
-            line-height: 1.6;
-        }
-
-        /* Hero Section */
-        .hero {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 60px 20px;
-            position: relative;
-        }
-
-        .robot-icon {
-            font-size: 100px;
-            margin-bottom: 30px;
-            animation: float 3s ease-in-out infinite;
-            filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.3));
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-        }
-
-        .hero h1 {
-            font-size: 4rem;
-            font-weight: 800;
-            margin-bottom: 20px;
-            background: linear-gradient(to right, #fff, #f0f0f0);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
-        }
-
-        .hero .tagline {
-            font-size: 1.8rem;
-            margin-bottom: 15px;
-            opacity: 0.95;
-            font-weight: 600;
-        }
-
-        .hero .subtitle {
-            font-size: 1.2rem;
-            opacity: 0.85;
-            margin-bottom: 50px;
-            max-width: 700px;
-            line-height: 1.8;
-        }
-
-        .badges {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            justify-content: center;
-            margin-bottom: 60px;
-        }
-
-        .badge {
-            background: var(--card-glass);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--card-border);
-            padding: 14px 28px;
-            border-radius: 30px;
-            font-size: 15px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-
-        .badge:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2);
-        }
-
-        /* Waitlist Section */
-        .waitlist-section {
-            padding: 80px 20px;
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(20px);
-            text-align: center;
-        }
-
-        .waitlist-section h2 {
-            font-size: 3rem;
-            margin-bottom: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .waitlist-subheading {
-            font-size: 1.3rem;
-            line-height: 1.8;
-            max-width: 900px;
-            margin: 0 auto 50px;
-            opacity: 0.95;
-        }
-
-        .waitlist-subheading strong {
-            color: var(--gold);
-            font-weight: 700;
-            font-size: 1.4rem;
-        }
-
-        .waitlist-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            padding: 25px 70px;
-            background: var(--gold-gradient);
-            color: #1a1a2e;
-            text-decoration: none;
-            border-radius: 60px;
-            font-weight: 800;
-            font-size: 1.5rem;
-            transition: transform 0.3s, box-shadow 0.3s;
-            box-shadow: var(--shadow-glow);
-            animation: pulse-glow 2s ease-in-out infinite;
-            border: none;
-            cursor: pointer;
-        }
-
-        .waitlist-button:hover {
-            transform: translateY(-8px) scale(1.05);
-            box-shadow: 0 20px 60px rgba(255, 215, 0, 0.6);
-        }
-
-        @keyframes pulse-glow {
-            0%, 100% {
-                box-shadow: 0 10px 40px rgba(255, 215, 0, 0.4);
-            }
-            50% {
-                box-shadow: 0 15px 50px rgba(255, 215, 0, 0.6);
-            }
-        }
-
-        .waitlist-notice {
-            margin-top: 30px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--gold);
-            animation: fade-pulse 3s ease-in-out infinite;
-        }
-
-        @keyframes fade-pulse {
-            0%, 100% { opacity: 0.7; }
-            50% { opacity: 1; }
-        }
-
-        /* Features Section */
-        .features-section {
-            padding: 100px 20px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .section-title {
-            font-size: 3rem;
-            font-weight: 800;
-            text-align: center;
-            margin-bottom: 70px;
-            background: linear-gradient(to right, #fff, #f0f0f0);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 40px;
-        }
-
-        .feature-card {
-            background: var(--card-glass);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--card-border);
-            border-radius: 25px;
-            padding: 50px 40px;
-            text-align: center;
-            transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-15px);
-            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4);
-            border-color: var(--gold);
-        }
-
-        .feature-icon {
-            font-size: 70px;
-            margin-bottom: 25px;
-            filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.3));
-        }
-
-        .feature-title {
-            font-size: 1.6rem;
-            font-weight: 700;
-            margin-bottom: 20px;
-        }
-
-        .feature-desc {
-            font-size: 1.05rem;
-            opacity: 0.9;
-            line-height: 1.7;
-        }
-
-        /* Disclaimer Section */
-        .disclaimer {
-            max-width: 1000px;
-            margin: 80px auto;
-            padding: 50px;
-            background: rgba(255, 215, 0, 0.15);
-            backdrop-filter: blur(20px);
-            border: 2px solid var(--gold);
-            border-radius: 25px;
-        }
-
-        .disclaimer-title {
-            color: var(--gold);
-            font-size: 1.6rem;
-            font-weight: 700;
-            margin-bottom: 25px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .disclaimer-section {
-            margin-bottom: 25px;
-        }
-
-        .disclaimer-section h3 {
-            color: var(--gold);
-            font-size: 1.2rem;
-            margin-bottom: 12px;
-            font-weight: 600;
-        }
-
-        .disclaimer-text {
-            font-size: 1.05rem;
-            line-height: 1.8;
-            opacity: 0.95;
-        }
-
-        /* Footer */
-        .footer {
-            padding: 60px 20px;
-            text-align: center;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(20px);
-            border-top: 1px solid var(--card-border);
-        }
-
-        .footer-links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 40px;
-            justify-content: center;
-            margin-bottom: 40px;
-        }
-
-        .footer-links a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 1.05rem;
-            transition: color 0.3s, transform 0.3s;
-            display: inline-block;
-        }
-
-        .footer-links a:hover {
-            color: var(--gold);
-            transform: translateY(-3px);
-        }
-
-        .footer-copyright {
-            opacity: 0.8;
-            font-size: 0.95rem;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 1024px) {
-            .hero h1 { font-size: 3rem; }
-            .hero .tagline { font-size: 1.5rem; }
-            .waitlist-section h2 { font-size: 2.5rem; }
-            .waitlist-subheading { font-size: 1.1rem; }
-        }
-
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 2.5rem; }
-            .hero .tagline { font-size: 1.3rem; }
-            .hero .subtitle { font-size: 1rem; }
-            .waitlist-section h2 { font-size: 2rem; }
-            .waitlist-subheading { font-size: 1rem; padding: 0 15px; }
-            .waitlist-button {
-                font-size: 1.2rem;
-                padding: 20px 50px;
-            }
-            .features-grid {
-                grid-template-columns: 1fr;
-            }
-            .section-title { font-size: 2.2rem; }
-            .disclaimer { padding: 30px 20px; }
-        }
-
-        @media (max-width: 480px) {
-            .robot-icon { font-size: 70px; }
-            .hero h1 { font-size: 2rem; }
-            .waitlist-button {
-                font-size: 1.1rem;
-                padding: 18px 40px;
-            }
-        }
-    </style>
+    <meta name="description" content="MyTradeMate - Privacy-first portfolio tracker with 26 local AI models, 76 technical indicators, and zero tracking. €3.99/month for first 1,000 users.">
+    <meta name="keywords" content="crypto portfolio tracker, local AI, privacy-first, technical indicators, candlestick patterns, offline trading tools">
+    <meta name="author" content="MyTradeMate">
+    <meta property="og:title" content="MyTradeMate - Local AI Portfolio Tracker">
+    <meta property="og:description" content="26 AI models, 76 indicators, zero tracking. Your portfolio data stays on your device.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://mytrademate.app">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="MyTradeMate - Local AI Portfolio Tracker">
+    <meta name="twitter:description" content="26 AI models, 76 indicators, zero tracking. Your portfolio data stays on your device.">
+    <title>MyTradeMate - Privacy-First Portfolio Tracker with Local AI</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
 </head>
 <body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="index-rebuilt.html" class="logo">
+                    <span class="logo-icon">📊</span>
+                    <span class="logo-text">MyTradeMate</span>
+                </a>
+                <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <ul class="nav-links">
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#comparison">Compare</a></li>
+                    <li><a href="#pricing">Pricing</a></li>
+                    <li><a href="#faq">FAQ</a></li>
+                    <li><a href="how-it-works.html">How It Works</a></li>
+                    <li><a href="#waitlist" class="btn btn-secondary btn-sm">Join Waitlist</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
     <!-- Hero Section -->
     <section class="hero">
-        <div class="robot-icon">🤖</div>
-        <h1>MyTradeMate Portfolio</h1>
-        <p class="tagline">AI-Powered Crypto Portfolio Tracker</p>
-        <p class="subtitle">Track your crypto holdings with AI-powered market insights. Educational bearish/bullish analysis to help you understand market trends and make informed decisions.</p>
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <span class="badge badge-primary">26 Local AI Models</span>
+                    <span class="badge badge-primary">76 Indicators</span>
+                    <span class="badge badge-success">Zero Tracking</span>
+                </div>
+                <h1 class="hero-title">
+                    Your Portfolio Data.<br>
+                    Your Device.<br>
+                    <span class="text-gradient">Your Privacy.</span>
+                </h1>
+                <p class="hero-description">
+                    The only portfolio tracker that runs 26 TensorFlow Lite models and 76 technical indicators entirely on your device. No cloud. No tracking. No compromises.
+                </p>
+                <div class="hero-cta">
+                    <a href="#waitlist" class="btn btn-primary btn-lg">
+                        Lock In €3.99 Forever
+                        <span class="btn-subtext">First 1,000 users only</span>
+                    </a>
+                    <a href="#features" class="btn btn-outline btn-lg">
+                        See How It Works
+                    </a>
+                </div>
+                <div class="hero-trust">
+                    <div class="trust-item">
+                        <span class="trust-icon">🔒</span>
+                        <span class="trust-text">AES-256 Encrypted</span>
+                    </div>
+                    <div class="trust-item">
+                        <span class="trust-icon">📱</span>
+                        <span class="trust-text">Biometric Auth</span>
+                    </div>
+                    <div class="trust-item">
+                        <span class="trust-icon">🎓</span>
+                        <span class="trust-text">Educational Only</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-        <div class="badges">
-            <div class="badge">🔒 Bank-Level Security</div>
-            <div class="badge">📊 AI Market Insights</div>
-            <div class="badge">📚 Educational Tool</div>
-            <div class="badge">💼 Real-Time Portfolio</div>
+    <!-- Features Section -->
+    <section id="features" class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Why Local AI Matters</h2>
+                <p class="section-description">
+                    Cloud trackers analyze your data on their servers. We don't. Everything runs on your device.
+                </p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3 class="feature-title">26 AI Models, On-Device</h3>
+                    <p class="feature-description">
+                        20 active TensorFlow Lite models plus 6 legacy models for pattern recognition, trend analysis, and risk assessment. All processing happens locally—zero data ever leaves your phone.
+                    </p>
+                    <ul class="feature-list">
+                        <li>Pattern recognition (LSTM, CNN)</li>
+                        <li>Trend prediction models</li>
+                        <li>Risk scoring algorithms</li>
+                        <li>Volatility analysis</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3 class="feature-title">76 Technical Indicators</h3>
+                    <p class="feature-description">
+                        25 candlestick patterns and 51 technical indicators across 5 timeframes (5m, 15m, 1h, 4h, 1D). From Doji to Ichimoku Cloud, every tool you need.
+                    </p>
+                    <ul class="feature-list">
+                        <li>25 candlestick patterns</li>
+                        <li>51 technical indicators (RSI, MACD, Bollinger, etc.)</li>
+                        <li>5 timeframe analysis</li>
+                        <li>Real-time calculations</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card feature-card-highlight">
+                    <div class="feature-icon">🔒</div>
+                    <h3 class="feature-title">Zero Tracking Guarantee</h3>
+                    <p class="feature-description">
+                        No analytics. No telemetry. No cloud sync. Your API keys, holdings, and insights are encrypted with AES-256 and stored only on your device. Not even we can see your data.
+                    </p>
+                    <ul class="feature-list">
+                        <li>No Google Analytics</li>
+                        <li>No user tracking</li>
+                        <li>No data collection</li>
+                        <li>GDPR & CCPA compliant</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <h3 class="feature-title">Fair, Transparent Pricing</h3>
+                    <p class="feature-description">
+                        €3.99/month for the first 1,000 users—locked in forever. No hidden fees, no per-transaction charges, no bait-and-switch. 48-hour free trial, no credit card required.
+                    </p>
+                    <ul class="feature-list">
+                        <li>€3.99/month (first 1,000 users forever)</li>
+                        <li>48-hour free trial</li>
+                        <li>No credit card required</li>
+                        <li>Cancel anytime</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Section -->
+    <section id="comparison" class="section section-dark">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">MyTradeMate vs Cloud Trackers</h2>
+                <p class="section-description">
+                    Why local processing changes everything
+                </p>
+            </div>
+            <div class="comparison-table-wrapper">
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th class="highlight-col">
+                                <div class="table-logo">
+                                    <span>📊</span>
+                                    <span>MyTradeMate</span>
+                                </div>
+                            </th>
+                            <th>Cloud Trackers</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Data Privacy</strong></td>
+                            <td class="highlight-col">
+                                <span class="check">✓</span>
+                                <span>100% local, zero tracking</span>
+                            </td>
+                            <td>
+                                <span class="cross">✗</span>
+                                <span>Your data on their servers</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>AI Processing</strong></td>
+                            <td class="highlight-col">
+                                <span class="check">✓</span>
+                                <span>26 models on-device</span>
+                            </td>
+                            <td>
+                                <span class="cross">✗</span>
+                                <span>Cloud-only or none</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Technical Indicators</strong></td>
+                            <td class="highlight-col">
+                                <span class="check">✓</span>
+                                <span>76 indicators (25 patterns + 51 technical)</span>
+                            </td>
+                            <td>
+                                <span class="warning">~</span>
+                                <span>Limited or premium-only</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Internet Required</strong></td>
+                            <td class="highlight-col">
+                                <span class="check">✓</span>
+                                <span>Only for price updates</span>
+                            </td>
+                            <td>
+                                <span class="cross">✗</span>
+                                <span>Always required</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>API Key Security</strong></td>
+                            <td class="highlight-col">
+                                <span class="check">✓</span>
+                                <span>AES-256, local only</span>
+                            </td>
+                            <td>
+                                <span class="cross">✗</span>
+                                <span>Stored on their servers</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Analytics/Tracking</strong></td>
+                            <td class="highlight-col">
+                                <span class="check">✓</span>
+                                <span>Absolutely zero</span>
+                            </td>
+                            <td>
+                                <span class="cross">✗</span>
+                                <span>Google Analytics, telemetry</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Monthly Cost</strong></td>
+                            <td class="highlight-col">
+                                <span class="check">✓</span>
+                                <span>€3.99 (early users, forever)</span>
+                            </td>
+                            <td>
+                                <span class="cross">✗</span>
+                                <span>€10-30+ or transaction fees</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Free Trial</strong></td>
+                            <td class="highlight-col">
+                                <span class="check">✓</span>
+                                <span>48 hours, no credit card</span>
+                            </td>
+                            <td>
+                                <span class="warning">~</span>
+                                <span>Often requires payment info</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="comparison-note">
+                <p><strong>Important:</strong> MyTradeMate provides educational insights only. Not financial advice. Always do your own research.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tech Specs Section -->
+    <section class="section">
+        <div class="container">
+            <div class="tech-specs-card">
+                <div class="tech-specs-header">
+                    <h3>Technical Specifications</h3>
+                    <span class="badge badge-primary">Built with Flutter 3.35.7</span>
+                </div>
+                <div class="tech-specs-grid">
+                    <div class="tech-spec">
+                        <span class="tech-label">AI Models</span>
+                        <span class="tech-value">26 TensorFlow Lite</span>
+                        <span class="tech-detail">20 active + 6 legacy</span>
+                    </div>
+                    <div class="tech-spec">
+                        <span class="tech-label">Indicators</span>
+                        <span class="tech-value">76 Total</span>
+                        <span class="tech-detail">25 patterns + 51 technical</span>
+                    </div>
+                    <div class="tech-spec">
+                        <span class="tech-label">Timeframes</span>
+                        <span class="tech-value">5 Intervals</span>
+                        <span class="tech-detail">5m, 15m, 1h, 4h, 1D</span>
+                    </div>
+                    <div class="tech-spec">
+                        <span class="tech-label">Encryption</span>
+                        <span class="tech-value">AES-256</span>
+                        <span class="tech-detail">Military-grade security</span>
+                    </div>
+                    <div class="tech-spec">
+                        <span class="tech-label">Authentication</span>
+                        <span class="tech-value">Biometric</span>
+                        <span class="tech-detail">Face ID / Touch ID</span>
+                    </div>
+                    <div class="tech-spec">
+                        <span class="tech-label">Platform</span>
+                        <span class="tech-value">Flutter</span>
+                        <span class="tech-detail">iOS & Android</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="section section-dark">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Simple, Fair Pricing</h2>
+                <p class="section-description">
+                    No hidden fees. No per-transaction charges. No surprises.
+                </p>
+            </div>
+            <div class="pricing-grid">
+                <div class="pricing-card pricing-card-featured">
+                    <div class="pricing-badge">Limited Offer</div>
+                    <div class="pricing-header">
+                        <h3 class="pricing-title">Launch Discount</h3>
+                        <p class="pricing-subtitle">First 1,000 users only</p>
+                    </div>
+                    <div class="pricing-price">
+                        <span class="price-currency">€</span>
+                        <span class="price-amount">3.99</span>
+                        <span class="price-period">/month</span>
+                    </div>
+                    <div class="pricing-lock">
+                        <span class="lock-icon">🔒</span>
+                        <span class="lock-text">Locked in FOREVER</span>
+                    </div>
+                    <ul class="pricing-features">
+                        <li><span class="check">✓</span> 26 AI models on-device</li>
+                        <li><span class="check">✓</span> 76 technical indicators</li>
+                        <li><span class="check">✓</span> Zero tracking guarantee</li>
+                        <li><span class="check">✓</span> AES-256 encryption</li>
+                        <li><span class="check">✓</span> Biometric authentication</li>
+                        <li><span class="check">✓</span> 48-hour free trial</li>
+                        <li><span class="check">✓</span> No credit card required</li>
+                        <li><span class="check">✓</span> Cancel anytime</li>
+                    </ul>
+                    <a href="#waitlist" class="btn btn-primary btn-block">Lock In My Discount</a>
+                    <p class="pricing-note">Price locked forever. Even when we raise it later.</p>
+                </div>
+
+                <div class="pricing-card">
+                    <div class="pricing-header">
+                        <h3 class="pricing-title">Regular Price</h3>
+                        <p class="pricing-subtitle">After launch offer ends</p>
+                    </div>
+                    <div class="pricing-price">
+                        <span class="price-currency">€</span>
+                        <span class="price-amount">5.99</span>
+                        <span class="price-period">/month</span>
+                    </div>
+                    <div class="pricing-lock pricing-lock-regular">
+                        <span class="lock-text">Standard pricing</span>
+                    </div>
+                    <ul class="pricing-features">
+                        <li><span class="check">✓</span> 26 AI models on-device</li>
+                        <li><span class="check">✓</span> 76 technical indicators</li>
+                        <li><span class="check">✓</span> Zero tracking guarantee</li>
+                        <li><span class="check">✓</span> AES-256 encryption</li>
+                        <li><span class="check">✓</span> Biometric authentication</li>
+                        <li><span class="check">✓</span> 48-hour free trial</li>
+                        <li><span class="check">✓</span> No credit card required</li>
+                        <li><span class="check">✓</span> Cancel anytime</li>
+                    </ul>
+                    <a href="#waitlist" class="btn btn-outline btn-block">Join Waitlist</a>
+                    <p class="pricing-note">Still half the price of cloud trackers.</p>
+                </div>
+            </div>
+            <div class="pricing-faq">
+                <p><strong>Why so cheap?</strong> No servers to maintain. Your device does the work. We pass the savings to you.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Frequently Asked Questions</h2>
+                <p class="section-description">
+                    Everything you need to know about MyTradeMate
+                </p>
+            </div>
+            <div class="faq-grid">
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>What makes MyTradeMate different from other portfolio trackers?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>MyTradeMate is the only portfolio tracker that runs 26 TensorFlow Lite AI models and 76 technical indicators entirely on your device. Your data never leaves your phone—no cloud sync, no servers, no tracking. We're also significantly cheaper (€3.99 for early users vs €10-30 for cloud trackers).</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Do you really have zero tracking? How can I verify this?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Yes. Absolutely zero analytics, telemetry, or user tracking. No Google Analytics, no Firebase Analytics, no third-party SDKs. You can verify this by inspecting the app with tools like Charles Proxy or mitmproxy—you'll see only API calls to exchanges for price data. We're also GDPR and CCPA compliant by design.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>What are the 26 AI models? How do they work?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>We use 20 active TensorFlow Lite models (plus 6 legacy) for pattern recognition (LSTM, CNN), trend prediction, risk scoring, and volatility analysis. All models run locally on your device using your phone's CPU/GPU—no cloud processing. They analyze candlestick patterns, volume data, and technical indicators to provide educational insights.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>What are the 76 technical indicators?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>We include 25 candlestick patterns (Doji, Hammer, Engulfing, etc.) and 51 technical indicators (RSI, MACD, Bollinger Bands, Ichimoku Cloud, Fibonacci, and more). All indicators are calculated locally across 5 timeframes: 5-minute, 15-minute, 1-hour, 4-hour, and 1-day.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>How is my data secured?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>All data is encrypted with AES-256 (military-grade encryption) and stored only on your device. Your API keys, portfolio holdings, and transaction history never leave your phone. Biometric authentication (Face ID/Touch ID) protects app access. Even we can't access your data—it's mathematically impossible.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>What's the 48-hour free trial? Do I need a credit card?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>You get full access to all features for 48 hours with no credit card required. After the trial, you can subscribe via Apple App Store or Google Play Store. No automatic charges during trial.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Is the €3.99 price really locked in forever?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Yes. The first 1,000 users who subscribe will pay €3.99/month forever—even if we raise prices later (which we will). This is our way of rewarding early supporters. After 1,000 users, the price increases to €5.99/month.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Does MyTradeMate work offline?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>All AI models and indicators run offline. You only need internet for fetching real-time price data from exchange APIs. Once prices are cached, you can analyze your portfolio without a connection.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Which exchanges and cryptocurrencies are supported?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>MyTradeMate connects to major exchanges via read-only API keys (we never request trading permissions). You can track any cryptocurrency with sufficient market data. More exchange integrations are added regularly.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Is MyTradeMate financial advice?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p><strong>No.</strong> MyTradeMate is strictly educational. We provide insights based on technical analysis and AI pattern recognition, but these are NOT trading signals or financial advice. You are responsible for your own investment decisions. Cryptocurrency is high-risk—never invest more than you can afford to lose. Do your own research.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>What platforms are supported?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>MyTradeMate is built with Flutter 3.35.7 and runs on iOS (iPhone, iPad) and Android (phones, tablets). Requires iOS 12+ or Android 6.0+.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Can I cancel anytime?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Yes. You can cancel your subscription anytime through the App Store or Google Play Store. No penalties, no questions asked. Your data remains on your device until you delete the app.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>When will MyTradeMate launch?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>We're currently in final testing. Join the waitlist to be notified the moment we launch—and to lock in the €3.99 early supporter price before it's gone.</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
     <!-- Waitlist Section -->
-    <section class="waitlist-section">
-        <h2>🚀 Coming Soon! Lock In Your Lifetime Discount.</h2>
-        <p class="waitlist-subheading">
-            The app is in final Google review. Be one of the first 1000 users to email us and get MyTradeMate for just <strong>€3.99/month</strong> (usually €5.99). <strong>Forever.</strong>
-        </p>
-        <a href="mailto:mytrademate.app@gmail.com?subject=I%20want%20the%20MyTradeMate%20launch%20discount!&body=Please%20notify%20me%20on%20launch%20day!"
-           class="waitlist-button">
-            🎁 Lock In My Discount!
-        </a>
-        <p class="waitlist-notice">✨ Limited to first 1000 users only</p>
-    </section>
-
-    <!-- Features Section -->
-    <section class="features-section">
-        <h2 class="section-title">✨ Powerful Features</h2>
-
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-icon">🤖</div>
-                <h3 class="feature-title">AI Market Insights</h3>
-                <p class="feature-desc">Multi-timeframe bearish/bullish analysis powered by ensemble ML models trained on millions of data points. Educational insights to understand market trends.</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">💼</div>
-                <h3 class="feature-title">Portfolio Tracking</h3>
-                <p class="feature-desc">Real-time portfolio valuation, profit/loss tracking, and asset distribution analytics. Read-only Binance API integration keeps your funds secure.</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">📊</div>
-                <h3 class="feature-title">Professional Charts</h3>
-                <p class="feature-desc">Candlestick charts with multiple timeframes and 76 technical indicators for deep market analysis and pattern recognition.</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">🔒</div>
-                <h3 class="feature-title">Bank-Level Security</h3>
-                <p class="feature-desc">Encrypted API keys, biometric authentication, and zero data collection. Your keys, your crypto. We never access your funds.</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">📚</div>
-                <h3 class="feature-title">Educational Analysis</h3>
-                <p class="feature-desc">AI-powered market insights help you understand bearish/bullish trends. For educational purposes only - not financial advice.</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">📱</div>
-                <h3 class="feature-title">Multi-Platform</h3>
-                <p class="feature-desc">Available on Android (coming to iOS soon). Clean, modern interface optimized for portfolio tracking and market analysis.</p>
+    <section id="waitlist" class="section section-cta">
+        <div class="container">
+            <div class="waitlist-card">
+                <div class="waitlist-content">
+                    <h2 class="waitlist-title">Lock In €3.99 Forever</h2>
+                    <p class="waitlist-description">
+                        Be one of the first 1,000 users. Get lifetime access to all features at €3.99/month—even when we raise prices later.
+                    </p>
+                    <div class="waitlist-features">
+                        <div class="waitlist-feature">
+                            <span class="check">✓</span>
+                            <span>26 AI models + 76 indicators</span>
+                        </div>
+                        <div class="waitlist-feature">
+                            <span class="check">✓</span>
+                            <span>Zero tracking guarantee</span>
+                        </div>
+                        <div class="waitlist-feature">
+                            <span class="check">✓</span>
+                            <span>48-hour free trial</span>
+                        </div>
+                    </div>
+                    <a href="mailto:mytrademate.app@gmail.com?subject=Lock%20In%20My%20€3.99%20Discount&body=Please%20notify%20me%20when%20MyTradeMate%20launches.%0A%0AI%20want%20to%20lock%20in%20the%20€3.99/month%20early%20supporter%20price%20forever." class="btn btn-primary btn-lg">
+                        Join the Waitlist
+                    </a>
+                    <p class="waitlist-note">We'll email you the moment we launch. No spam. Your email stays private.</p>
+                </div>
+                <div class="waitlist-visual">
+                    <div class="visual-stat">
+                        <span class="visual-number">26</span>
+                        <span class="visual-label">AI Models</span>
+                    </div>
+                    <div class="visual-stat">
+                        <span class="visual-number">76</span>
+                        <span class="visual-label">Indicators</span>
+                    </div>
+                    <div class="visual-stat">
+                        <span class="visual-number">0</span>
+                        <span class="visual-label">Tracking</span>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
-
-    <!-- Disclaimer Section -->
-    <div class="disclaimer">
-        <div class="disclaimer-title">⚠️ Educational Purpose Only - Not Financial Advice</div>
-
-        <div class="disclaimer-section">
-            <h3>📚 Educational Tool</h3>
-            <p class="disclaimer-text">
-                MyTradeMate Portfolio is designed as an educational tool for portfolio tracking and market analysis. All AI insights are for informational purposes only and do NOT constitute financial, investment, or trading advice.
-            </p>
-        </div>
-
-        <div class="disclaimer-section">
-            <h3>🔒 Read-Only Access</h3>
-            <p class="disclaimer-text">
-                We connect to Binance via read-only API keys. We can ONLY view your portfolio - we cannot access your funds, execute transactions, or modify your account.
-            </p>
-        </div>
-
-        <div class="disclaimer-section">
-            <h3>⚖️ Do Your Own Research</h3>
-            <p class="disclaimer-text">
-                Cryptocurrency investments involve substantial risk of loss. Always conduct your own research (DYOR) and only invest what you can afford to lose. Past performance does not guarantee future results.
-            </p>
-        </div>
-    </div>
 
     <!-- Footer -->
     <footer class="footer">
-        <div class="footer-links">
-            <a href="privacy.html">Privacy Policy</a>
-            <a href="terms.html">Terms of Service</a>
-            <a href="support.html">Support & FAQ</a>
-            <a href="contact.html">Contact Us</a>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <div class="footer-logo">
+                        <span class="logo-icon">📊</span>
+                        <span class="logo-text">MyTradeMate</span>
+                    </div>
+                    <p class="footer-description">
+                        Privacy-first portfolio tracker with 26 local AI models. Your data never leaves your device.
+                    </p>
+                    <div class="footer-social">
+                        <a href="https://twitter.com/mytrademate" aria-label="Twitter" target="_blank" rel="noopener noreferrer">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                            </svg>
+                        </a>
+                        <a href="https://instagram.com/mytrademate" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2c2.717 0 3.056.01 4.122.06 1.065.05 1.79.217 2.428.465.66.254 1.216.598 1.772 1.153a4.908 4.908 0 0 1 1.153 1.772c.247.637.415 1.363.465 2.428.047 1.066.06 1.405.06 4.122 0 2.717-.01 3.056-.06 4.122-.05 1.065-.218 1.79-.465 2.428a4.883 4.883 0 0 1-1.153 1.772 4.915 4.915 0 0 1-1.772 1.153c-.637.247-1.363.415-2.428.465-1.066.047-1.405.06-4.122.06-2.717 0-3.056-.01-4.122-.06-1.065-.05-1.79-.218-2.428-.465a4.89 4.89 0 0 1-1.772-1.153 4.904 4.904 0 0 1-1.153-1.772c-.248-.637-.415-1.363-.465-2.428C2.013 15.056 2 14.717 2 12c0-2.717.01-3.056.06-4.122.05-1.066.217-1.79.465-2.428a4.88 4.88 0 0 1 1.153-1.772A4.897 4.897 0 0 1 5.45 2.525c.638-.248 1.362-.415 2.428-.465C8.944 2.013 9.283 2 12 2zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm6.5-.25a1.25 1.25 0 0 0-2.5 0 1.25 1.25 0 0 0 2.5 0zM12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/>
+                            </svg>
+                        </a>
+                        <a href="https://tiktok.com/@mytrademate" aria-label="TikTok" target="_blank" rel="noopener noreferrer">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                            </svg>
+                        </a>
+                        <a href="https://youtube.com/@mytrademate" aria-label="YouTube" target="_blank" rel="noopener noreferrer">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="footer-col">
+                    <h4 class="footer-title">Product</h4>
+                    <ul class="footer-links">
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#pricing">Pricing</a></li>
+                        <li><a href="how-it-works.html">How It Works</a></li>
+                        <li><a href="#faq">FAQ</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4 class="footer-title">Legal</h4>
+                    <ul class="footer-links">
+                        <li><a href="privacy-policy.html">Privacy Policy</a></li>
+                        <li><a href="terms-of-service.html">Terms of Service</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4 class="footer-title">Contact</h4>
+                    <ul class="footer-links">
+                        <li><a href="mailto:mytrademate.app@gmail.com">mytrademate.app@gmail.com</a></li>
+                        <li><a href="#waitlist">Join Waitlist</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p class="footer-copyright">
+                    &copy; 2025 MyTradeMate. All rights reserved.
+                </p>
+                <p class="footer-disclaimer">
+                    <strong>Disclaimer:</strong> MyTradeMate provides educational insights only. Not financial advice. Cryptocurrency trading carries significant risk. Do your own research.
+                </p>
+            </div>
         </div>
-        <p class="footer-copyright">© 2025 MyTradeMate Portfolio. All rights reserved.</p>
     </footer>
+
+    <script src="main.js"></script>
 </body>
 </html>
