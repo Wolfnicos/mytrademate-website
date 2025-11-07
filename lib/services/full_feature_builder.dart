@@ -77,7 +77,11 @@ class FullFeatureBuilder {
 
     debugPrint('🔍 FullFeatureBuilder: Generated ${output.length} timesteps × ${output.first.length} features');
 
-    return output;
+    // === PASS 3: Apply feature amplification to enhance weak signals ===
+    final amplifiedOutput = FeatureAmplifier.amplifyFeatures(output);
+    debugPrint('🔊 FeatureAmplifier: Applied signal enhancement to ${output.length} timesteps');
+
+    return amplifiedOutput;
   }
 
   /// Pre-calculate ALL features for ALL candles (PASS 1)
@@ -579,5 +583,133 @@ class FullFeatureBuilder {
     }
 
     return obv;
+  }
+}
+
+/// Feature Amplifier - enhances weak signals before model input
+/// Addresses the "zero patterns everywhere" problem by:
+/// 1. Pattern Enhancement - amplifies subtle candlestick patterns
+/// 2. Momentum Amplification - boosts directional momentum signals
+/// 3. Cross-Feature Correlation Enhancement - amplifies related features together
+class FeatureAmplifier {
+  /// Amplify weak signals before model input
+  /// Input: [60, 76] feature array (60 timesteps × 76 features)
+  /// Output: [60, 76] amplified feature array
+  static List<List<double>> amplifyFeatures(List<List<double>> features) {
+    if (features.isEmpty || features.first.length != 76) {
+      return features; // Safety: return unchanged if invalid
+    }
+
+    final amplified = <List<double>>[];
+
+    for (int t = 0; t < features.length; t++) {
+      final row = features[t];
+      final newRow = List<double>.from(row); // Copy original
+
+      // 1. PATTERN ENHANCEMENT (indices 0-24)
+      // Amplify subtle patterns that might be drowned out by noise
+      for (int i = 0; i < 25; i++) {
+        if (newRow[i] > 0.0 && newRow[i] < 0.5) {
+          // Weak pattern detected → amplify it
+          newRow[i] = newRow[i] * 2.0; // 2x amplification
+        }
+      }
+
+      // Detect and amplify multi-candle patterns (look back 3 timesteps)
+      if (t >= 2) {
+        final patternStrength = _detectSubtlePattern(
+          features[t - 2],
+          features[t - 1],
+          features[t],
+        );
+        if (patternStrength > 0.0) {
+          // Boost all pattern features when a multi-candle pattern is detected
+          for (int i = 0; i < 25; i++) {
+            if (newRow[i] > 0.0) {
+              newRow[i] = math.min(1.0, newRow[i] + patternStrength * 0.3);
+            }
+          }
+        }
+      }
+
+      // 2. MOMENTUM AMPLIFICATION
+      // Amplify directional momentum when multiple indicators align
+      // RSI (index 48), MACD histogram (index 52), Returns (index 25)
+      final rsi = row.length > 48 ? row[48] : 0.0;
+      final macdHist = row.length > 52 ? row[52] : 0.0;
+      final returns = row.length > 25 ? row[25] : 0.0;
+
+      // Check if momentum indicators align (bullish or bearish)
+      final bullishAlignment = (rsi > 0.5 && macdHist > 0.0 && returns > 0.0);
+      final bearishAlignment = (rsi < -0.5 && macdHist < 0.0 && returns < 0.0);
+
+      if (bullishAlignment || bearishAlignment) {
+        final amplificationFactor = 1.5;
+        if (row.length > 48) newRow[48] = rsi * amplificationFactor; // RSI
+        if (row.length > 52) newRow[52] = macdHist * amplificationFactor; // MACD
+        if (row.length > 25) newRow[25] = returns * amplificationFactor; // Returns
+      }
+
+      // 3. CROSS-FEATURE CORRELATION ENHANCEMENT
+      // When related features are weak but aligned, amplify them together
+      // Volume + Price action correlation
+      if (row.length > 30 && row.length > 40) {
+        final volumeFeature = row[30]; // Approximate volume feature
+        final priceAction = row[25]; // Returns
+
+        if ((volumeFeature > 0.0 && priceAction > 0.0) ||
+            (volumeFeature < 0.0 && priceAction < 0.0)) {
+          // Volume confirms price action → amplify both
+          if (volumeFeature.abs() < 0.5 && priceAction.abs() < 0.5) {
+            newRow[30] = volumeFeature * 1.3;
+            newRow[25] = priceAction * 1.3;
+          }
+        }
+      }
+
+      amplified.add(newRow);
+    }
+
+    return amplified;
+  }
+
+  /// Detect subtle multi-candle patterns (Hammer, Engulfing, Star patterns)
+  /// Returns strength of pattern (0.0 to 1.0)
+  static double _detectSubtlePattern(
+    List<double> t0,
+    List<double> t1,
+    List<double> t2,
+  ) {
+    if (t0.length < 25 || t1.length < 25 || t2.length < 25) {
+      return 0.0;
+    }
+
+    double strength = 0.0;
+
+    // Hammer pattern (index 4): small body, long lower wick
+    final hammer = (t2[4] > 0.0) ? t2[4] : 0.0;
+    if (hammer > 0.2) strength += 0.3;
+
+    // Shooting star pattern (index 6): small body, long upper wick
+    final shootingStar = (t2[6] > 0.0) ? t2[6] : 0.0;
+    if (shootingStar > 0.2) strength += 0.3;
+
+    // Bullish engulfing (index 11): t2 engulfs t1
+    final bullishEngulfing = (t2[11] > 0.0) ? t2[11] : 0.0;
+    if (bullishEngulfing > 0.3) strength += 0.4;
+
+    // Bearish engulfing (index 12): t2 engulfs t1
+    final bearishEngulfing = (t2[12] > 0.0) ? t2[12] : 0.0;
+    if (bearishEngulfing > 0.3) strength += 0.4;
+
+    // Morning star (index 19): 3-candle bullish reversal
+    final morningStar = (t2[19] > 0.0) ? t2[19] : 0.0;
+    if (morningStar > 0.2 && t1[4] > 0.1) strength += 0.5;
+
+    // Evening star (index 20): 3-candle bearish reversal
+    final eveningStar = (t2[20] > 0.0) ? t2[20] : 0.0;
+    if (eveningStar > 0.2 && t1[6] > 0.1) strength += 0.5;
+
+    return math.min(1.0, strength);
   }
 }

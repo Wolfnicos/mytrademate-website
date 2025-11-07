@@ -404,7 +404,29 @@ class CryptoMLService {
             atr: volatility,
             volumePercentile: volumePercentile,
           );
-          
+
+          // ADAPTIVE MODEL SELECTION: Filter models based on market conditions
+          // High volatility (ATR > 2.0) → skip long timeframes (slow to react)
+          if (volatility > 2.0 && ['1d', '7d', '4h'].contains(tf)) {
+            if (!silent) {
+              // ignore: avoid_print
+              print('   ⚡ [Adaptive Selection] HIGH VOLATILITY (ATR=${(volatility * 100).toStringAsFixed(2)}%) → skipping long tf $coinKey');
+            }
+            continue;
+          }
+          // Low volume (< 30 percentile) → skip short timeframes (noisy signals)
+          if (volumePercentile < 30 && !['1h', '4h', '1d', '7d'].contains(tf)) {
+            if (!silent) {
+              // ignore: avoid_print
+              print('   🔇 [Adaptive Selection] LOW VOLUME (percentile=${volumePercentile.toStringAsFixed(0)}) → skipping short tf $coinKey');
+            }
+            continue;
+          }
+          if (!silent) {
+            // ignore: avoid_print
+            print('   ✅ [Adaptive Selection] NORMAL CONDITIONS → using $coinKey');
+          }
+
           // PHASE 3 PILOT: Apply Phase 3 weights if enabled for this coin+timeframe
           final double weight;
           if (applyPhase3) {
@@ -425,7 +447,9 @@ class CryptoMLService {
             weight = _calculateTimeframeWeight(timeframe, tf);
           }
           
-          weightedPredictions.add(_WeightedPrediction(pred, weight, coinKey));
+          // Apply time-based weight adjustment (Asia/Europe/US sessions)
+          final adjustedWeight = _getTimeBasedWeight(coinKey, weight);
+          weightedPredictions.add(_WeightedPrediction(pred, adjustedWeight, coinKey));
         } catch (e) {
           // ignore: avoid_print
           print('   ❌ Error loading $coinKey: $e');
@@ -451,7 +475,29 @@ class CryptoMLService {
             atr: result.atr,
             volumePercentile: volumePercentile,
           );
-          
+
+          // ADAPTIVE MODEL SELECTION: Filter general models based on market conditions
+          // High volatility (ATR > 2.0) → skip long timeframes (slow to react)
+          if (volatility > 2.0 && ['1d', '7d', '4h'].contains(tf)) {
+            if (!silent) {
+              // ignore: avoid_print
+              print('   ⚡ [Adaptive Selection] HIGH VOLATILITY (ATR=${(volatility * 100).toStringAsFixed(2)}%) → skipping long tf $generalKey');
+            }
+            continue;
+          }
+          // Low volume (< 30 percentile) → skip short timeframes (noisy signals)
+          if (volumePercentile < 30 && !['1h', '4h', '1d', '7d'].contains(tf)) {
+            if (!silent) {
+              // ignore: avoid_print
+              print('   🔇 [Adaptive Selection] LOW VOLUME (percentile=${volumePercentile.toStringAsFixed(0)}) → skipping short tf $generalKey');
+            }
+            continue;
+          }
+          if (!silent) {
+            // ignore: avoid_print
+            print('   ✅ [Adaptive Selection] NORMAL CONDITIONS → using $generalKey');
+          }
+
           // PHASE 3 PILOT: Apply Phase 3 weights if enabled for this coin+timeframe
           final double weight;
           if (applyPhase3) {
@@ -472,7 +518,9 @@ class CryptoMLService {
             weight = _calculateTimeframeWeight(timeframe, tf) * 0.6;
           }
           
-          weightedPredictions.add(_WeightedPrediction(pred, weight, generalKey));
+          // Apply time-based weight adjustment (Asia/Europe/US sessions)
+          final adjustedWeight = _getTimeBasedWeight(generalKey, weight);
+          weightedPredictions.add(_WeightedPrediction(pred, adjustedWeight, generalKey));
         } catch (e) {
           // ignore: avoid_print
           print('   ❌ Error loading $generalKey: $e');
@@ -611,6 +659,27 @@ class CryptoMLService {
       print('   ATR: ${(volatility * 100).toStringAsFixed(2)}% | Volume Percentile: ${(volumePercentile * 100).toStringAsFixed(0)}%');
       // ignore: avoid_print
       print('');
+    }
+
+    // LOW VOLUME OVERRIDE: Force HOLD for extreme low volume on short timeframes
+    // This runs AFTER ensemble display, so we always see the ensemble result in logs
+    if (volumePercentile < 5.0 && (timeframe == '5m' || timeframe == '15m')) {
+      if (!silent) {
+        // ignore: avoid_print
+        print('⚠️  [Low Volume Override] Extreme low volume (${(volumePercentile * 100).toStringAsFixed(0)}%) - forcing HOLD');
+      }
+      return CryptoPrediction(
+        action: 'HOLD',
+        confidence: 0.40,
+        probabilities: ensemble.probabilities,
+        signalStrength: 0.0,
+        modelAccuracy: ensemble.modelAccuracy,
+        timestamp: DateTime.now(),
+        isEnsemble: true,
+        atr: volatility,
+        volumePercentile: volumePercentile,
+        decisionReason: 'Extreme low volume override (<5%) on last candle',
+      );
     }
 
     // PHASE 4: Return prediction with market context (ATR + volume + decision reason)
@@ -1101,6 +1170,47 @@ class CryptoMLService {
       finalConfidence = hold;
     }
 
+    // CONSENSUS BOOST: If 3+ models agree on the same action, boost confidence
+    // This helps escape the "HOLD 35%" trap when multiple models weakly agree
+    int strongAgreementCount = 0;
+    for (final wp in weightedPredictions) {
+      // Count models that agree with final action with >35% confidence
+      final modelAction = wp.prediction.action;
+      final modelConfidence = wp.prediction.confidence;
+      if (modelAction == finalAction && modelConfidence > 0.35) {
+        strongAgreementCount++;
+      }
+    }
+
+    // Apply consensus multiplier
+    double consensusMultiplier = 1.0;
+    if (strongAgreementCount >= 3 && strongAgreementCount < 4) {
+      consensusMultiplier = 1.10; // +10% boost for 3 models
+      // ignore: avoid_print
+      print('🤝 CONSENSUS BOOST: $strongAgreementCount models agree on $finalAction → +10% confidence');
+    } else if (strongAgreementCount >= 4) {
+      consensusMultiplier = 1.15; // +15% boost for 4+ models
+      // ignore: avoid_print
+      print('🤝 CONSENSUS BOOST: $strongAgreementCount models agree on $finalAction → +15% confidence');
+    }
+
+    // Apply volume confirmation multiplier if available
+    double volumeMultiplier = 1.0;
+    if (volumePercentile != null) {
+      if (volumePercentile > 0.90) {
+        volumeMultiplier = 1.15; // +15% for very high volume
+        // ignore: avoid_print
+        print('📊 VOLUME CONFIRMATION: ${(volumePercentile * 100).toStringAsFixed(0)}% percentile → +15% confidence');
+      } else if (volumePercentile > 0.80) {
+        volumeMultiplier = 1.10; // +10% for high volume
+        // ignore: avoid_print
+        print('📊 VOLUME CONFIRMATION: ${(volumePercentile * 100).toStringAsFixed(0)}% percentile → +10% confidence');
+      }
+    }
+
+    // Apply both multipliers and clamp to max 75% confidence
+    finalConfidence = (finalConfidence * consensusMultiplier * volumeMultiplier).clamp(0.30, 0.75);
+
     // Weighted average signal strength
     var avgSignalStrength = 0.0;
     for (var i = 0; i < weightedPredictions.length; i++) {
@@ -1263,6 +1373,54 @@ class _WeightedPrediction {
   final String modelKey;
 
   _WeightedPrediction(this.prediction, this.weight, this.modelKey);
+}
+
+/// Helper method: Adjust model weight based on trading session (Asia/Europe/US)
+double _getTimeBasedWeight(String modelId, double baseWeight) {
+  try {
+    final now = DateTime.now().toUtc();
+    final hour = now.hour;
+    double multiplier = 1.0;
+
+    // ASIA SESSION (1-8 UTC) - Favor longer timeframes (1h/4h), penalize short (5m/15m)
+    if (hour >= 1 && hour < 8) {
+      if (modelId.contains('1h') || modelId.contains('4h')) {
+        multiplier = 1.4;
+      } else if (modelId.contains('5m') || modelId.contains('15m')) {
+        multiplier = 0.7;
+      }
+      // ignore: avoid_print
+      print('🌏 [Asia Session] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} → ${(baseWeight * multiplier).toStringAsFixed(2)}');
+    }
+    // EUROPE SESSION (8-14 UTC) - No adjustment (balanced trading)
+    else if (hour >= 8 && hour < 14) {
+      multiplier = 1.0;
+      // ignore: avoid_print
+      print('🇪🇺 [Europe Session] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} (unchanged)');
+    }
+    // US SESSION (14-22 UTC) - Favor short timeframes (5m/15m), penalize long (1d/4h)
+    else if (hour >= 14 && hour < 22) {
+      if (modelId.contains('5m') || modelId.contains('15m')) {
+        multiplier = 1.5;
+      } else if (modelId.contains('1d') || modelId.contains('4h')) {
+        multiplier = 0.5;
+      }
+      // ignore: avoid_print
+      print('🇺🇸 [US Session] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} → ${(baseWeight * multiplier).toStringAsFixed(2)}');
+    }
+    // OFF-HOURS (22-1 UTC) - No adjustment
+    else {
+      multiplier = 1.0;
+      // ignore: avoid_print
+      print('🌙 [Off-Hours] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} (unchanged)');
+    }
+
+    return baseWeight * multiplier;
+  } catch (e) {
+    // ignore: avoid_print
+    print('⚠️  [Time-Based Weights] Error: $e - using base weight');
+    return baseWeight; // Safe fallback
+  }
 }
 
 /// Exemplu de utilizare (doar pentru test rapid)
