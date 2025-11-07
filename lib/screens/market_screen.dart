@@ -52,8 +52,7 @@ class _MarketScreenState extends State<MarketScreen> {
   void initState() {
     super.initState();
     debugPrint('📍 Market: initState() - adding UserCoinsService listener');
-    final q = AppSettingsService().quoteCurrency.toUpperCase();
-    _selectedSymbol = 'BTC$q';
+
     _loadUserCoins();
 
     // Listen to quote currency changes and reload data
@@ -63,10 +62,18 @@ class _MarketScreenState extends State<MarketScreen> {
     UserCoinsService().addListener(_onCoinsChanged);
     debugPrint('✅ Market: UserCoinsService listener added');
 
-    // Listen to exchange changes and reload data
+    // Initialize selected symbol with correct exchange format
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        Provider.of<ExchangeProvider>(context, listen: false).addListener(_onExchangeChanged);
+        final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+        final exchange = exchangeProvider.currentExchange;
+        final q = AppSettingsService().quoteCurrency.toUpperCase();
+        setState(() {
+          _selectedSymbol = exchange.buildTradingPair('BTC', q);
+        });
+
+        // Listen to exchange changes and reload data
+        exchangeProvider.addListener(_onExchangeChanged);
       }
     });
   }
@@ -80,7 +87,12 @@ class _MarketScreenState extends State<MarketScreen> {
   /// Called when ExchangeProvider notifies that exchange changed
   void _onExchangeChanged() {
     debugPrint('Market: Exchange changed, reloading data...');
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final exchange = exchangeProvider.currentExchange;
+    final q = AppSettingsService().quoteCurrency.toUpperCase();
+
     setState(() {
+      _selectedSymbol = exchange.buildTradingPair('BTC', q);
       _loadingTickers = true;
       _loadingChart = true;
     });
@@ -115,10 +127,12 @@ class _MarketScreenState extends State<MarketScreen> {
 
   void _onSettingsChanged() {
     // Reload tickers and chart when quote currency changes
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final exchange = exchangeProvider.currentExchange;
     final q = AppSettingsService().quoteCurrency.toUpperCase();
     debugPrint('Market: Quote currency changed to $q, reloading data...');
     setState(() {
-      _selectedSymbol = 'BTC$q';
+      _selectedSymbol = exchange.buildTradingPair('BTC', q);
       _loadingTickers = true;
       _loadingChart = true;
     });
