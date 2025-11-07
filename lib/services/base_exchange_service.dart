@@ -74,6 +74,15 @@ abstract class BaseExchangeService {
   /// Get exchange info for a specific symbol or all symbols
   Future<Map<String, dynamic>> getExchangeInfo({String? symbol});
 
+  /// Build trading pair symbol in exchange-specific format
+  /// @param base - Base currency (e.g., 'BTC', 'ETH')
+  /// @param quote - Quote currency (e.g., 'EUR', 'USDT')
+  /// @returns Trading pair in exchange format:
+  ///   - Binance: 'BTCEUR'
+  ///   - Coinbase: 'BTC-EUR'
+  ///   - Kraken: 'XBTEUR' (BTC → XBT)
+  String buildTradingPair(String base, String quote);
+
   // ===================================
   // Time Synchronization
   // ===================================

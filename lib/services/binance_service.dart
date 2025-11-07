@@ -78,6 +78,12 @@ class BinanceService implements BaseExchangeService {
   @override
   bool get hasCredentials => (_apiKey != null && _apiKey!.isNotEmpty && _apiSecret != null && _apiSecret!.isNotEmpty);
 
+  @override
+  String buildTradingPair(String base, String quote) {
+    // Binance format: BTCEUR, ETHUSDT (simple concatenation)
+    return '$base$quote';
+  }
+
   /// Synchronize local time with Binance server time
   /// This prevents "Timestamp out of recvWindow" errors due to clock skew
   @override

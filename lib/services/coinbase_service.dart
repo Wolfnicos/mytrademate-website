@@ -43,6 +43,12 @@ class CoinbaseService implements BaseExchangeService {
   @override
   bool get hasCredentials => (_apiKey != null && _apiKey!.isNotEmpty && _apiSecret != null && _apiSecret!.isNotEmpty);
 
+  @override
+  String buildTradingPair(String base, String quote) {
+    // Coinbase format: BTC-EUR, ETH-USDT (with hyphen)
+    return '$base-$quote';
+  }
+
   // ===================================
   // Time Synchronization
   // ===================================

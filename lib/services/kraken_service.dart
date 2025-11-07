@@ -42,6 +42,13 @@ class KrakenService implements BaseExchangeService {
   @override
   bool get hasCredentials => (_apiKey != null && _apiKey!.isNotEmpty && _apiSecret != null && _apiSecret!.isNotEmpty);
 
+  @override
+  String buildTradingPair(String base, String quote) {
+    // Kraken format: XBTEUR, ETHEUR (BTC → XBT, simple concatenation)
+    final krakenBase = base == 'BTC' ? 'XBT' : base;
+    return '$krakenBase$quote';
+  }
+
   // ===================================
   // Time Synchronization
   // ===================================

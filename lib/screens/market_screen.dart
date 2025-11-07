@@ -32,14 +32,19 @@ class _MarketScreenState extends State<MarketScreen> {
   List<String> _userCoins = []; // Dynamic coin list from UserCoinsService
 
   List<List<String>> get _symbols {
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final exchange = exchangeProvider.currentExchange;
     final q = AppSettingsService().quoteCurrency.toUpperCase();
+
     // Use UserCoinsService coins or fallback to default TOP 10
     final coins = _userCoins.isNotEmpty ? _userCoins : UserCoinsService.defaultCoins;
+
+    // Build trading pairs using exchange-specific format
     return coins.map((coin) => [
-      '$coin$q',
-      '${coin}USDT',
-      '${coin}EUR',
-      '${coin}USDC',
+      exchange.buildTradingPair(coin, q),
+      exchange.buildTradingPair(coin, 'USDT'),
+      exchange.buildTradingPair(coin, 'EUR'),
+      exchange.buildTradingPair(coin, 'USDC'),
     ]).toList();
   }
 
