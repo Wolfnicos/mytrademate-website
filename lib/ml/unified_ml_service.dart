@@ -233,6 +233,35 @@ class UnifiedMLService {
     final List<double> pFinalWithBonus = consensusResult.probabilities;
     final String consensusReason = consensusResult.reason;
 
+    // METADATA FILTER: Check signal quality before trading
+    final bool shouldTrade = _shouldTradeBasedOnMetadata(features);
+    if (!shouldTrade) {
+      // Low volume or poor market conditions - force HOLD
+      debugPrint('🚫 [Metadata Filter] LOW VOLUME or poor conditions → forcing HOLD');
+      _logTelemetry(
+        coin: coin,
+        tf: tfNorm,
+        ids: usedIds,
+        weights: usedWeights,
+        temps: usedTemps,
+        pFinal: pFinalWithBonus,
+        action: 'HOLD',
+        confidence: pFinalWithBonus[1],
+        confThresh: reg.thresholdForTimeframe(tfNorm),
+        featureHashOk: featureHashOk,
+        reason: 'metadata_filter_low_volume',
+      );
+      return UnifiedDecisionResult(
+        action: 'HOLD',
+        confidence: pFinalWithBonus[1],
+        probabilities: pFinalWithBonus,
+        timeframe: tfNorm,
+        usedModelIds: usedIds,
+        featureHashOk: featureHashOk,
+        reason: 'metadata_filter_low_volume',
+      );
+    }
+
     // Gating by timeframe threshold + optional risk adjustment based on volatility z-score
     double gate = reg.thresholdForTimeframe(tfNorm);
     double usedGate = gate;
@@ -485,6 +514,40 @@ class UnifiedMLService {
       return z;
     } catch (_) {
       return null;
+    }
+  }
+
+  /// METADATA FILTER: Check if we should trade based on market conditions
+  /// Returns false if volume is too low (< 30% of average)
+  /// Does NOT modify features - only reads from them
+  bool _shouldTradeBasedOnMetadata(List<List<double>> features) {
+    try {
+      if (features.isEmpty || features.first.length <= 4) {
+        return true; // Safe default: allow trading if we can't calculate
+      }
+
+      // Volume is at feature index 4
+      final volumeValues = features.map((row) => row[4]).toList();
+      if (volumeValues.isEmpty || volumeValues.length < 2) {
+        return true; // Safe default
+      }
+
+      // Calculate average volume
+      final avgVolume = volumeValues.reduce((a, b) => a + b) / volumeValues.length;
+
+      // Get latest volume
+      final latestVolume = volumeValues.last;
+
+      // Skip trading if volume is too low (< 30% of average)
+      if (latestVolume < avgVolume * 0.3) {
+        debugPrint('📉 [Volume Check] Current: ${latestVolume.toStringAsFixed(2)}, Avg: ${avgVolume.toStringAsFixed(2)} (${((latestVolume / avgVolume) * 100).toStringAsFixed(1)}%)');
+        return false; // Low volume - don't trade
+      }
+
+      return true; // Normal volume - allow trading
+    } catch (e) {
+      debugPrint('⚠️ [Metadata Filter] Error: $e - defaulting to ALLOW trading');
+      return true; // Safe default: allow trading on error
     }
   }
 
