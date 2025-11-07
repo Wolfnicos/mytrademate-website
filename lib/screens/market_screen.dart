@@ -57,12 +57,30 @@ class _MarketScreenState extends State<MarketScreen> {
     // Listen to UserCoinsService changes (when API added/removed in Settings)
     UserCoinsService().addListener(_onCoinsChanged);
     debugPrint('✅ Market: UserCoinsService listener added');
+
+    // Listen to exchange changes and reload data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<ExchangeProvider>(context, listen: false).addListener(_onExchangeChanged);
+      }
+    });
   }
 
   /// Called when UserCoinsService notifies that coins changed
   void _onCoinsChanged() {
     debugPrint('📢 Market: Coins changed, reloading...');
     _loadUserCoins();
+  }
+
+  /// Called when ExchangeProvider notifies that exchange changed
+  void _onExchangeChanged() {
+    debugPrint('Market: Exchange changed, reloading data...');
+    setState(() {
+      _loadingTickers = true;
+      _loadingChart = true;
+    });
+    _refreshTickers();
+    _loadChart();
   }
 
   Future<void> _loadUserCoins() async {
@@ -82,6 +100,11 @@ class _MarketScreenState extends State<MarketScreen> {
   void dispose() {
     AppSettingsService().removeListener(_onSettingsChanged);
     UserCoinsService().removeListener(_onCoinsChanged);
+    try {
+      Provider.of<ExchangeProvider>(context, listen: false).removeListener(_onExchangeChanged);
+    } catch (e) {
+      // Ignore if provider not available
+    }
     super.dispose();
   }
 

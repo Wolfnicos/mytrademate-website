@@ -272,13 +272,16 @@ class KrakenService implements BaseExchangeService {
       }
 
       return pairData.map((c) {
+        final openTimeMs = (c[0] as int) * 1000; // Convert to milliseconds
+        final intervalMs = krakenInterval * 60 * 1000; // Convert minutes to milliseconds
         return Candle(
-          openTime: (c[0] as int) * 1000, // Convert to milliseconds
+          openTime: DateTime.fromMillisecondsSinceEpoch(openTimeMs),
           open: double.parse(c[1]),
           high: double.parse(c[2]),
           low: double.parse(c[3]),
           close: double.parse(c[4]),
           volume: double.parse(c[6]),
+          closeTime: DateTime.fromMillisecondsSinceEpoch(openTimeMs + intervalMs),
         );
       }).take(limit).toList();
     } catch (e) {

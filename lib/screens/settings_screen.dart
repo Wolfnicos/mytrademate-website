@@ -840,7 +840,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: GestureDetector(
                             onTap: () async {
                               await exchangeProvider.setExchange(exchange);
-                              _showSnackBar('Switched to $exchange');
+                              _showSnackBar('Switched to $exchange', isError: false);
                             },
                             child: Container(
                               padding: const EdgeInsets.all(AppTheme.spacing16),
@@ -911,16 +911,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
-          GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(AppTheme.spacing16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Connect your Binance account to view your portfolio',
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
-                  ),
+          Consumer<ExchangeProvider>(
+            builder: (context, exchangeProvider, _) {
+              return GlassCard(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppTheme.spacing16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Connect your ${exchangeProvider.selectedExchange} account to view your portfolio',
+                        style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
+                      ),
                   const SizedBox(height: AppTheme.spacing16),
                   // Portfolio Tracker - Read-Only API
                   Container(
@@ -1002,7 +1004,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(width: AppTheme.spacing12),
                         Expanded(
                           child: Text(
-                            'MyTradeMate connects to Binance via read-only API to track your portfolio. We never hold your funds or access your private keys.',
+                            'MyTradeMate connects to ${exchangeProvider.selectedExchange} via read-only API to track your portfolio. We never hold your funds or access your private keys.',
                             style: AppTheme.bodySmall.copyWith(
                               color: AppTheme.getTextSecondary(context),
                             ),
@@ -1014,6 +1016,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
+              );
+            },
           ),
 
           const SizedBox(height: AppTheme.spacing24),
@@ -1074,8 +1078,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: AppTheme.spacing24),
 
-          // API Section
-          _buildSectionHeader('Binance API', Icons.vpn_key),
+          // API Section (dynamically shows current exchange)
+          Consumer<ExchangeProvider>(
+            builder: (context, exchangeProvider, _) {
+              return _buildSectionHeader(
+                '${exchangeProvider.selectedExchange} API',
+                Icons.vpn_key,
+              );
+            },
+          ),
           GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(AppTheme.spacing16),

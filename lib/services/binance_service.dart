@@ -772,19 +772,17 @@ class BinanceService implements BaseExchangeService {
   /// Returns up to [limit] candles between [start] and [end].
   @override
   Future<List<Candle>> fetchKlines(
-    String symbol, {
-    String interval = '1h',
-    DateTime? start,
-    DateTime? end,
-    int limit = 1000,
+    String symbol,
+    String interval, {
+    int limit = 500,
+    int? endTime,
   }) async {
     final Map<String, String> query = {
       'symbol': symbol,
       'interval': interval,
       'limit': limit.toString(),
     };
-    if (start != null) query['startTime'] = start.millisecondsSinceEpoch.toString();
-    if (end != null) query['endTime'] = end.millisecondsSinceEpoch.toString();
+    if (endTime != null) query['endTime'] = endTime.toString();
 
     final uri = Uri.https(_baseHost, '/api/v3/klines', query);
     final http.Response res = await http.get(uri);
@@ -798,26 +796,24 @@ class BinanceService implements BaseExchangeService {
   /// Fetches daily klines (OHLCV) for a spot symbol like 'BTCUSDT'.
   Future<List<Candle>> fetchDailyKlines(
     String symbol, {
-    DateTime? start,
-    DateTime? end,
+    int? endTime,
     int limit = 1000,
   }) async {
-    return fetchKlines(symbol, interval: '1d', start: start, end: end, limit: limit);
+    return fetchKlines(symbol, '1d', endTime: endTime, limit: limit);
   }
 
   /// Fetches hourly klines (OHLCV) for a spot symbol like 'BTCUSDT'.
   Future<List<Candle>> fetchHourlyKlines(
     String symbol, {
-    DateTime? start,
-    DateTime? end,
+    int? endTime,
     int limit = 60,
   }) async {
-    return fetchKlines(symbol, interval: '1h', start: start, end: end, limit: limit);
+    return fetchKlines(symbol, '1h', endTime: endTime, limit: limit);
   }
 
   /// Generic klines fetch for a custom interval like '15m', '1h', '4h'
   Future<List<Candle>> fetchCustomKlines(String symbol, String interval, {int limit = 60}) async {
-    return fetchKlines(symbol, interval: interval, limit: limit);
+    return fetchKlines(symbol, interval, limit: limit);
   }
 
   /// Fetch tradable spot pairs (symbol, base, quote) from exchangeInfo
@@ -945,7 +941,7 @@ class BinanceService implements BaseExchangeService {
   Future<List<Candle>> fetchKlinesWithFallback(List<String> symbols, String interval, {int limit = 60}) async {
     for (final String s in symbols) {
       try {
-        return await fetchKlines(s, interval: interval, limit: limit);
+        return await fetchKlines(s, interval, limit: limit);
       } catch (_) {
         // Try next symbol in list
       }
@@ -982,7 +978,7 @@ class BinanceService implements BaseExchangeService {
     for (final s in candidates) {
       try {
         // Probe minimal klines request to verify symbol validity
-        await fetchKlines(s, interval: interval, limit: 1);
+        await fetchKlines(s, interval, limit: 1);
         resolved = s;
         break;
       } catch (_) {
@@ -1009,7 +1005,7 @@ class BinanceService implements BaseExchangeService {
         limit = 1000;
     }
 
-    final candles = await fetchKlines(resolved, interval: interval, limit: limit);
+    final candles = await fetchKlines(resolved, interval, limit: limit);
 
     // IMPORTANT: Log latest candle timestamp to prove data is FRESH
     if (candles.isNotEmpty) {
@@ -1097,7 +1093,7 @@ class BinanceService implements BaseExchangeService {
   Future<List<Candle>> fetchLastYearDaily(String symbol) async {
     final DateTime end = DateTime.now().toUtc();
     final DateTime start = DateTime(end.year - 1, end.month, end.day).toUtc();
-    return fetchDailyKlines(symbol, start: start, end: end, limit: 1000);
+    return fetchDailyKlines(symbol, limit: 1000);
   }
 
   /// Fetch ML features in the exact Python MTF order (base interval + aligned timeframes + one-hot symbol)

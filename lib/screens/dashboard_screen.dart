@@ -33,11 +33,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // });
     // Listen to quote currency changes and rebuild all tiles
     AppSettingsService().addListener(_onSettingsChanged);
+
+    // Listen to exchange changes and rebuild dashboard
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<ExchangeProvider>(context, listen: false).addListener(_onExchangeChanged);
+      }
+    });
   }
 
   @override
   void dispose() {
     AppSettingsService().removeListener(_onSettingsChanged);
+    try {
+      Provider.of<ExchangeProvider>(context, listen: false).removeListener(_onExchangeChanged);
+    } catch (e) {
+      // Ignore if provider not available
+    }
     super.dispose();
   }
 
@@ -47,6 +59,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (mounted) {
       setState(() {
         // Force rebuild of all dashboard tiles with new quote currency
+      });
+    }
+  }
+
+  void _onExchangeChanged() {
+    // Rebuild dashboard when exchange changes
+    debugPrint('Dashboard: Exchange changed, rebuilding dashboard...');
+    if (mounted) {
+      setState(() {
+        // Force rebuild of all dashboard tiles with new exchange
       });
     }
   }

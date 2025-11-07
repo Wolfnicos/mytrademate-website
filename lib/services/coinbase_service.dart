@@ -248,13 +248,15 @@ class CoinbaseService implements BaseExchangeService {
       final candles = data['candles'] as List<dynamic>;
 
       return candles.map((c) {
+        final startTime = int.parse(c['start']);
         return Candle(
-          openTime: int.parse(c['start']),
+          openTime: DateTime.fromMillisecondsSinceEpoch(startTime),
           open: double.parse(c['open']),
           high: double.parse(c['high']),
           low: double.parse(c['low']),
           close: double.parse(c['close']),
           volume: double.parse(c['volume']),
+          closeTime: DateTime.fromMillisecondsSinceEpoch(startTime + (granularity * 1000)),
         );
       }).toList();
     } catch (e) {

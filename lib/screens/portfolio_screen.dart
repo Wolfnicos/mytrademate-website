@@ -28,17 +28,35 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     _loadPortfolio();
     // Listen to quote currency changes and reload portfolio
     AppSettingsService().addListener(_onSettingsChanged);
+
+    // Listen to exchange changes and reload portfolio
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<ExchangeProvider>(context, listen: false).addListener(_onExchangeChanged);
+      }
+    });
   }
 
   @override
   void dispose() {
     AppSettingsService().removeListener(_onSettingsChanged);
+    try {
+      Provider.of<ExchangeProvider>(context, listen: false).removeListener(_onExchangeChanged);
+    } catch (e) {
+      // Ignore if provider not available
+    }
     super.dispose();
   }
 
   void _onSettingsChanged() {
     // Reload portfolio when quote currency changes
     debugPrint('Portfolio: Quote currency changed, reloading portfolio...');
+    _loadPortfolio();
+  }
+
+  void _onExchangeChanged() {
+    // Reload portfolio when exchange changes
+    debugPrint('Portfolio: Exchange changed, reloading portfolio...');
     _loadPortfolio();
   }
 
