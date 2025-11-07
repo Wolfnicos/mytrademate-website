@@ -368,9 +368,18 @@ class CoinbaseService implements BaseExchangeService {
   /// Convert Binance-style symbol to Coinbase format
   /// Example: BTCEUR -> BTC-USD (Coinbase Exchange doesn't support EUR)
   String _convertToCoinbaseSymbol(String symbol) {
+    debugPrint('[Coinbase] Converting symbol: "$symbol"');
+
     // Coinbase Exchange API doesn't support EUR pairs - replace with USD
     if (symbol.contains('EUR')) {
       symbol = symbol.replaceAll('EUR', 'USD');
+      debugPrint('[Coinbase] Replaced EUR with USD: "$symbol"');
+    }
+
+    // If symbol already has hyphen (e.g., BTC-USD), return as-is
+    if (symbol.contains('-')) {
+      debugPrint('[Coinbase] Symbol already formatted: "$symbol"');
+      return symbol;
     }
 
     // Common quote currencies
@@ -379,7 +388,9 @@ class CoinbaseService implements BaseExchangeService {
     for (final quote in quotes) {
       if (symbol.endsWith(quote)) {
         final base = symbol.substring(0, symbol.length - quote.length);
-        return '$base-$quote';
+        final result = '$base-$quote';
+        debugPrint('[Coinbase] Final symbol: "$result"');
+        return result;
       }
     }
 
@@ -387,20 +398,25 @@ class CoinbaseService implements BaseExchangeService {
     if (symbol.length > 6) {
       final base = symbol.substring(0, symbol.length - 3);
       final quote = symbol.substring(symbol.length - 3);
-      return '$base-$quote';
+      final result = '$base-$quote';
+      debugPrint('[Coinbase] Fallback symbol: "$result"');
+      return result;
     }
 
+    debugPrint('[Coinbase] No conversion applied: "$symbol"');
     return symbol;
   }
 
   /// Convert interval string to Coinbase granularity (seconds)
+  /// Coinbase Exchange API supports: 60, 300, 900, 3600, 21600, 86400
+  /// (1min, 5min, 15min, 1h, 6h, 1d)
   int _convertIntervalToGranularity(String interval) {
     final map = {
       '1m': 60,
       '5m': 300,
       '15m': 900,
       '1h': 3600,
-      '4h': 14400,
+      '4h': 21600,  // Use 6h instead of 4h (Coinbase doesn't support 4h)
       '1d': 86400,
     };
 
