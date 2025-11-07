@@ -15,6 +15,7 @@ import 'base_exchange_service.dart';
 /// API Documentation: https://docs.cloud.coinbase.com/advanced-trade-api/docs/
 class CoinbaseService implements BaseExchangeService {
   static const String _baseHost = 'api.coinbase.com';
+  static const String _exchangeHost = 'api.exchange.coinbase.com'; // Public API (no auth)
   static const String _storageKeyPrefix = 'coinbase_';
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
@@ -232,37 +233,33 @@ class CoinbaseService implements BaseExchangeService {
       // Convert interval to granularity (seconds)
       final granularity = _convertIntervalToGranularity(interval);
 
-      // Calculate time range
-      final end = endTime ?? DateTime.now().millisecondsSinceEpoch;
-      final start = end - (granularity * 1000 * limit);
-
-      final path = '/api/v3/brokerage/products/$coinbaseSymbol/candles';
+      // Coinbase Exchange API (public, no auth) - returns array of arrays
+      // Format: [[timestamp, low, high, open, close, volume], ...]
+      final path = '/products/$coinbaseSymbol/candles';
       final queryParams = {
-        'start': (start ~/ 1000).toString(),
-        'end': (end ~/ 1000).toString(),
         'granularity': granularity.toString(),
       };
 
-      final uri = Uri.https(_baseHost, path, queryParams);
+      final uri = Uri.https(_exchangeHost, path, queryParams);
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
         throw Exception('[Coinbase] Failed to fetch candles: ${response.statusCode}');
       }
 
-      final data = json.decode(response.body) as Map<String, dynamic>;
-      final candles = data['candles'] as List<dynamic>;
+      final List<dynamic> candles = json.decode(response.body) as List<dynamic>;
 
-      return candles.map((c) {
-        final startTime = int.parse(c['start']);
+      return candles.take(limit).map((c) {
+        final timestamp = c[0] as int; // Unix timestamp in seconds
+        final timestampMs = timestamp * 1000; // Convert to milliseconds
         return Candle(
-          openTime: DateTime.fromMillisecondsSinceEpoch(startTime),
-          open: double.parse(c['open']),
-          high: double.parse(c['high']),
-          low: double.parse(c['low']),
-          close: double.parse(c['close']),
-          volume: double.parse(c['volume']),
-          closeTime: DateTime.fromMillisecondsSinceEpoch(startTime + (granularity * 1000)),
+          openTime: DateTime.fromMillisecondsSinceEpoch(timestampMs),
+          low: (c[1] as num).toDouble(),
+          high: (c[2] as num).toDouble(),
+          open: (c[3] as num).toDouble(),
+          close: (c[4] as num).toDouble(),
+          volume: (c[5] as num).toDouble(),
+          closeTime: DateTime.fromMillisecondsSinceEpoch(timestampMs + (granularity * 1000)),
         );
       }).toList();
     } catch (e) {
@@ -275,8 +272,10 @@ class CoinbaseService implements BaseExchangeService {
   Future<Map<String, double>> fetchTicker24h(String symbol) async {
     try {
       final coinbaseSymbol = _convertToCoinbaseSymbol(symbol);
-      final path = '/api/v3/brokerage/products/$coinbaseSymbol/ticker';
-      final uri = Uri.https(_baseHost, path);
+
+      // Coinbase Exchange API (public, no auth) - /products/{product-id}/ticker
+      final path = '/products/$coinbaseSymbol/ticker';
+      final uri = Uri.https(_exchangeHost, path);
 
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
@@ -287,15 +286,15 @@ class CoinbaseService implements BaseExchangeService {
       final data = json.decode(response.body) as Map<String, dynamic>;
       final price = double.tryParse(data['price'] ?? '0') ?? 0.0;
 
-      // Get 24h stats
-      final stats24hPath = '/api/v3/brokerage/products/$coinbaseSymbol/stats';
-      final statsUri = Uri.https(_baseHost, stats24hPath);
+      // Get 24h stats from /products/{product-id}/stats
+      final stats24hPath = '/products/$coinbaseSymbol/stats';
+      final statsUri = Uri.https(_exchangeHost, stats24hPath);
       final statsResponse = await http.get(statsUri).timeout(const Duration(seconds: 5));
 
       double changePercent = 0.0;
       if (statsResponse.statusCode == 200) {
         final statsData = json.decode(statsResponse.body) as Map<String, dynamic>;
-        final open24h = double.tryParse(statsData['open_24h'] ?? '0') ?? 0.0;
+        final open24h = double.tryParse(statsData['open'] ?? '0') ?? 0.0;
         if (open24h > 0) {
           changePercent = ((price - open24h) / open24h) * 100;
         }
@@ -367,10 +366,15 @@ class CoinbaseService implements BaseExchangeService {
   // ===================================
 
   /// Convert Binance-style symbol to Coinbase format
-  /// Example: BTCEUR -> BTC-EUR
+  /// Example: BTCEUR -> BTC-USD (Coinbase Exchange doesn't support EUR)
   String _convertToCoinbaseSymbol(String symbol) {
+    // Coinbase Exchange API doesn't support EUR pairs - replace with USD
+    if (symbol.contains('EUR')) {
+      symbol = symbol.replaceAll('EUR', 'USD');
+    }
+
     // Common quote currencies
-    final quotes = ['EUR', 'USD', 'USDT', 'USDC', 'BTC', 'ETH'];
+    final quotes = ['USD', 'USDT', 'USDC', 'BTC', 'ETH'];
 
     for (final quote in quotes) {
       if (symbol.endsWith(quote)) {

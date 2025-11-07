@@ -272,7 +272,24 @@ class KrakenService implements BaseExchangeService {
       }
 
       final result = data['result'] as Map<String, dynamic>;
-      final pairData = result[krakenSymbol] as List<dynamic>?;
+
+      // Kraken returns OHLC data under a key that might differ from our request
+      // (e.g., request 'XBTEUR' → response key 'XXBTZEUR')
+      // Find the key that contains the pair data (it's not 'last')
+      String? pairKey;
+      for (final key in result.keys) {
+        if (key != 'last') {
+          pairKey = key;
+          break;
+        }
+      }
+
+      if (pairKey == null) {
+        debugPrint('[Kraken] No pair data found in response');
+        return [];
+      }
+
+      final pairData = result[pairKey] as List<dynamic>?;
 
       if (pairData == null || pairData.isEmpty) {
         return [];
@@ -321,7 +338,14 @@ class KrakenService implements BaseExchangeService {
       }
 
       final result = data['result'] as Map<String, dynamic>;
-      final pairData = result[krakenSymbol] as Map<String, dynamic>;
+
+      // Kraken returns ticker data under a key that might differ from our request
+      // (e.g., request 'XBTEUR' → response key 'XXBTZEUR')
+      // So we get the first (and only) entry
+      if (result.isEmpty) {
+        throw Exception('[Kraken] No ticker data in response');
+      }
+      final pairData = result.values.first as Map<String, dynamic>;
 
       final lastPrice = double.parse(pairData['c'][0]); // Last trade price
       final open24h = double.parse(pairData['o']); // Today's opening price
