@@ -168,6 +168,9 @@ class UnifiedMLService {
     }
     final modelsToUse = selected.isNotEmpty ? selected : reg.selectModels(coinUpper: '*', timeframe: tfNorm);
 
+    // ADAPTIVE MODEL SELECTION: Filter models based on market conditions
+    final List<ModelEntry> adaptiveModels = _applyAdaptiveSelection(modelsToUse, features);
+
     // For execution, we rely on CryptoMLService interpreters naming convention
     // model ids align with coin+tf (e.g., btc_1h, general_1h)
     final probsAccum = List<double>.filled(3, 0.0);
@@ -176,7 +179,7 @@ class UnifiedMLService {
     final usedWeights = <double>[];
     final usedTemps = <double>[];
 
-    for (final m in modelsToUse) {
+    for (final m in adaptiveModels) {
       try {
         final Map<String, double> pMap = await _predictWithCryptoService(modelId: m.id, coin: m.coin, timeframe: m.tf, features: features);
         // Normalize incoming labels to registry order
@@ -481,6 +484,85 @@ class UnifiedMLService {
       final double z = (stdev - baseline) / (baseline + 1e-12);
       return z;
     } catch (_) {
+      return null;
+    }
+  }
+
+  /// ADAPTIVE MODEL SELECTION: Filter models based on market conditions
+  /// High volatility → exclude long-timeframe models (1d, 4h)
+  /// Low volume → trust only higher timeframes (1h, 1d)
+  /// Normal conditions → use all models
+  List<ModelEntry> _applyAdaptiveSelection(List<ModelEntry> models, List<List<double>> features) {
+    if (models.isEmpty || features.isEmpty) {
+      return models;
+    }
+
+    // Calculate market conditions from features
+    final double? atr = _calculateATR(features);
+    final double? volumePercentile = _calculateVolumePercentile(features);
+
+    // If we can't calculate conditions, use all models (safe fallback)
+    if (atr == null || volumePercentile == null) {
+      debugPrint('📊 [Adaptive Selection] Using all ${models.length} models (no market data)');
+      return models;
+    }
+
+    // HIGH VOLATILITY: Exclude long-timeframe models (too slow to react)
+    if (atr > 2.0) {
+      final filtered = models.where((m) => !['1d', '7d', '4h'].contains(m.tf)).toList();
+      if (filtered.isNotEmpty) {
+        debugPrint('⚡ [Adaptive Selection] HIGH VOLATILITY (ATR=$atr) → using ${filtered.length}/${models.length} models (excluded 1d/4h)');
+        return filtered;
+      }
+    }
+
+    // LOW VOLUME: Trust only higher timeframes (less noise)
+    if (volumePercentile < 30) {
+      final filtered = models.where((m) => ['1h', '4h', '1d', '7d'].contains(m.tf)).toList();
+      if (filtered.isNotEmpty) {
+        debugPrint('🔇 [Adaptive Selection] LOW VOLUME (percentile=$volumePercentile) → using ${filtered.length}/${models.length} models (1h+ only)');
+        return filtered;
+      }
+    }
+
+    // NORMAL CONDITIONS: Use all models
+    debugPrint('✅ [Adaptive Selection] NORMAL CONDITIONS (ATR=$atr, vol=$volumePercentile) → using all ${models.length} models');
+    return models;
+  }
+
+  /// Calculate ATR (Average True Range) from features
+  /// ATR is typically in feature indices 20-25 (depending on feature engineering)
+  double? _calculateATR(List<List<double>> features) {
+    try {
+      // ATR is feature index 21 in our 76-feature pipeline
+      // (close, open, high, low, volume, sma5-200, ema12-200, rsi, macd, bb, atr, obv, etc.)
+      final atrValues = features.map((row) => row.length > 21 ? row[21] : 0.0).toList();
+      if (atrValues.isEmpty) return null;
+
+      // Return average ATR across all candles
+      return atrValues.reduce((a, b) => a + b) / atrValues.length;
+    } catch (e) {
+      debugPrint('⚠️ [ATR Calculation] Failed: $e');
+      return null;
+    }
+  }
+
+  /// Calculate volume percentile from features
+  /// Returns percentile (0-100) of current volume vs recent history
+  double? _calculateVolumePercentile(List<List<double>> features) {
+    try {
+      // Volume is feature index 4 in our 76-feature pipeline
+      final volumeValues = features.map((row) => row.length > 4 ? row[4] : 0.0).toList();
+      if (volumeValues.isEmpty || volumeValues.length < 2) return null;
+
+      // Calculate percentile of latest volume vs historical
+      final latestVolume = volumeValues.last;
+      final sorted = List<double>.from(volumeValues)..sort();
+      final rank = sorted.indexWhere((v) => v >= latestVolume);
+
+      return (rank / sorted.length) * 100.0;
+    } catch (e) {
+      debugPrint('⚠️ [Volume Percentile] Failed: $e');
       return null;
     }
   }
