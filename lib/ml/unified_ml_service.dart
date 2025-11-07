@@ -186,13 +186,17 @@ class UnifiedMLService {
         final List<double> p = _reorderToRegistry(pMap, m.labels, reg.labelOrder);
         // Apply bias on logits then temperature scaling
         final List<double> pCal = _calibrate(p, temperature: m.temp, bias: m.bias);
-        // Weighted sum
-        probsAccum[0] += pCal[0] * m.w;
-        probsAccum[1] += pCal[1] * m.w;
-        probsAccum[2] += pCal[2] * m.w;
-        totalW += m.w;
+
+        // TIME-BASED WEIGHT ADJUSTMENT: adjust weight based on trading session
+        final double adjustedWeight = _getTimeBasedWeight(m.id, m.w);
+
+        // Weighted sum with time-adjusted weights
+        probsAccum[0] += pCal[0] * adjustedWeight;
+        probsAccum[1] += pCal[1] * adjustedWeight;
+        probsAccum[2] += pCal[2] * adjustedWeight;
+        totalW += adjustedWeight;
         usedIds.add(m.id);
-        usedWeights.add(m.w);
+        usedWeights.add(adjustedWeight); // Log adjusted weight
         usedTemps.add(m.temp);
       } catch (e) {
         debugPrint('⚠️ UnifiedMLService: model ${m.id} failed → $e');
@@ -514,6 +518,55 @@ class UnifiedMLService {
       return z;
     } catch (_) {
       return null;
+    }
+  }
+
+  /// TIME-BASED WEIGHT ADJUSTMENT: Adjust model weights based on trading session
+  /// Asia session (1-8 UTC): Trust 1h models more (calmer markets)
+  /// Europe session (8-14 UTC): Balanced weights
+  /// US session (14-22 UTC): Trust 5m/15m models more (high volatility)
+  /// Does NOT modify features - only adjusts voting weights
+  double _getTimeBasedWeight(String modelId, double baseWeight) {
+    try {
+      final now = DateTime.now().toUtc();
+      final hour = now.hour;
+
+      // Define weight multipliers for each session
+      double multiplier = 1.0;
+
+      // ASIA SESSION (1-8 UTC): Calmer markets, trust longer timeframes
+      if (hour >= 1 && hour < 8) {
+        if (modelId.contains('1h') || modelId.contains('4h')) {
+          multiplier = 1.4; // Boost 1h/4h models
+        } else if (modelId.contains('5m') || modelId.contains('15m')) {
+          multiplier = 0.7; // Reduce 5m/15m models
+        }
+        debugPrint('🌏 [Asia Session] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} → ${(baseWeight * multiplier).toStringAsFixed(2)}');
+      }
+      // EUROPE SESSION (8-14 UTC): Balanced, use default weights
+      else if (hour >= 8 && hour < 14) {
+        multiplier = 1.0; // No adjustment
+        debugPrint('🇪🇺 [Europe Session] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} (unchanged)');
+      }
+      // US SESSION (14-22 UTC): High volatility, trust shorter timeframes
+      else if (hour >= 14 && hour < 22) {
+        if (modelId.contains('5m') || modelId.contains('15m')) {
+          multiplier = 1.5; // Boost 5m/15m models
+        } else if (modelId.contains('1d') || modelId.contains('4h')) {
+          multiplier = 0.5; // Reduce 1d/4h models
+        }
+        debugPrint('🇺🇸 [US Session] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} → ${(baseWeight * multiplier).toStringAsFixed(2)}');
+      }
+      // OFF-HOURS (22-1 UTC): Low liquidity, use balanced weights
+      else {
+        multiplier = 1.0;
+        debugPrint('🌙 [Off-Hours] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} (unchanged)');
+      }
+
+      return baseWeight * multiplier;
+    } catch (e) {
+      debugPrint('⚠️ [Time-Based Weights] Error: $e - using base weight');
+      return baseWeight; // Safe default: use original weight
     }
   }
 
