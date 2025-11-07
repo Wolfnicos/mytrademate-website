@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/theme_provider.dart';
 import '../providers/subscription_provider.dart';
+import '../providers/exchange_provider.dart';
 import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
 import '../services/auth_service.dart';
@@ -812,8 +813,104 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: AppTheme.spacing24),
 
-          // Binance Connection (Read-Only)
-          _buildSectionHeader('Binance Connection (Read-Only)', Icons.vpn_lock),
+          // Exchange Selection
+          _buildSectionHeader('Exchange Selection', Icons.sync_alt),
+          Consumer<ExchangeProvider>(
+            builder: (context, exchangeProvider, _) {
+              return GlassCard(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppTheme.spacing16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Choose your preferred crypto exchange',
+                        style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
+                      ),
+                      const SizedBox(height: AppTheme.spacing16),
+
+                      // Exchange Cards
+                      ...exchangeProvider.availableExchanges.map((exchange) {
+                        final isSelected = exchangeProvider.selectedExchange == exchange;
+                        final icon = exchangeProvider.getExchangeIcon(exchange);
+                        final description = exchangeProvider.getExchangeDescription(exchange);
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: AppTheme.spacing12),
+                          child: GestureDetector(
+                            onTap: () async {
+                              await exchangeProvider.setExchange(exchange);
+                              _showSnackBar('Switched to $exchange');
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(AppTheme.spacing16),
+                              decoration: BoxDecoration(
+                                gradient: isSelected ? AppTheme.primaryGradient : null,
+                                color: isSelected ? null : AppTheme.glassWhite,
+                                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                                border: Border.all(
+                                  color: isSelected ? AppTheme.primary : AppTheme.glassBorder,
+                                  width: isSelected ? 2 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    icon,
+                                    style: const TextStyle(fontSize: 32),
+                                  ),
+                                  const SizedBox(width: AppTheme.spacing12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          exchange,
+                                          style: AppTheme.headingSmall.copyWith(
+                                            color: isSelected ? Colors.white : AppTheme.getTextPrimary(context),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: AppTheme.spacing4),
+                                        Text(
+                                          description,
+                                          style: AppTheme.bodySmall.copyWith(
+                                            color: isSelected ? Colors.white.withOpacity(0.9) : AppTheme.getTextSecondary(context),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: AppTheme.spacing24),
+
+          // Exchange Connection (dynamically shows current exchange)
+          Consumer<ExchangeProvider>(
+            builder: (context, exchangeProvider, _) {
+              return _buildSectionHeader(
+                '${exchangeProvider.selectedExchange} Connection',
+                Icons.vpn_lock,
+              );
+            },
+          ),
           GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(AppTheme.spacing16),
@@ -851,7 +948,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             size: 20,
                           ),
                         ),
-                        const SizedBox(width: AppTheme.spacing12),
+                        const SizedBox(width: AppTheme.spacing8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -861,6 +958,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 style: AppTheme.labelLarge.copyWith(
                                   color: Colors.white,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: AppTheme.spacing4),
                               Text(
@@ -868,10 +966,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 style: AppTheme.bodySmall.copyWith(
                                   color: Colors.white.withOpacity(0.8),
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(width: AppTheme.spacing4),
                         Icon(
                           Icons.account_balance_wallet,
                           color: Colors.white.withOpacity(0.6),
@@ -1319,7 +1419,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _openPrivacyPolicy() async {
-    final Uri url = Uri.parse('https://mytrademate.app/privacy.html');
+    final Uri url = Uri.parse('https://mytrademate.app/privacy-policy.html');
     try {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } catch (e) {
@@ -1328,7 +1428,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _openTermsOfService() async {
-    final Uri url = Uri.parse('https://mytrademate.app/terms.html');
+    final Uri url = Uri.parse('https://mytrademate.app/terms-of-service.html');
     try {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } catch (e) {
@@ -1337,7 +1437,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _openSupport() async {
-    final Uri url = Uri.parse('https://mytrademate.app/support.html');
+    final Uri url = Uri.parse('https://mytrademate.app/#faq');
     try {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } catch (e) {
@@ -1346,11 +1446,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _openContact() async {
-    final Uri url = Uri.parse('https://mytrademate.app/contact.html');
+    final Uri url = Uri.parse('mailto:mytrademate.app@gmail.com');
     try {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } catch (e) {
-      _showSnackBar('Could not open Contact page', isError: true);
+      _showSnackBar('Could not open email app', isError: true);
     }
   }
 
@@ -1527,9 +1627,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Icon(icon, color: AppTheme.primary, size: 20),
           const SizedBox(width: AppTheme.spacing8),
-          Text(
-            title,
-            style: AppTheme.headingMedium.copyWith(color: AppTheme.getTextSecondary(context)),
+          Expanded(
+            child: Text(
+              title,
+              style: AppTheme.headingMedium.copyWith(color: AppTheme.getTextSecondary(context)),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),

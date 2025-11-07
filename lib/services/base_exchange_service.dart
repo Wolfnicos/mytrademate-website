@@ -55,6 +55,14 @@ abstract class BaseExchangeService {
     int? endTime,
   });
 
+  /// Fetch klines with fallback symbols
+  /// Tries multiple symbols until one succeeds
+  Future<List<Candle>> fetchKlinesWithFallback(
+    List<String> symbols,
+    String interval, {
+    int limit = 60,
+  });
+
   /// Fetch 24h ticker data
   /// Returns: {'lastPrice': 50000.0, 'priceChangePercent': 2.5}
   Future<Map<String, double>> fetchTicker24h(String symbol);

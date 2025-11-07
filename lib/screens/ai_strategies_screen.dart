@@ -20,6 +20,7 @@ import '../utils/responsive.dart';
 
 // Providers
 import '../providers/subscription_provider.dart';
+import '../providers/exchange_provider.dart';
 import 'paywall_screen.dart';
 
 class AiStrategiesScreen extends StatefulWidget {
@@ -130,9 +131,11 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
 
   Future<void> _loadAvailableCoins() async {
     try {
-      final binance = BinanceService();
-      await binance.loadCredentials();
-      final balances = await binance.getAccountBalances();
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
+
+      await exchange.loadCredentials();
+      final balances = await exchange.getAccountBalances();
       final quote = AppSettingsService().quoteCurrency.toUpperCase();
 
       // Extract coins from portfolio (excluding quote currency and coins below $5)
@@ -142,7 +145,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         if (upperAsset != quote && balances[asset]! > 0.0) {
           // Calculate value to filter out coins below $5
           try {
-            final ticker = await binance.fetchTicker24hWithFallback([
+            final ticker = await exchange.fetchTicker24hWithFallback([
               '$upperAsset$quote',
               '${upperAsset}USDT',
               '${upperAsset}EUR',
@@ -941,41 +944,49 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           const SizedBox(width: AppTheme.spacing8),
           Icon(Icons.schedule, size: 14, color: AppTheme.textTertiary),
           const SizedBox(width: AppTheme.spacing4),
-          Text(
-            'Updated $timeAgo',
-            style: AppTheme.bodySmall.copyWith(
-              color: AppTheme.textTertiary,
-              fontSize: 12,
+          Flexible(
+            child: Text(
+              'Updated $timeAgo',
+              style: AppTheme.bodySmall.copyWith(
+                color: AppTheme.textTertiary,
+                fontSize: 12,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
 
           // ATR trend indicator (if significant change)
           if (atrTrend.isNotEmpty) ...[
-            const SizedBox(width: AppTheme.spacing8),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppTheme.spacing8,
-                vertical: AppTheme.spacing4,
-              ),
-              decoration: BoxDecoration(
-                color: atrTrendColor!.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                border: Border.all(color: atrTrendColor.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(atrTrendIcon, size: 12, color: atrTrendColor),
-                  const SizedBox(width: AppTheme.spacing4),
-                  Text(
-                    'Vol $atrTrend',
-                    style: AppTheme.bodySmall.copyWith(
-                      color: atrTrendColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+            const SizedBox(width: AppTheme.spacing4),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacing8,
+                  vertical: AppTheme.spacing4,
+                ),
+                decoration: BoxDecoration(
+                  color: atrTrendColor!.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                  border: Border.all(color: atrTrendColor.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(atrTrendIcon, size: 12, color: atrTrendColor),
+                    const SizedBox(width: AppTheme.spacing4),
+                    Flexible(
+                      child: Text(
+                        'Vol $atrTrend',
+                        style: AppTheme.bodySmall.copyWith(
+                          color: atrTrendColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -1171,15 +1182,21 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           children: [
             Icon(icon, color: color, size: 16),
             const SizedBox(width: AppTheme.spacing4),
-            Text(
-              '$label: ',
-              style: AppTheme.bodySmall.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+            Flexible(
+              child: Text(
+                '$label: ',
+                style: AppTheme.bodySmall.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            Text(
-              displayLabel,
-              style: AppTheme.bodySmall.copyWith(
-                color: color,
-                fontWeight: FontWeight.bold,
+            Flexible(
+              child: Text(
+                displayLabel,
+                style: AppTheme.bodySmall.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -1308,19 +1325,26 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(icon, color: color, size: 20),
-                  const SizedBox(width: AppTheme.spacing8),
-                  Text(
-                    label,
-                    style: AppTheme.bodyLarge.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.bold,
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, color: color, size: 20),
+                    const SizedBox(width: AppTheme.spacing8),
+                    Flexible(
+                      child: Text(
+                        label,
+                        style: AppTheme.bodyLarge.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: AppTheme.spacing8),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppTheme.spacing12,

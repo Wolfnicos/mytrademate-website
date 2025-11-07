@@ -329,6 +329,23 @@ class KrakenService implements BaseExchangeService {
   }
 
   @override
+  Future<List<Candle>> fetchKlinesWithFallback(
+    List<String> symbols,
+    String interval, {
+    int limit = 60,
+  }) async {
+    for (final symbol in symbols) {
+      try {
+        return await fetchKlines(symbol, interval, limit: limit);
+      } catch (e) {
+        debugPrint('[Kraken] Klines failed for $symbol, trying next...');
+        continue;
+      }
+    }
+    throw Exception('[Kraken] All kline symbols failed: $symbols');
+  }
+
+  @override
   Future<Map<String, double>> fetchTicker24hWithFallback(List<String> symbols) async {
     for (final symbol in symbols) {
       try {

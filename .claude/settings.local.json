@@ -25,7 +25,10 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nfeat(ai/ux): integrate Ensemble Transformer into all strategies + premium design system\n\n## AI Integration Complete ✅\n- Integrated Ensemble Transformer (58.67% accuracy) into 4 hybrid strategies:\n  * RSI/ML Hybrid v2.0 (60% AI, 40% Tech, @1h)\n  * Momentum Scalper v3.0 (70% AI, 30% Tech, @15m)\n  * Breakout v2.0 (50/50 AI/Tech, @1h, anti-false-breakout logic)\n  * Mean Reversion v2.0 (60% Tech, 40% AI, @4h)\n- Each strategy uses optimal timeframes and AI/Tech weighting\n- Dynamic trading pair support (BTCEUR, WLFIEUR, TRUMPEUR)\n- Updated MetaStrategySelector with new strategy versions\n\n## AI Models Added\n- Transformer v1 (58.67% accuracy) - primary model\n- LSTM model (51% accuracy) - fallback\n- Random Forest (43.82% accuracy) - rule-based fallback\n- All models in assets/ml/ directory\n\n## Premium Design System 🎨\n- Created lib/theme/app_theme.dart with:\n  * Dark mode color palette (Material 3)\n  * Glassmorphism colors and gradients\n  * Trading-specific colors (BUY green, SELL red)\n  * Typography hierarchy (Display, Heading, Body, Mono)\n  * Spacing system and animation durations\n- Created lib/widgets/glass_card.dart for glassmorphism UI\n\n## Performance\n- All strategies log technical indicators and AI predictions\n- Strategies activate/deactivate based on market regime\n- Position sizing adjusts by regime volatility\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git commit:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git rm:*)",
+      "WebFetch(domain:mytrademate.app)",
+      "Bash(timeout 30 flutter analyze:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/crypto_avatar.dart';
 import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
+import '../providers/exchange_provider.dart';
 import '../utils/responsive.dart';
 
 class PortfolioScreen extends StatefulWidget {
@@ -14,7 +16,6 @@ class PortfolioScreen extends StatefulWidget {
 }
 
 class _PortfolioScreenState extends State<PortfolioScreen> {
-  final BinanceService _binance = BinanceService();
   bool _isLoading = true;
   Map<String, double> _balances = {};
   Map<String, double> _prices = {};
@@ -48,8 +49,11 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     });
 
     try {
-      await _binance.loadCredentials();
-      final balances = await _binance.getAccountBalances();
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
+
+      await exchange.loadCredentials();
+      final balances = await exchange.getAccountBalances();
       final quote = AppSettingsService().quoteCurrency.toUpperCase();
 
       double total = 0.0;
@@ -68,7 +72,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
 
         try {
           // Try to get price for this asset in quote currency
-          final ticker = await _binance.fetchTicker24hWithFallback([
+          final ticker = await exchange.fetchTicker24hWithFallback([
             '$asset$quote',
             '${asset}USDT',
             '${asset}EUR',

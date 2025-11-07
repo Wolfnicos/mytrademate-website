@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
 import '../services/user_coins_service.dart';
 import '../providers/subscription_provider.dart';
+import '../providers/exchange_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/ai_indicator.dart';
@@ -12,6 +14,7 @@ import '../widgets/trial_banner.dart';
 import '../widgets/trial_activation_dialog.dart';
 import '../ml/ensemble_predictor.dart';
 import '../utils/responsive.dart';
+import 'settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -171,26 +174,42 @@ class PortfolioOverviewCard extends StatefulWidget {
 }
 
 class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
-  final BinanceService _binance = BinanceService();
-  bool _isLoading = true;
+  bool _isLoading = false;
+  bool _hasLoadedOnce = false;
   double _totalValue = 0.0;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    _loadCachedValue();
     _loadPortfolio();
   }
 
+  Future<void> _loadCachedValue() async {
+    // Load cached value immediately for instant display
+    final prefs = await SharedPreferences.getInstance();
+    final cachedValue = prefs.getDouble('portfolio_total_value');
+    if (cachedValue != null && mounted) {
+      setState(() {
+        _totalValue = cachedValue;
+      });
+    }
+  }
+
   Future<void> _loadPortfolio() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    // Don't reload if we already have data (prevents reload on scroll/rebuild)
+    if (_hasLoadedOnce) return;
+
+    // Don't show loading state, just update in background
+    _error = null;
 
     try {
-      await _binance.loadCredentials();
-      final balances = await _binance.getAccountBalances();
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
+
+      await exchange.loadCredentials();
+      final balances = await exchange.getAccountBalances();
       final quote = AppSettingsService().quoteCurrency.toUpperCase();
 
       double total = 0.0;
@@ -207,7 +226,7 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
 
         try {
           // Try to get price for this asset in quote currency
-          final ticker = await _binance.fetchTicker24hWithFallback([
+          final ticker = await exchange.fetchTicker24hWithFallback([
             '$asset$quote',
             '${asset}USDT',
             '${asset}EUR',
@@ -224,7 +243,12 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
         setState(() {
           _totalValue = total;
           _isLoading = false;
+          _hasLoadedOnce = true;
         });
+
+        // Cache the value for instant display next time
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setDouble('portfolio_total_value', total);
       }
     } catch (e) {
       print('Portfolio: Error loading portfolio: $e');
@@ -278,9 +302,7 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
           ),
           const SizedBox(height: AppTheme.spacing4),
 
-          if (_isLoading)
-            const CircularProgressIndicator()
-          else if (_error != null)
+          if (_error != null)
             Text(
               _error!,
               style: AppTheme.bodyMedium.copyWith(color: AppTheme.error),
@@ -341,6 +363,7 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
   late Animation<double> _pulseAnimation;
   int _progressKey = 0;
   bool _hasLoadedOnce = false;  // Track if models loaded once
+  bool _isLoaded = false;
 
   @override
   void initState() {
@@ -356,7 +379,24 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
 
-    // Removed: Activity cycling animation (was giving impression of constant work)
+    // Check if models are loaded periodically
+    _checkModelsLoaded();
+  }
+
+  void _checkModelsLoaded() {
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        final isLoaded = globalEnsemblePredictor.isLoaded;
+        if (isLoaded != _isLoaded) {
+          setState(() {
+            _isLoaded = isLoaded;
+          });
+        }
+        if (!isLoaded) {
+          _checkModelsLoaded();
+        }
+      }
+    });
   }
 
   @override
@@ -367,7 +407,7 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    final isActive = globalEnsemblePredictor.isLoaded;
+    final isActive = _isLoaded;
 
     return GlassCard(
       child: Column(
@@ -503,7 +543,7 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
 
           const SizedBox(height: AppTheme.spacing20),
 
-          // AI Activity Display
+          // AI Processing Visualization
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(AppTheme.spacing16),
@@ -532,88 +572,111 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.data_usage,
-                      color: isActive ? AppTheme.primary : AppTheme.textTertiary,
-                      size: 18,
-                    ),
-                    const SizedBox(width: AppTheme.spacing8),
-                    Expanded(
-                      // Static text (no cycling animation)
-                      child: Text(
-                        isActive ? 'AI Models: Active & Ready' : 'Initializing neural engine...',
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: isActive ? AppTheme.textPrimary : AppTheme.textTertiary,
-                          fontWeight: FontWeight.w600,
+                if (isActive) ...[
+                  // Neural Network Visualization Grid
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildAIStatBox(
+                          label: 'AI Models',
+                          value: '26',
+                          icon: Icons.memory,
+                          color: AppTheme.primary,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-
-                if (isActive) ...[
-                  const SizedBox(height: AppTheme.spacing12),
-
-                  // Processing bar (animate once on first load, then static)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                    child: !_hasLoadedOnce
-                        ? TweenAnimationBuilder<double>(
-                            duration: const Duration(seconds: 2),
-                            curve: Curves.easeInOut,
-                            tween: Tween<double>(
-                              begin: 0.0,
-                              end: 1.0,
-                            ),
-                            onEnd: () {
-                              // Mark as loaded, stop animation
-                              if (mounted) {
-                                setState(() {
-                                  _hasLoadedOnce = true;
-                                });
-                              }
-                            },
-                            builder: (context, value, _) {
-                              return LinearProgressIndicator(
-                                value: value,
-                                backgroundColor: AppTheme.glassBorder,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppTheme.primary.withOpacity(0.8),
-                                ),
-                                minHeight: 3,
-                              );
-                            },
-                          )
-                        : Container(
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: AppTheme.success.withOpacity(0.4),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                  ),
-
-                  const SizedBox(height: AppTheme.spacing12),
-
-                  // Real-time stats
-                  Wrap(
-                    spacing: AppTheme.spacing8,
-                    runSpacing: AppTheme.spacing8,
-                    alignment: WrapAlignment.spaceBetween,
-                    children: [
-                      _buildStatChip(
-                        icon: Icons.speed,
-                        label: 'Real-time',
-                        color: AppTheme.primary,
+                      const SizedBox(width: AppTheme.spacing12),
+                      Expanded(
+                        child: _buildAIStatBox(
+                          label: 'Indicators',
+                          value: '76',
+                          icon: Icons.show_chart,
+                          color: AppTheme.secondary,
+                        ),
                       ),
-                      _buildStatChip(
-                        icon: Icons.layers,
-                        label: 'Multi-layer',
-                        color: AppTheme.secondary,
+                      const SizedBox(width: AppTheme.spacing12),
+                      Expanded(
+                        child: _buildAIStatBox(
+                          label: 'Timeframes',
+                          value: '5',
+                          icon: Icons.access_time,
+                          color: AppTheme.success,
+                        ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: AppTheme.spacing16),
+
+                  // Animated processing bar
+                  TweenAnimationBuilder<double>(
+                    key: ValueKey(_progressKey),
+                    duration: const Duration(milliseconds: 2000),
+                    curve: Curves.easeInOut,
+                    tween: Tween<double>(begin: 0.0, end: 1.0),
+                    onEnd: () {
+                      if (mounted) {
+                        setState(() {
+                          _progressKey++;
+                        });
+                      }
+                    },
+                    builder: (context, value, _) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Processing market data...',
+                                style: AppTheme.bodySmall.copyWith(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 11,
+                                ),
+                              ),
+                              Text(
+                                '${(value * 100).toInt()}%',
+                                style: AppTheme.bodySmall.copyWith(
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppTheme.spacing8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                            child: LinearProgressIndicator(
+                              value: value,
+                              backgroundColor: AppTheme.glassBorder,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppTheme.primary,
+                              ),
+                              minHeight: 4,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ] else ...[
+                  Center(
+                    child: Column(
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppTheme.primary.withOpacity(0.5),
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.spacing12),
+                        Text(
+                          'Initializing AI models...',
+                          style: AppTheme.bodySmall.copyWith(
+                            color: AppTheme.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ],
@@ -655,6 +718,48 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
       ),
     );
   }
+
+  Widget _buildAIStatBox({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.spacing12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: AppTheme.spacing8),
+          Text(
+            value,
+            style: AppTheme.headingLarge.copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 24,
+            ),
+          ),
+          const SizedBox(height: AppTheme.spacing4),
+          Text(
+            label,
+            style: AppTheme.bodySmall.copyWith(
+              color: AppTheme.textSecondary,
+              fontSize: 11,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class PnLTodaySection extends StatefulWidget {
@@ -665,7 +770,6 @@ class PnLTodaySection extends StatefulWidget {
 }
 
 class _PnLTodaySectionState extends State<PnLTodaySection> {
-  final BinanceService _binance = BinanceService();
   List<String> _userCoins = []; // Dynamic coins from UserCoinsService
   Map<String, Map<String, double>> _tickers = {}; // Coin -> ticker data
   bool _isLoading = true;
@@ -709,12 +813,14 @@ class _PnLTodaySectionState extends State<PnLTodaySection> {
   Future<void> _refresh() async {
     setState(() => _isLoading = true);
     try {
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
       final quote = AppSettingsService().quoteCurrency.toUpperCase();
 
       // Fetch tickers for all user coins dynamically
       for (final coin in _userCoins) {
         try {
-          final ticker = await _binance.fetchTicker24hWithFallback([
+          final ticker = await exchange.fetchTicker24hWithFallback([
             '$coin$quote',
             '${coin}USDT',
             '${coin}EUR',

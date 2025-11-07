@@ -11,6 +11,7 @@ import '../widgets/crypto_avatar.dart';
 import '../widgets/upgrade_banner.dart';
 import '../utils/responsive.dart';
 import '../providers/subscription_provider.dart';
+import '../providers/exchange_provider.dart';
 import 'paywall_screen.dart';
 
 class MarketScreen extends StatefulWidget {
@@ -21,7 +22,6 @@ class MarketScreen extends StatefulWidget {
 }
 
 class _MarketScreenState extends State<MarketScreen> {
-  final BinanceService _binance = BinanceService();
   final Map<String, Map<String, double>> _tickers = {};
   String _interval = '4h'; // Default to 4H (free tier)
   String _selectedSymbol = 'BTCUSDT';
@@ -99,10 +99,13 @@ class _MarketScreenState extends State<MarketScreen> {
   }
 
   Future<void> _refreshTickers() async {
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final exchange = exchangeProvider.currentExchange;
+
     setState(() => _loadingTickers = true);
     for (final List<String> symbolList in _symbols) {
       try {
-        final Map<String, double> t = await _binance.fetchTicker24hWithFallback(symbolList);
+        final Map<String, double> t = await exchange.fetchTicker24hWithFallback(symbolList);
         if (mounted) {
           setState(() => _tickers[symbolList.first] = t);
         }
@@ -138,13 +141,16 @@ class _MarketScreenState extends State<MarketScreen> {
         limit = 60;  // Default fallback
       }
 
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
+
       // Find the symbol list for fallback (try multiple quote currencies)
       final List<String> symbolListForFallback = _symbols.firstWhere(
         (list) => list.first == _selectedSymbol,
         orElse: () => [_selectedSymbol], // Fallback to just the symbol itself
       );
 
-      final List<Candle> klines = await _binance.fetchKlinesWithFallback(
+      final List<Candle> klines = await exchange.fetchKlinesWithFallback(
         symbolListForFallback,
         _interval,
         limit: limit,

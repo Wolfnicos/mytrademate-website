@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="tiktok-developers-site-verification" content="Luy8rzll7pFtcSYKHuachTHf6kLrsYoX">
+    <title>MyTradeMate Portfolio - AI-Powered Crypto Portfolio Tracker</title>
+    <meta name="description" content="Track your crypto portfolio with AI-powered market insights. Educational bearish/bullish analysis to help you understand market trends and make informed decisions.">
+    <meta name="keywords" content="crypto portfolio tracker, portfolio tracking, cryptocurrency monitor, AI crypto insights, educational crypto analysis, bearish bullish analysis">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gold: #FFD700;
+            --gold-gradient: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            --card-glass: rgba(255, 255, 255, 0.15);
+            --card-border: rgba(255, 255, 255, 0.25);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.85);
+            --shadow-glow: 0 10px 40px rgba(255, 215, 0, 0.4);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--primary-gradient);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 60px 20px;
+            position: relative;
+        }
+
+        .robot-icon {
+            font-size: 100px;
+            margin-bottom: 30px;
+            animation: float 3s ease-in-out infinite;
+            filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.3));
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: linear-gradient(to right, #fff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+        }
+
+        .hero .tagline {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            opacity: 0.95;
+            font-weight: 600;
+        }
+
+        .hero .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.85;
+            margin-bottom: 50px;
+            max-width: 700px;
+            line-height: 1.8;
+        }
+
+        .badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 60px;
+        }
+
+        .badge {
+            background: var(--card-glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            padding: 14px 28px;
+            border-radius: 30px;
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .badge:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2);
+        }
+
+        /* Waitlist Section */
+        .waitlist-section {
+            padding: 80px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            text-align: center;
+        }
+
+        .waitlist-section h2 {
+            font-size: 3rem;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .waitlist-subheading {
+            font-size: 1.3rem;
+            line-height: 1.8;
+            max-width: 900px;
+            margin: 0 auto 50px;
+            opacity: 0.95;
+        }
+
+        .waitlist-subheading strong {
+            color: var(--gold);
+            font-weight: 700;
+            font-size: 1.4rem;
+        }
+
+        .waitlist-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 25px 70px;
+            background: var(--gold-gradient);
+            color: #1a1a2e;
+            text-decoration: none;
+            border-radius: 60px;
+            font-weight: 800;
+            font-size: 1.5rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: var(--shadow-glow);
+            animation: pulse-glow 2s ease-in-out infinite;
+            border: none;
+            cursor: pointer;
+        }
+
+        .waitlist-button:hover {
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: 0 20px 60px rgba(255, 215, 0, 0.6);
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% {
+                box-shadow: 0 10px 40px rgba(255, 215, 0, 0.4);
+            }
+            50% {
+                box-shadow: 0 15px 50px rgba(255, 215, 0, 0.6);
+            }
+        }
+
+        .waitlist-notice {
+            margin-top: 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--gold);
+            animation: fade-pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes fade-pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        /* Features Section */
+        .features-section {
+            padding: 100px 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 3rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 70px;
+            background: linear-gradient(to right, #fff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 40px;
+        }
+
+        .feature-card {
+            background: var(--card-glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 25px;
+            padding: 50px 40px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-15px);
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4);
+            border-color: var(--gold);
+        }
+
+        .feature-icon {
+            font-size: 70px;
+            margin-bottom: 25px;
+            filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.3));
+        }
+
+        .feature-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .feature-desc {
+            font-size: 1.05rem;
+            opacity: 0.9;
+            line-height: 1.7;
+        }
+
+        /* Disclaimer Section */
+        .disclaimer {
+            max-width: 1000px;
+            margin: 80px auto;
+            padding: 50px;
+            background: rgba(255, 215, 0, 0.15);
+            backdrop-filter: blur(20px);
+            border: 2px solid var(--gold);
+            border-radius: 25px;
+        }
+
+        .disclaimer-title {
+            color: var(--gold);
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .disclaimer-section {
+            margin-bottom: 25px;
+        }
+
+        .disclaimer-section h3 {
+            color: var(--gold);
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .disclaimer-text {
+            font-size: 1.05rem;
+            line-height: 1.8;
+            opacity: 0.95;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 60px 20px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--card-border);
+        }
+
+        .footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 40px;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 1.05rem;
+            transition: color 0.3s, transform 0.3s;
+            display: inline-block;
+        }
+
+        .footer-links a:hover {
+            color: var(--gold);
+            transform: translateY(-3px);
+        }
+
+        .footer-copyright {
+            opacity: 0.8;
+            font-size: 0.95rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .hero h1 { font-size: 3rem; }
+            .hero .tagline { font-size: 1.5rem; }
+            .waitlist-section h2 { font-size: 2.5rem; }
+            .waitlist-subheading { font-size: 1.1rem; }
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .hero .tagline { font-size: 1.3rem; }
+            .hero .subtitle { font-size: 1rem; }
+            .waitlist-section h2 { font-size: 2rem; }
+            .waitlist-subheading { font-size: 1rem; padding: 0 15px; }
+            .waitlist-button {
+                font-size: 1.2rem;
+                padding: 20px 50px;
+            }
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            .section-title { font-size: 2.2rem; }
+            .disclaimer { padding: 30px 20px; }
+        }
+
+        @media (max-width: 480px) {
+            .robot-icon { font-size: 70px; }
+            .hero h1 { font-size: 2rem; }
+            .waitlist-button {
+                font-size: 1.1rem;
+                padding: 18px 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="robot-icon">🤖</div>
+        <h1>MyTradeMate Portfolio</h1>
+        <p class="tagline">AI-Powered Crypto Portfolio Tracker</p>
+        <p class="subtitle">Track your crypto holdings with AI-powered market insights. Educational bearish/bullish analysis to help you understand market trends and make informed decisions.</p>
+
+        <div class="badges">
+            <div class="badge">🔒 Bank-Level Security</div>
+            <div class="badge">📊 AI Market Insights</div>
+            <div class="badge">📚 Educational Tool</div>
+            <div class="badge">💼 Real-Time Portfolio</div>
+        </div>
+    </section>
+
+    <!-- Waitlist Section -->
+    <section class="waitlist-section">
+        <h2>🚀 Coming Soon! Lock In Your Lifetime Discount.</h2>
+        <p class="waitlist-subheading">
+            The app is in final Google review. Be one of the first 1000 users to email us and get MyTradeMate for just <strong>€3.99/month</strong> (usually €5.99). <strong>Forever.</strong>
+        </p>
+        <a href="mailto:mytrademate.app@gmail.com?subject=I%20want%20the%20MyTradeMate%20launch%20discount!&body=Please%20notify%20me%20on%20launch%20day!"
+           class="waitlist-button">
+            🎁 Lock In My Discount!
+        </a>
+        <p class="waitlist-notice">✨ Limited to first 1000 users only</p>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section">
+        <h2 class="section-title">✨ Powerful Features</h2>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <h3 class="feature-title">AI Market Insights</h3>
+                <p class="feature-desc">Multi-timeframe bearish/bullish analysis powered by ensemble ML models trained on millions of data points. Educational insights to understand market trends.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">💼</div>
+                <h3 class="feature-title">Portfolio Tracking</h3>
+                <p class="feature-desc">Real-time portfolio valuation, profit/loss tracking, and asset distribution analytics. Read-only Binance API integration keeps your funds secure.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3 class="feature-title">Professional Charts</h3>
+                <p class="feature-desc">Candlestick charts with multiple timeframes and 76 technical indicators for deep market analysis and pattern recognition.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3 class="feature-title">Bank-Level Security</h3>
+                <p class="feature-desc">Encrypted API keys, biometric authentication, and zero data collection. Your keys, your crypto. We never access your funds.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📚</div>
+                <h3 class="feature-title">Educational Analysis</h3>
+                <p class="feature-desc">AI-powered market insights help you understand bearish/bullish trends. For educational purposes only - not financial advice.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📱</div>
+                <h3 class="feature-title">Multi-Platform</h3>
+                <p class="feature-desc">Available on Android (coming to iOS soon). Clean, modern interface optimized for portfolio tracking and market analysis.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Disclaimer Section -->
+    <div class="disclaimer">
+        <div class="disclaimer-title">⚠️ Educational Purpose Only - Not Financial Advice</div>
+
+        <div class="disclaimer-section">
+            <h3>📚 Educational Tool</h3>
+            <p class="disclaimer-text">
+                MyTradeMate Portfolio is designed as an educational tool for portfolio tracking and market analysis. All AI insights are for informational purposes only and do NOT constitute financial, investment, or trading advice.
+            </p>
+        </div>
+
+        <div class="disclaimer-section">
+            <h3>🔒 Read-Only Access</h3>
+            <p class="disclaimer-text">
+                We connect to Binance via read-only API keys. We can ONLY view your portfolio - we cannot access your funds, execute transactions, or modify your account.
+            </p>
+        </div>
+
+        <div class="disclaimer-section">
+            <h3>⚖️ Do Your Own Research</h3>
+            <p class="disclaimer-text">
+                Cryptocurrency investments involve substantial risk of loss. Always conduct your own research (DYOR) and only invest what you can afford to lose. Past performance does not guarantee future results.
+            </p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="privacy.html">Privacy Policy</a>
+            <a href="terms.html">Terms of Service</a>
+            <a href="support.html">Support & FAQ</a>
+            <a href="contact.html">Contact Us</a>
+        </div>
+        <p class="footer-copyright">© 2025 MyTradeMate Portfolio. All rights reserved.</p>
+    </footer>
+</body>
+</html>

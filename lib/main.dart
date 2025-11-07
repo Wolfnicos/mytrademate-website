@@ -12,6 +12,7 @@ import 'ml/ensemble_predictor.dart';
 import 'ml/crypto_ml_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/subscription_provider.dart';
+import 'providers/exchange_provider.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/market_screen.dart';
 import 'screens/ai_strategies_screen.dart';
@@ -58,12 +59,17 @@ Future<void> main() async {
   final subscriptionProvider = SubscriptionProvider();
   // await subscriptionProvider.checkSubscriptionStatus();
 
+  // Initialize exchange provider
+  final exchangeProvider = ExchangeProvider();
+  await exchangeProvider.initialize();
+
   // Start the app immediately
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider.value(value: subscriptionProvider),
+        ChangeNotifierProvider.value(value: exchangeProvider),
         ChangeNotifierProvider.value(value: AppSettingsService()),
         ChangeNotifierProvider.value(value: AuthService()),
         ChangeNotifierProvider.value(value: AchievementService()),
