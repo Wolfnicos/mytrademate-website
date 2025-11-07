@@ -9,6 +9,7 @@ import 'package:crypto/crypto.dart';
 import '../models/candle.dart';
 // import '../services/technical_indicator_calculator.dart';
 import '../services/full_feature_builder.dart';
+import 'base_exchange_service.dart';
 
 /// Result wrapper for feature extraction
 class FeatureResult {
@@ -48,7 +49,7 @@ class FeaturesWithATR {
   });
 }
 
-class BinanceService {
+class BinanceService implements BaseExchangeService {
   static const String _baseHost = 'api.binance.com'; // Only LIVE mode
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
@@ -65,12 +66,21 @@ class BinanceService {
   DateTime? _lastTimeSyncTime;
   static const Duration _timeSyncInterval = Duration(minutes: 30);
 
+  @override
+  String get exchangeName => 'Binance';
+
+  @override
   String? get apiKey => _apiKey;
+
+  @override
   String? get apiSecret => _apiSecret;
+
+  @override
   bool get hasCredentials => (_apiKey != null && _apiKey!.isNotEmpty && _apiSecret != null && _apiSecret!.isNotEmpty);
 
   /// Synchronize local time with Binance server time
   /// This prevents "Timestamp out of recvWindow" errors due to clock skew
+  @override
   Future<void> syncServerTime() async {
     try {
       final uri = Uri.https(_baseHost, '/api/v3/time');
@@ -101,6 +111,7 @@ class BinanceService {
 
   /// Get current timestamp synchronized with Binance server
   /// Automatically syncs if needed (first call or >30 mins since last sync)
+  @override
   Future<int> getSynchronizedTimestamp() async {
     // Sync time on first call or if >30 mins since last sync
     if (_lastTimeSyncTime == null ||
@@ -112,6 +123,7 @@ class BinanceService {
   }
 
   /// Load API credentials from secure storage
+  @override
   Future<void> loadCredentials() async {
     try {
       _apiKey = await _secureStorage.read(key: 'binance_api_key');
@@ -127,6 +139,7 @@ class BinanceService {
   }
 
   /// Save API credentials to secure storage
+  @override
   Future<void> saveCredentials(String apiKey, String apiSecret) async {
     await _secureStorage.write(key: 'binance_api_key', value: apiKey);
     await _secureStorage.write(key: 'binance_api_secret', value: apiSecret);
@@ -199,6 +212,7 @@ class BinanceService {
   }
 
   /// Clear stored credentials
+  @override
   Future<void> clearCredentials() async {
     await _secureStorage.delete(key: 'binance_api_key');
     await _secureStorage.delete(key: 'binance_api_secret');
@@ -207,6 +221,7 @@ class BinanceService {
   }
 
   /// Test API connection
+  @override
   Future<bool> testConnection() async {
     if (_apiKey == null || _apiSecret == null) {
       throw Exception('API credentials not set');
@@ -236,6 +251,7 @@ class BinanceService {
 
   /// Get account balances
   /// Returns Map<String, double> with asset symbol as key and free balance as value
+  @override
   Future<Map<String, double>> getAccountBalances() async {
     if (_apiKey == null || _apiSecret == null) {
       throw Exception('API credentials not set');
@@ -296,6 +312,7 @@ class BinanceService {
 
   /// Fetch exchange information for symbols (LOT_SIZE, PRICE_FILTER, etc.)
   /// Cached for 1 hour to avoid excessive API calls
+  @override
   Future<Map<String, dynamic>> getExchangeInfo({String? symbol}) async {
     // Return cached data if still valid
     if (_exchangeInfoCache != null &&
@@ -753,6 +770,7 @@ class BinanceService {
 
   /// Fetches klines (OHLCV) for a spot symbol with configurable interval
   /// Returns up to [limit] candles between [start] and [end].
+  @override
   Future<List<Candle>> fetchKlines(
     String symbol, {
     String interval = '1h',
@@ -827,6 +845,7 @@ class BinanceService {
   }
 
   /// Fetch 24h ticker data for a symbol. Returns lastPrice and priceChangePercent.
+  @override
   Future<Map<String, double>> fetchTicker24h(String symbol) async {
     final uri = Uri.https(_baseHost, '/api/v3/ticker/24hr', {'symbol': symbol});
     final http.Response res = await http.get(uri);
@@ -910,6 +929,8 @@ class BinanceService {
   }
 
   /// Try multiple symbols until one works (useful for tokens with alt tickers like 1000TRUMPUSDT)
+  @override
+  @override
   Future<Map<String, double>> fetchTicker24hWithFallback(List<String> symbols) async {
     for (final String s in symbols) {
       try {
@@ -920,6 +941,7 @@ class BinanceService {
   }
 
   /// Try multiple symbols until one works for klines/candles (useful for handling USD/USDT/EUR pairs)
+  @override
   Future<List<Candle>> fetchKlinesWithFallback(List<String> symbols, String interval, {int limit = 60}) async {
     for (final String s in symbols) {
       try {

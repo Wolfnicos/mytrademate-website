@@ -1,0 +1,407 @@
+import 'dart:convert';
+import 'dart:async';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:crypto/crypto.dart';
+
+import '../models/candle.dart';
+import 'base_exchange_service.dart';
+
+/// Kraken Exchange API Service
+/// Implements BaseExchangeService for Kraken API
+///
+/// API Documentation: https://docs.kraken.com/rest/
+class KrakenService implements BaseExchangeService {
+  static const String _baseHost = 'api.kraken.com';
+  static const String _storageKeyPrefix = 'kraken_';
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+
+  // Singleton pattern
+  static final KrakenService _instance = KrakenService._internal();
+  factory KrakenService() => _instance;
+  KrakenService._internal();
+
+  String? _apiKey;
+  String? _apiSecret;
+
+  // Time synchronization (Kraken doesn't require strict time sync like Binance)
+  int _serverTimeOffset = 0;
+  DateTime? _lastTimeSyncTime;
+
+  @override
+  String get exchangeName => 'Kraken';
+
+  @override
+  String? get apiKey => _apiKey;
+
+  @override
+  String? get apiSecret => _apiSecret;
+
+  @override
+  bool get hasCredentials => (_apiKey != null && _apiKey!.isNotEmpty && _apiSecret != null && _apiSecret!.isNotEmpty);
+
+  // ===================================
+  // Time Synchronization
+  // ===================================
+
+  @override
+  Future<void> syncServerTime() async {
+    try {
+      final uri = Uri.https(_baseHost, '/0/public/Time');
+      final localBefore = DateTime.now().millisecondsSinceEpoch;
+
+      final response = await http.get(uri).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode != 200) {
+        debugPrint('⚠️ [Kraken] Failed to sync server time: ${response.statusCode}');
+        return;
+      }
+
+      final localAfter = DateTime.now().millisecondsSinceEpoch;
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final result = data['result'] as Map<String, dynamic>;
+      final serverTime = (result['unixtime'] as int) * 1000; // Convert to milliseconds
+
+      // Calculate offset accounting for network latency
+      final networkLatency = (localAfter - localBefore) ~/ 2;
+      final localTimeApprox = localBefore + networkLatency;
+      _serverTimeOffset = serverTime - localTimeApprox;
+
+      _lastTimeSyncTime = DateTime.now();
+      debugPrint('✅ [Kraken] Time synchronized (offset: ${_serverTimeOffset}ms)');
+    } catch (e) {
+      debugPrint('⚠️ [Kraken] Time sync failed: $e (will use local time)');
+    }
+  }
+
+  @override
+  Future<int> getSynchronizedTimestamp() async {
+    if (_lastTimeSyncTime == null ||
+        DateTime.now().difference(_lastTimeSyncTime!) > const Duration(minutes: 30)) {
+      await syncServerTime();
+    }
+
+    final localTime = DateTime.now().millisecondsSinceEpoch;
+    return localTime + _serverTimeOffset;
+  }
+
+  // ===================================
+  // Credentials Management
+  // ===================================
+
+  @override
+  Future<void> loadCredentials() async {
+    try {
+      _apiKey = await _secureStorage.read(key: '${_storageKeyPrefix}api_key');
+      _apiSecret = await _secureStorage.read(key: '${_storageKeyPrefix}api_secret');
+      debugPrint('[Kraken] Credentials loaded: ${hasCredentials ? "✓" : "✗"}');
+    } catch (e) {
+      debugPrint('[Kraken] Error loading credentials: $e');
+      _apiKey = null;
+      _apiSecret = null;
+    }
+  }
+
+  @override
+  Future<void> saveCredentials(String apiKey, String apiSecret) async {
+    await _secureStorage.write(key: '${_storageKeyPrefix}api_key', value: apiKey);
+    await _secureStorage.write(key: '${_storageKeyPrefix}api_secret', value: apiSecret);
+    _apiKey = apiKey;
+    _apiSecret = apiSecret;
+    debugPrint('[Kraken] Credentials saved');
+  }
+
+  @override
+  Future<void> clearCredentials() async {
+    await _secureStorage.delete(key: '${_storageKeyPrefix}api_key');
+    await _secureStorage.delete(key: '${_storageKeyPrefix}api_secret');
+    _apiKey = null;
+    _apiSecret = null;
+    debugPrint('[Kraken] Credentials cleared');
+  }
+
+  @override
+  Future<bool> testConnection() async {
+    if (!hasCredentials) {
+      return false;
+    }
+
+    try {
+      await getAccountBalances();
+      return true;
+    } catch (e) {
+      debugPrint('[Kraken] Connection test failed: $e');
+      return false;
+    }
+  }
+
+  // ===================================
+  // Signature Generation (Kraken uses HMAC-SHA512)
+  // ===================================
+
+  String _generateSignature(String path, String nonce, String postData) {
+    final decodedSecret = base64.decode(_apiSecret!);
+
+    // SHA256 hash of (nonce + postData)
+    final sha256Hash = sha256.convert(utf8.encode(nonce + postData));
+
+    // Concatenate path + SHA256 hash
+    final message = utf8.encode(path) + sha256Hash.bytes;
+
+    // HMAC-SHA512 of message with decoded secret
+    final hmac = Hmac(sha512, decodedSecret);
+    final signature = hmac.convert(message);
+
+    return base64.encode(signature.bytes);
+  }
+
+  Map<String, String> _buildHeaders(String path, String postData) {
+    final nonce = DateTime.now().millisecondsSinceEpoch.toString();
+    final signature = _generateSignature(path, nonce, postData);
+
+    return {
+      'API-Key': _apiKey!,
+      'API-Sign': signature,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+  }
+
+  // ===================================
+  // Account & Portfolio
+  // ===================================
+
+  @override
+  Future<Map<String, double>> getAccountBalances() async {
+    if (!hasCredentials) {
+      throw Exception('[Kraken] No API credentials configured');
+    }
+
+    try {
+      final path = '/0/private/Balance';
+      final nonce = DateTime.now().millisecondsSinceEpoch.toString();
+      final postData = 'nonce=$nonce';
+
+      final uri = Uri.https(_baseHost, path);
+      final headers = _buildHeaders(path, postData);
+
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: postData,
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode != 200) {
+        throw Exception('[Kraken] Failed to fetch balances: ${response.statusCode}');
+      }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final errors = data['error'] as List<dynamic>;
+
+      if (errors.isNotEmpty) {
+        throw Exception('[Kraken] API error: ${errors.join(", ")}');
+      }
+
+      final result = data['result'] as Map<String, dynamic>;
+      final Map<String, double> balances = {};
+
+      result.forEach((key, value) {
+        final balance = double.tryParse(value.toString()) ?? 0.0;
+        if (balance > 0) {
+          // Remove 'X' prefix if present (XXBT -> BTC, ZEUR -> EUR)
+          final asset = key.startsWith('X') || key.startsWith('Z') ? key.substring(1) : key;
+          balances[asset] = balance;
+        }
+      });
+
+      debugPrint('[Kraken] Fetched ${balances.length} balances');
+      return balances;
+    } catch (e) {
+      debugPrint('[Kraken] Error fetching balances: $e');
+      rethrow;
+    }
+  }
+
+  // ===================================
+  // Market Data
+  // ===================================
+
+  @override
+  Future<List<Candle>> fetchKlines(
+    String symbol,
+    String interval, {
+    int limit = 500,
+    int? endTime,
+  }) async {
+    try {
+      // Convert symbol to Kraken format: BTCEUR -> XBTEUR
+      final krakenSymbol = _convertToKrakenSymbol(symbol);
+
+      // Convert interval to Kraken interval (minutes)
+      final krakenInterval = _convertIntervalToKraken(interval);
+
+      final queryParams = {
+        'pair': krakenSymbol,
+        'interval': krakenInterval.toString(),
+      };
+
+      if (endTime != null) {
+        queryParams['since'] = (endTime ~/ 1000).toString();
+      }
+
+      final uri = Uri.https(_baseHost, '/0/public/OHLC', queryParams);
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode != 200) {
+        throw Exception('[Kraken] Failed to fetch candles: ${response.statusCode}');
+      }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final errors = data['error'] as List<dynamic>;
+
+      if (errors.isNotEmpty) {
+        throw Exception('[Kraken] OHLC error: ${errors.join(", ")}');
+      }
+
+      final result = data['result'] as Map<String, dynamic>;
+      final pairData = result[krakenSymbol] as List<dynamic>?;
+
+      if (pairData == null || pairData.isEmpty) {
+        return [];
+      }
+
+      return pairData.map((c) {
+        return Candle(
+          openTime: (c[0] as int) * 1000, // Convert to milliseconds
+          open: double.parse(c[1]),
+          high: double.parse(c[2]),
+          low: double.parse(c[3]),
+          close: double.parse(c[4]),
+          volume: double.parse(c[6]),
+        );
+      }).take(limit).toList();
+    } catch (e) {
+      debugPrint('[Kraken] Error fetching klines for $symbol: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<Map<String, double>> fetchTicker24h(String symbol) async {
+    try {
+      final krakenSymbol = _convertToKrakenSymbol(symbol);
+
+      final queryParams = {
+        'pair': krakenSymbol,
+      };
+
+      final uri = Uri.https(_baseHost, '/0/public/Ticker', queryParams);
+      final response = await http.get(uri).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode != 200) {
+        throw Exception('[Kraken] Ticker error: ${response.statusCode}');
+      }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final errors = data['error'] as List<dynamic>;
+
+      if (errors.isNotEmpty) {
+        throw Exception('[Kraken] Ticker error: ${errors.join(", ")}');
+      }
+
+      final result = data['result'] as Map<String, dynamic>;
+      final pairData = result[krakenSymbol] as Map<String, dynamic>;
+
+      final lastPrice = double.parse(pairData['c'][0]); // Last trade price
+      final open24h = double.parse(pairData['o']); // Today's opening price
+
+      final changePercent = open24h > 0 ? ((lastPrice - open24h) / open24h) * 100 : 0.0;
+
+      return {
+        'lastPrice': lastPrice,
+        'priceChangePercent': changePercent,
+      };
+    } catch (e) {
+      debugPrint('[Kraken] Error fetching ticker for $symbol: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<Map<String, double>> fetchTicker24hWithFallback(List<String> symbols) async {
+    for (final symbol in symbols) {
+      try {
+        return await fetchTicker24h(symbol);
+      } catch (e) {
+        debugPrint('[Kraken] Ticker failed for $symbol, trying next...');
+        continue;
+      }
+    }
+    throw Exception('[Kraken] All ticker symbols failed: $symbols');
+  }
+
+  @override
+  Future<Map<String, dynamic>> getExchangeInfo({String? symbol}) async {
+    try {
+      final queryParams = symbol != null ? {'pair': _convertToKrakenSymbol(symbol)} : <String, String>{};
+
+      final uri = Uri.https(_baseHost, '/0/public/AssetPairs', queryParams);
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode != 200) {
+        throw Exception('[Kraken] Exchange info error: ${response.statusCode}');
+      }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final errors = data['error'] as List<dynamic>;
+
+      if (errors.isNotEmpty) {
+        throw Exception('[Kraken] Exchange info error: ${errors.join(", ")}');
+      }
+
+      return data['result'] as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('[Kraken] Error fetching exchange info: $e');
+      rethrow;
+    }
+  }
+
+  // ===================================
+  // Helper Methods
+  // ===================================
+
+  /// Convert standard symbol to Kraken format
+  /// Example: BTCEUR -> XBTEUR, ETHEUR -> ETHEUR
+  String _convertToKrakenSymbol(String symbol) {
+    // Kraken uses XBT instead of BTC
+    if (symbol.startsWith('BTC')) {
+      return 'XBT' + symbol.substring(3);
+    }
+
+    // Add X prefix for crypto, Z for fiat (Kraken convention)
+    final quotes = ['EUR', 'USD', 'USDT', 'USDC'];
+    for (final quote in quotes) {
+      if (symbol.endsWith(quote)) {
+        final base = symbol.substring(0, symbol.length - quote.length);
+        return base + quote;
+      }
+    }
+
+    return symbol;
+  }
+
+  /// Convert interval string to Kraken interval (minutes)
+  int _convertIntervalToKraken(String interval) {
+    final map = {
+      '1m': 1,
+      '5m': 5,
+      '15m': 15,
+      '1h': 60,
+      '4h': 240,
+      '1d': 1440,
+    };
+
+    return map[interval] ?? 60; // Default to 1h
+  }
+}
