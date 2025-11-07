@@ -95,6 +95,8 @@ class _MarketScreenState extends State<MarketScreen> {
       _selectedSymbol = exchange.buildTradingPair('BTC', q);
       _loadingTickers = true;
       _loadingChart = true;
+      _candles = []; // Clear old candles to prevent showing stale data
+      _tickers.clear(); // Clear old tickers
     });
     _refreshTickers();
     _loadChart();
@@ -135,6 +137,8 @@ class _MarketScreenState extends State<MarketScreen> {
       _selectedSymbol = exchange.buildTradingPair('BTC', q);
       _loadingTickers = true;
       _loadingChart = true;
+      _candles = []; // Clear old candles to prevent showing stale data
+      _tickers.clear(); // Clear old tickers
     });
     _refreshTickers();
     _loadChart();
@@ -192,11 +196,23 @@ class _MarketScreenState extends State<MarketScreen> {
         orElse: () => [_selectedSymbol], // Fallback to just the symbol itself
       );
 
-      final List<Candle> klines = await exchange.fetchKlinesWithFallback(
+      List<Candle> klines = await exchange.fetchKlinesWithFallback(
         symbolListForFallback,
         _interval,
         limit: limit,
       );
+
+      // CRITICAL: Sort candles by time (ascending) to ensure proper order
+      // Some exchanges may return candles in descending order
+      klines.sort((a, b) => a.openTime.compareTo(b.openTime));
+
+      // DEBUG: Log the candle data received
+      if (klines.isNotEmpty) {
+        debugPrint('📊 [Market] Loaded ${klines.length} candles for $_interval');
+        debugPrint('📊 [Market] First candle: open=${klines.first.open}, close=${klines.first.close}, time=${klines.first.openTime}');
+        debugPrint('📊 [Market] Last candle: open=${klines.last.open}, close=${klines.last.close}, time=${klines.last.openTime}');
+      }
+
       final List<CandleData> data = <CandleData>[];
       for (int i = 0; i < klines.length; i++) {
         final Candle c = klines[i];
@@ -329,16 +345,26 @@ class _MarketScreenState extends State<MarketScreen> {
                                 style: AppTheme.headingLarge,
                               ),
                               const SizedBox(height: AppTheme.spacing4),
-                              if (_candles.isNotEmpty)
-                                Text(
-                                  prefix + (_candles.last.close >= 100
-                                      ? _candles.last.close.toStringAsFixed(0)
-                                      : _candles.last.close.toStringAsFixed(4)),
-                                  style: AppTheme.monoLarge.copyWith(
-                                    color: _candles.last.close > _candles.last.open
-                                        ? AppTheme.buyGreen
-                                        : AppTheme.sellRed,
-                                  ),
+                              if (_candles.length >= 2)
+                                Builder(
+                                  builder: (context) {
+                                    // ALWAYS use the second-to-last candle (penultimate) which is guaranteed to be closed
+                                    // This ensures each timeframe shows its own unique closed price
+                                    final displayCandle = _candles[_candles.length - 2];
+
+                                    final priceText = prefix + (displayCandle.close >= 100
+                                        ? displayCandle.close.toStringAsFixed(0)
+                                        : displayCandle.close.toStringAsFixed(4));
+                                    debugPrint('💰 [Market] Displaying price: $priceText from CLOSED candle (index ${_candles.length - 2})');
+                                    return Text(
+                                      priceText,
+                                      style: AppTheme.monoLarge.copyWith(
+                                        color: displayCandle.close > displayCandle.open
+                                            ? AppTheme.buyGreen
+                                            : AppTheme.sellRed,
+                                      ),
+                                    );
+                                  },
                                 ),
                             ],
                           ),
@@ -379,6 +405,7 @@ class _MarketScreenState extends State<MarketScreen> {
                                     ),
                                   )
                                 : CandlestickChart(
+                                    key: ValueKey('${_selectedSymbol}_$_interval'),
                                     data: _candles,
                                     bullColor: AppTheme.buyGreen,
                                     bearColor: AppTheme.sellRed,
@@ -432,7 +459,14 @@ class _MarketScreenState extends State<MarketScreen> {
             MaterialPageRoute(builder: (context) => const PaywallScreen()),
           );
         } else {
-          setState(() => _interval = value);
+          debugPrint('🔄 [Market] User changed timeframe to $value (old: $_interval)');
+          setState(() {
+            _interval = value;
+            _candles = []; // Clear old candles when changing timeframe
+            _loadingChart = true;
+          });
+          debugPrint('🔄 [Market] Cleared _candles, now length=${_candles.length}');
+          debugPrint('🔄 [Market] Calling _loadChart() for $_interval');
           _loadChart();
         }
       },
@@ -469,6 +503,8 @@ class _MarketScreenState extends State<MarketScreen> {
 
   List<Widget> _buildTickerCards(String quote, String prefix) {
     final q = quote.toUpperCase();
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final exchange = exchangeProvider.currentExchange;
 
     Widget buildCard(String base, String key) {
       final t = _tickers[key];
@@ -490,13 +526,13 @@ class _MarketScreenState extends State<MarketScreen> {
           padding: const EdgeInsets.all(AppTheme.spacing12),
           decoration: BoxDecoration(
             gradient: isSelected ? AppTheme.primaryGradient : null,
-            color: isSelected ? null : (Theme.of(context).brightness == Brightness.dark 
-                ? AppTheme.glassWhite 
+            color: isSelected ? null : (Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.glassWhite
                 : Colors.grey[100]),
             borderRadius: BorderRadius.circular(AppTheme.radiusMD),
             border: Border.all(
-              color: isSelected ? Colors.transparent : (Theme.of(context).brightness == Brightness.dark 
-                  ? AppTheme.glassBorder 
+              color: isSelected ? Colors.transparent : (Theme.of(context).brightness == Brightness.dark
+                  ? AppTheme.glassBorder
                   : Colors.grey[300]!),
               width: 1.5,
             ),
@@ -519,8 +555,8 @@ class _MarketScreenState extends State<MarketScreen> {
                     child: Text(
                       base,
                       style: AppTheme.bodyMedium.copyWith(
-                        color: isSelected ? Colors.white : (Theme.of(context).brightness == Brightness.dark 
-                            ? AppTheme.textPrimary 
+                        color: isSelected ? Colors.white : (Theme.of(context).brightness == Brightness.dark
+                            ? AppTheme.textPrimary
                             : AppTheme.textPrimaryLight),
                         fontWeight: FontWeight.w600,
                       ),
@@ -536,8 +572,8 @@ class _MarketScreenState extends State<MarketScreen> {
               Text(
                 price > 0 ? prefix + (price >= 100 ? price.toStringAsFixed(0) : price.toStringAsFixed(4)) : '—',
                 style: AppTheme.monoMedium.copyWith(
-                  color: isSelected ? Colors.white : (Theme.of(context).brightness == Brightness.dark 
-                      ? AppTheme.textPrimary 
+                  color: isSelected ? Colors.white : (Theme.of(context).brightness == Brightness.dark
+                      ? AppTheme.textPrimary
                       : AppTheme.textPrimaryLight),
                   fontWeight: FontWeight.w600,
                 ),
@@ -589,7 +625,8 @@ class _MarketScreenState extends State<MarketScreen> {
 
     // Use _userCoins dynamically (TOP 10 default or user's coins from API)
     final coins = _userCoins.isNotEmpty ? _userCoins : UserCoinsService.defaultCoins;
-    return coins.map((coin) => buildCard(coin, '$coin$q')).toList();
+    // Use exchange-specific format for ticker lookup key (e.g., BTC-EUR for Coinbase, XBTEUR for Kraken)
+    return coins.map((coin) => buildCard(coin, exchange.buildTradingPair(coin, q))).toList();
   }
 }
 
@@ -662,8 +699,9 @@ class CandlestickChart extends StatelessWidget {
       );
     }
 
-    // Get current price (last candle close)
-    final double currentPrice = data.last.close;
+    // Get current price from LAST CLOSED candle (second-to-last in array)
+    // The last candle might be incomplete/current, so we use the penultimate one
+    final double currentPrice = data.length >= 2 ? data[data.length - 2].close : data.last.close;
     final String currencyPrefix = _getCurrencyPrefix();
 
     return SfCartesianChart(
@@ -756,12 +794,14 @@ class CandlestickChart extends StatelessWidget {
         enablePanning: true,
         zoomMode: ZoomMode.x,
       ),
-      // Annotations for current price line
+      // Annotations for current price line (using last CLOSED candle)
       annotations: <CartesianChartAnnotation>[
         CartesianChartAnnotation(
           widget: Container(
             decoration: BoxDecoration(
-              color: data.last.close > data.last.open ? bullColor : bearColor,
+              color: data.length >= 2
+                ? (data[data.length - 2].close > data[data.length - 2].open ? bullColor : bearColor)
+                : (data.last.close > data.last.open ? bullColor : bearColor),
               borderRadius: BorderRadius.circular(4),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -776,7 +816,7 @@ class CandlestickChart extends StatelessWidget {
             ),
           ),
           coordinateUnit: CoordinateUnit.point,
-          x: data.length - 1,
+          x: data.length >= 2 ? data.length - 2 : data.length - 1,
           y: currentPrice,
           horizontalAlignment: ChartAlignment.far,
           verticalAlignment: ChartAlignment.center,
@@ -785,7 +825,9 @@ class CandlestickChart extends StatelessWidget {
         CartesianChartAnnotation(
           widget: Container(
             height: 1,
-            color: (data.last.close > data.last.open ? bullColor : bearColor).withOpacity(0.5),
+            color: (data.length >= 2
+              ? (data[data.length - 2].close > data[data.length - 2].open ? bullColor : bearColor)
+              : (data.last.close > data.last.open ? bullColor : bearColor)).withOpacity(0.5),
           ),
           coordinateUnit: CoordinateUnit.point,
           region: AnnotationRegion.plotArea,

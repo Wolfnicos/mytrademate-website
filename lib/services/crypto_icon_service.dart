@@ -18,7 +18,7 @@ class CryptoIconService {
       'DOGE': 'dogecoin',
       'SHIB': 'shiba-inu',
       'PEPE': 'pepe',
-      'MATIC': 'matic-network',
+      'POL': 'matic-network',  // POL (Polygon) - still uses matic-network ID on CoinGecko
       'AVAX': 'avalanche-2',
       'ATOM': 'cosmos',
       'XRP': 'ripple',
@@ -56,7 +56,7 @@ class CryptoIconService {
       'UNI': 'uni-uniswap',
       'DOGE': 'doge-dogecoin',
       'SHIB': 'shib-shiba-inu',
-      'MATIC': 'matic-polygon',
+      'POL': 'matic-polygon',  // POL (Polygon) - still uses matic slug on Coinpaprika
       'AVAX': 'avax-avalanche',
       'ATOM': 'atom-cosmos',
       'XRP': 'xrp-xrp',

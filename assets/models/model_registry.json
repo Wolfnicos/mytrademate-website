@@ -2,12 +2,12 @@
   "schema": "v1",
   "label_order": ["SELL", "HOLD", "BUY"],
   "tf_map": {"1w": "7d"},
-  "default_conf_thresholds": {"5m": 0.32, "15m": 0.35, "1h": 0.38, "4h": 0.40, "1d": 0.42, "7d": 0.45},
+  "default_conf_thresholds": {"5m": 0.50, "15m": 0.50, "1h": 0.50, "4h": 0.50, "1d": 0.50, "7d": 0.50},
   "action_thresholds_v2": {
     "BUY": 0.60,
     "SELL": 0.60,
-    "HOLD": 0.45,
-    "description": "Minimum confidence required for each action (Phase 2 upgrade)"
+    "HOLD": 0.50,
+    "description": "Minimum confidence required for each action (Phase 3: 50% threshold for stronger signals)"
   },
   "coin_threshold_overrides": {
     "TRUMP": {"BUY": 0.65, "SELL": 0.65},

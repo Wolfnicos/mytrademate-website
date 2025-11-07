@@ -25,7 +25,7 @@ class UserCoinsService with ChangeNotifier {
     'XRP',  // Ripple
     'DOGE', // Dogecoin
     'DOT',  // Polkadot
-    'MATIC',// Polygon
+    'POL',  // Polygon (formerly MATIC)
     'LTC',  // Litecoin
   ];
 

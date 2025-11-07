@@ -898,7 +898,7 @@ class BinanceService implements BaseExchangeService {
         'XRPEUR',
         'ADAEUR',
         'DOGEEUR',
-        'MATICEUR',
+        'POLEUR',
         'DOTEUR',
         'LINKEUR',
         'UNIEUR',

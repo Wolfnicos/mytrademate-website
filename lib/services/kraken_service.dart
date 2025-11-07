@@ -45,7 +45,15 @@ class KrakenService implements BaseExchangeService {
   @override
   String buildTradingPair(String base, String quote) {
     // Kraken format: XBTEUR, ETHEUR (BTC → XBT, simple concatenation)
-    final krakenBase = base == 'BTC' ? 'XBT' : base;
+    // Handle special cases:
+    // - BTC → XBT (Kraken uses XBT for Bitcoin)
+    // - MATIC → POL (Polygon rebranded from MATIC to POL)
+    String krakenBase = base;
+    if (base == 'BTC') {
+      krakenBase = 'XBT';
+    } else if (base == 'MATIC') {
+      krakenBase = 'POL';  // Kraken migrated MATIC to POL
+    }
     return '$krakenBase$quote';
   }
 
@@ -253,8 +261,18 @@ class KrakenService implements BaseExchangeService {
         'interval': krakenInterval.toString(),
       };
 
+      // Kraken API: 'since' specifies the START time
+      // Calculate 'since' to get recent candles
       if (endTime != null) {
         queryParams['since'] = (endTime ~/ 1000).toString();
+      } else {
+        // If no endTime, calculate from current time going backwards
+        // For 1d: go back 30+ days, for 1h: go back 48+ hours, etc.
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        final intervalMinutes = krakenInterval;
+        final totalMinutes = limit * intervalMinutes;
+        final sinceTime = now - (totalMinutes * 60);
+        queryParams['since'] = sinceTime.toString();
       }
 
       final uri = Uri.https(_baseHost, '/0/public/OHLC', queryParams);
@@ -295,7 +313,9 @@ class KrakenService implements BaseExchangeService {
         return [];
       }
 
-      return pairData.map((c) {
+      // Kraken returns candles in chronological order (old → new)
+      // Take the LAST 'limit' candles (most recent ones)
+      final allCandles = pairData.map((c) {
         final openTimeMs = (c[0] as int) * 1000; // Convert to milliseconds
         final intervalMs = krakenInterval * 60 * 1000; // Convert minutes to milliseconds
         return Candle(
@@ -307,7 +327,36 @@ class KrakenService implements BaseExchangeService {
           volume: double.parse(c[6]),
           closeTime: DateTime.fromMillisecondsSinceEpoch(openTimeMs + intervalMs),
         );
-      }).take(limit).toList();
+      }).toList();
+
+      // Skip old candles and keep only the most recent 'limit' candles
+      final startIndex = allCandles.length > limit ? allCandles.length - limit : 0;
+      final candles = allCandles.sublist(startIndex);
+
+      if (candles.isNotEmpty) {
+        debugPrint('[Kraken] 📊 Fetched ${candles.length} candles for $symbol @ $interval');
+
+        // Check if last candle might be incomplete (current/live candle)
+        // A candle is considered "current" if its close time is in the future or very recent (< 2 min ago)
+        final now = DateTime.now();
+        final lastCandle = candles.last;
+        final timeSinceClose = now.difference(lastCandle.closeTime);
+        final isCurrentCandle = timeSinceClose.isNegative || timeSinceClose.inMinutes < 2;
+
+        if (isCurrentCandle && candles.length > 1) {
+          final minUntilClose = lastCandle.closeTime.difference(now).inMinutes;
+          debugPrint('[Kraken] ⚠️  Last candle is CURRENT/INCOMPLETE closes in $minUntilClose min');
+          debugPrint('[Kraken] ✅ Using PREVIOUS candle instead');
+          final prevCandle = candles[candles.length - 2];
+          debugPrint('[Kraken] 📊 Current: ${lastCandle.close} | Previous: ${prevCandle.close}');
+        } else {
+          final minAgo = timeSinceClose.inMinutes;
+          debugPrint('[Kraken] ✅ Last candle CLOSED $minAgo min ago');
+          debugPrint('[Kraken] 📊 Last candle: ${lastCandle.close}');
+        }
+      }
+
+      return candles;
     } catch (e) {
       debugPrint('[Kraken] Error fetching klines for $symbol: $e');
       return [];

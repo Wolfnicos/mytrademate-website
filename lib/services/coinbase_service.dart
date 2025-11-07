@@ -47,7 +47,12 @@ class CoinbaseService implements BaseExchangeService {
   @override
   String buildTradingPair(String base, String quote) {
     // Coinbase format: BTC-EUR, ETH-USDT (with hyphen)
-    return '$base-$quote';
+    // Handle special case: MATIC → POL (Polygon rebranded)
+    String coinbaseBase = base;
+    if (base == 'MATIC') {
+      coinbaseBase = 'POL';  // Coinbase migrated MATIC to POL
+    }
+    return '$coinbaseBase-$quote';
   }
 
   // ===================================
@@ -227,7 +232,8 @@ class CoinbaseService implements BaseExchangeService {
     int? endTime,
   }) async {
     try {
-      // Convert symbol format: BTCEUR -> BTC-EUR
+      final originalSymbol = symbol;
+      // Convert symbol format: BTCEUR -> BTC-USD
       final coinbaseSymbol = _convertToCoinbaseSymbol(symbol);
 
       // Convert interval to granularity (seconds)
@@ -249,19 +255,39 @@ class CoinbaseService implements BaseExchangeService {
 
       final List<dynamic> candles = json.decode(response.body) as List<dynamic>;
 
-      return candles.take(limit).map((c) {
+      // Get EUR/USD rate if we need to convert prices
+      double eurUsdRate = 1.0;
+      if (originalSymbol.contains('EUR') && coinbaseSymbol.contains('USD')) {
+        eurUsdRate = await _getEurUsdRate();
+      }
+
+      final result = candles.take(limit).map((c) {
         final timestamp = c[0] as int; // Unix timestamp in seconds
         final timestampMs = timestamp * 1000; // Convert to milliseconds
+
+        // Convert prices from USD to EUR if needed
+        final low = (c[1] as num).toDouble() / eurUsdRate;
+        final high = (c[2] as num).toDouble() / eurUsdRate;
+        final open = (c[3] as num).toDouble() / eurUsdRate;
+        final close = (c[4] as num).toDouble() / eurUsdRate;
+
         return Candle(
           openTime: DateTime.fromMillisecondsSinceEpoch(timestampMs),
-          low: (c[1] as num).toDouble(),
-          high: (c[2] as num).toDouble(),
-          open: (c[3] as num).toDouble(),
-          close: (c[4] as num).toDouble(),
+          low: low,
+          high: high,
+          open: open,
+          close: close,
           volume: (c[5] as num).toDouble(),
           closeTime: DateTime.fromMillisecondsSinceEpoch(timestampMs + (granularity * 1000)),
         );
       }).toList();
+
+      if (result.isNotEmpty && originalSymbol.contains('EUR') && coinbaseSymbol.contains('USD')) {
+        debugPrint('[Coinbase] 💱 Converted ${result.length} candles from USD to EUR (rate: $eurUsdRate)');
+        debugPrint('[Coinbase] 💱 Sample: USD \$${(result.first.close * eurUsdRate).toStringAsFixed(2)} → EUR €${result.first.close.toStringAsFixed(2)}');
+      }
+
+      return result;
     } catch (e) {
       debugPrint('[Coinbase] Error fetching klines for $symbol: $e');
       return [];
@@ -271,6 +297,7 @@ class CoinbaseService implements BaseExchangeService {
   @override
   Future<Map<String, double>> fetchTicker24h(String symbol) async {
     try {
+      final originalSymbol = symbol;
       final coinbaseSymbol = _convertToCoinbaseSymbol(symbol);
 
       // Coinbase Exchange API (public, no auth) - /products/{product-id}/ticker
@@ -284,7 +311,7 @@ class CoinbaseService implements BaseExchangeService {
       }
 
       final data = json.decode(response.body) as Map<String, dynamic>;
-      final price = double.tryParse(data['price'] ?? '0') ?? 0.0;
+      double price = double.tryParse(data['price'] ?? '0') ?? 0.0;
 
       // Get 24h stats from /products/{product-id}/stats
       final stats24hPath = '/products/$coinbaseSymbol/stats';
@@ -300,6 +327,15 @@ class CoinbaseService implements BaseExchangeService {
         }
       }
 
+      // If original symbol was EUR but we converted to USD, convert price back to EUR
+      if (originalSymbol.contains('EUR') && coinbaseSymbol.contains('USD')) {
+        final eurUsdRate = await _getEurUsdRate();
+        if (eurUsdRate > 0) {
+          price = price / eurUsdRate; // Convert USD price to EUR
+          debugPrint('[Coinbase] Converted USD price to EUR: \$${price * eurUsdRate} → €$price (rate: $eurUsdRate)');
+        }
+      }
+
       return {
         'lastPrice': price,
         'priceChangePercent': changePercent,
@@ -309,6 +345,81 @@ class CoinbaseService implements BaseExchangeService {
       rethrow;
     }
   }
+
+  /// Get EUR/USD exchange rate from external APIs
+  /// Returns the USD price of 1 EUR (e.g., 1.16 means €1 = $1.16)
+  Future<double> _getEurUsdRate() async {
+    try {
+      // Check if we have a cached rate (valid for 1 hour)
+      if (_cachedEurUsdRate > 0 &&
+          _lastEurUsdRateTime != null &&
+          DateTime.now().difference(_lastEurUsdRateTime!) < const Duration(hours: 1)) {
+        return _cachedEurUsdRate;
+      }
+
+      // Try fetching from exchangerate-api.com (free, no auth required)
+      // Using v6 API (v4 is deprecated and returns wrong rates)
+      try {
+        final uri = Uri.https('open.er-api.com', '/v6/latest/EUR');
+        final response = await http.get(uri).timeout(const Duration(seconds: 5));
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body) as Map<String, dynamic>;
+          final rates = data['rates'] as Map<String, dynamic>;
+          final rate = (rates['USD'] as num?)?.toDouble() ?? 0.0;
+
+          if (rate > 0) {
+            _cachedEurUsdRate = rate;
+            _lastEurUsdRateTime = DateTime.now();
+            debugPrint('[Coinbase] EUR→USD rate from exchangerate-api v6: $rate (1 EUR = $rate USD)');
+            return rate;
+          }
+        }
+      } catch (e) {
+        debugPrint('[Coinbase] exchangerate-api.com v6 failed: $e');
+      }
+
+      // Fallback: Calculate from BTC prices on Kraken (XBTEUR vs XBTUSD)
+      try {
+        final eurUri = Uri.https('api.kraken.com', '/0/public/Ticker', {'pair': 'XBTEUR'});
+        final usdUri = Uri.https('api.kraken.com', '/0/public/Ticker', {'pair': 'XBTUSD'});
+
+        final eurResponse = await http.get(eurUri).timeout(const Duration(seconds: 5));
+        final usdResponse = await http.get(usdUri).timeout(const Duration(seconds: 5));
+
+        if (eurResponse.statusCode == 200 && usdResponse.statusCode == 200) {
+          final eurData = json.decode(eurResponse.body) as Map<String, dynamic>;
+          final usdData = json.decode(usdResponse.body) as Map<String, dynamic>;
+
+          final eurResult = eurData['result'] as Map<String, dynamic>;
+          final usdResult = usdData['result'] as Map<String, dynamic>;
+
+          final btcEur = double.tryParse((eurResult.values.first as Map<String, dynamic>)['c'][0]) ?? 0.0;
+          final btcUsd = double.tryParse((usdResult.values.first as Map<String, dynamic>)['c'][0]) ?? 0.0;
+
+          if (btcEur > 0 && btcUsd > 0) {
+            final rate = btcUsd / btcEur; // If BTC=€90k and BTC=$100k, then EUR/USD = 100/90 = 1.11
+            _cachedEurUsdRate = rate;
+            _lastEurUsdRateTime = DateTime.now();
+            debugPrint('[Coinbase] EUR/USD rate calculated from Kraken BTC prices: $rate');
+            return rate;
+          }
+        }
+      } catch (e) {
+        debugPrint('[Coinbase] Kraken BTC fallback failed: $e');
+      }
+
+      // Last resort fallback
+      debugPrint('[Coinbase] All EUR/USD rate sources failed, using fallback 1.10');
+      return 1.10; // Updated fallback based on current rates
+    } catch (e) {
+      debugPrint('[Coinbase] Error fetching EUR/USD rate: $e, using fallback 1.10');
+      return 1.10;
+    }
+  }
+
+  double _cachedEurUsdRate = 0.0;
+  DateTime? _lastEurUsdRateTime;
 
   @override
   Future<List<Candle>> fetchKlinesWithFallback(
