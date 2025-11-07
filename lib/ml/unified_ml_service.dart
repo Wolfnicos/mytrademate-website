@@ -225,10 +225,15 @@ class UnifiedMLService {
     // Normalize final ensemble
     final List<double> pFinal = probsAccum.map((v) => v / totalW).toList(growable: false);
 
+    // Apply consensus bonus if multiple models strongly agree
+    final consensusResult = _applyConsensusBonus(pFinal, usedIds.length);
+    final List<double> pFinalWithBonus = consensusResult.probabilities;
+    final String consensusReason = consensusResult.reason;
+
     // Gating by timeframe threshold + optional risk adjustment based on volatility z-score
     double gate = reg.thresholdForTimeframe(tfNorm);
     double usedGate = gate;
-    String reason = 'ok';
+    String reason = consensusReason.isNotEmpty ? consensusReason : 'ok';
 
     // Optional: risk-based threshold bump if volatility is high
     final double? volZ = _estimateVolatilityZ(features);
@@ -236,8 +241,8 @@ class UnifiedMLService {
       usedGate = (gate + reg.risk!.volThreshIncrement).clamp(0.0, 0.95);
     }
 
-    final int argMax = _argmax(pFinal);
-    final double conf = pFinal[argMax];
+    final int argMax = _argmax(pFinalWithBonus);
+    final double conf = pFinalWithBonus[argMax];
 
     if (conf < usedGate) {
       // Telemetry
@@ -247,17 +252,17 @@ class UnifiedMLService {
         ids: usedIds,
         weights: usedWeights,
         temps: usedTemps,
-        pFinal: pFinal,
+        pFinal: pFinalWithBonus,
         action: 'HOLD',
-        confidence: pFinal[1],
+        confidence: pFinalWithBonus[1],
         confThresh: usedGate,
         featureHashOk: featureHashOk,
         reason: 'below_threshold',
       );
       return UnifiedDecisionResult(
         action: 'HOLD',
-        confidence: pFinal[1],
-        probabilities: pFinal,
+        confidence: pFinalWithBonus[1],
+        probabilities: pFinalWithBonus,
         timeframe: tfNorm,
         usedModelIds: usedIds,
         featureHashOk: featureHashOk,
@@ -273,17 +278,17 @@ class UnifiedMLService {
       ids: usedIds,
       weights: usedWeights,
       temps: usedTemps,
-      pFinal: pFinal,
+      pFinal: pFinalWithBonus,
       action: action,
       confidence: conf,
       confThresh: usedGate,
       featureHashOk: featureHashOk,
-      reason: 'ok',
+      reason: reason,
     );
     return UnifiedDecisionResult(
       action: action,
       confidence: conf,
-      probabilities: pFinal,
+      probabilities: pFinalWithBonus,
       timeframe: tfNorm,
       usedModelIds: usedIds,
       featureHashOk: featureHashOk,
@@ -479,6 +484,53 @@ class UnifiedMLService {
       return null;
     }
   }
+
+  /// Apply consensus bonus when multiple models strongly agree
+  /// Returns modified probabilities with potential confidence boost
+  _ConsensusResult _applyConsensusBonus(List<double> probs, int modelCount) {
+    // Need at least 3 models for meaningful consensus
+    if (modelCount < 3) {
+      return _ConsensusResult(probabilities: probs, reason: '');
+    }
+
+    // Check if we have strong agreement (one action has >55% probability)
+    final int argMax = _argmax(probs);
+    final double maxProb = probs[argMax];
+
+    if (maxProb < 0.55) {
+      // No strong consensus
+      return _ConsensusResult(probabilities: probs, reason: '');
+    }
+
+    // Apply consensus bonus: boost the winning action by up to 15%
+    // The more models agree, the stronger the boost
+    final double consensusStrength = (maxProb - 0.55) / 0.45; // 0.0 to 1.0
+    final double boost = 0.15 * consensusStrength; // Up to 15% boost
+
+    // Create boosted probabilities
+    final List<double> boosted = List<double>.from(probs);
+    boosted[argMax] = math.min(0.95, boosted[argMax] + boost);
+
+    // Renormalize to ensure sum = 1.0
+    final double sum = boosted.reduce((a, b) => a + b);
+    final List<double> normalized = boosted.map((p) => p / sum).toList(growable: false);
+
+    final String action = argMax == 0 ? 'SELL' : (argMax == 2 ? 'BUY' : 'HOLD');
+    debugPrint('🤝 [Consensus Bonus] $modelCount models agree on $action: ${maxProb.toStringAsFixed(3)} → ${normalized[argMax].toStringAsFixed(3)} (+${boost.toStringAsFixed(3)})');
+
+    return _ConsensusResult(
+      probabilities: normalized,
+      reason: 'consensus_boost_$action',
+    );
+  }
+}
+
+/// Result of consensus bonus calculation
+class _ConsensusResult {
+  final List<double> probabilities;
+  final String reason;
+
+  _ConsensusResult({required this.probabilities, required this.reason});
 }
 
 // Global singleton
