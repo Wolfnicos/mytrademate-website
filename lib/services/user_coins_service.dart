@@ -1,11 +1,11 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
-import 'package:mytrademate/services/binance_service.dart';
+import 'base_exchange_service.dart';
 
 /// User Coins Service - Manages user's cryptocurrency list
 ///
 /// Logic:
-/// - If user has Binance API connected → use coins from portfolio
+/// - If user has Exchange API connected → use coins from portfolio
 /// - If user has NO API → use TOP 10 popular coins (default)
 class UserCoinsService with ChangeNotifier {
   static final UserCoinsService _instance = UserCoinsService._internal();
@@ -61,29 +61,26 @@ class UserCoinsService with ChangeNotifier {
     return _cachedCoins;
   }
 
-  /// Update coins from Binance portfolio
+  /// Update coins from Exchange portfolio (Binance, Coinbase, Kraken)
   /// Extracts unique coins from user's portfolio balances
-  Future<void> updateCoinsFromBinance() async {
-    debugPrint('🔄 UserCoinsService: updateCoinsFromBinance() called');
+  Future<void> updateCoinsFromExchange(BaseExchangeService exchange) async {
+    debugPrint('🔄 UserCoinsService: updateCoinsFromExchange(${exchange.exchangeName}) called');
     try {
-      final binanceService = BinanceService();
-
       // Check if API is connected
-      final hasCredentials = binanceService.apiKey != null &&
-                            binanceService.apiKey!.isNotEmpty;
+      final hasCredentials = exchange.hasCredentials;
 
-      debugPrint('🔍 API credentials check: hasCredentials=$hasCredentials');
+      debugPrint('🔍 API credentials check for ${exchange.exchangeName}: hasCredentials=$hasCredentials');
 
       if (!hasCredentials) {
-        debugPrint('⚠️  No Binance API connected - using default coins');
+        debugPrint('⚠️  No ${exchange.exchangeName} API connected - using default coins');
         await setDefaultCoins();
         return;
       }
 
-      debugPrint('🔄 Fetching account balances from Binance...');
+      debugPrint('🔄 Fetching account balances from ${exchange.exchangeName}...');
       // Fetch account balances
-      final balances = await binanceService.getAccountBalances();
-      debugPrint('✅ Fetched ${balances.length} balances from Binance');
+      final balances = await exchange.getAccountBalances();
+      debugPrint('✅ Fetched ${balances.length} balances from ${exchange.exchangeName}');
 
       if (balances.isEmpty) {
         debugPrint('⚠️  Empty balances - using default coins');
@@ -95,7 +92,7 @@ class UserCoinsService with ChangeNotifier {
       final coins = balances.entries
           .where((entry) => entry.value > 0) // Only coins with positive balance
           .map((entry) => entry.key) // Get coin symbol
-          .where((coin) => coin != 'EUR' && coin != 'USDT' && coin != 'USDC' && coin != 'BUSD') // Exclude quote currencies
+          .where((coin) => coin != 'EUR' && coin != 'USD' && coin != 'USDT' && coin != 'USDC' && coin != 'BUSD') // Exclude quote currencies
           .toList();
 
       if (coins.isEmpty) {
@@ -109,16 +106,24 @@ class UserCoinsService with ChangeNotifier {
       _cachedCoins = coins;
       _cachedSource = 'api';
 
-      debugPrint('✅ Updated coins from Binance API: ${coins.length} coins');
+      debugPrint('✅ Updated coins from ${exchange.exchangeName} API: ${coins.length} coins');
       debugPrint('   Coins: ${coins.join(", ")}');
 
       // Notify listeners that coins changed
       notifyListeners();
     } catch (e) {
-      debugPrint('❌ Error updating coins from Binance: $e');
+      debugPrint('❌ Error updating coins from ${exchange.exchangeName}: $e');
       // Fallback to default on error
       await setDefaultCoins();
     }
+  }
+
+  /// Update coins from Binance portfolio (deprecated - use updateCoinsFromExchange)
+  @Deprecated('Use updateCoinsFromExchange(exchange) instead')
+  Future<void> updateCoinsFromBinance() async {
+    // This method is kept for backward compatibility
+    // It will be removed in a future version
+    debugPrint('⚠️  updateCoinsFromBinance is deprecated, please use updateCoinsFromExchange');
   }
 
   /// Set default TOP 10 coins

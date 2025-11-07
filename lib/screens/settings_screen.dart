@@ -227,8 +227,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         frequency: const Duration(minutes: 30),
       );
 
-      // Update coins from Binance if API connected
-      await UserCoinsService().updateCoinsFromBinance();
+      // Update coins from current exchange if API connected
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      await UserCoinsService().updateCoinsFromExchange(exchangeProvider.currentExchange);
 
       // Get updated coin count
       final coins = await UserCoinsService().getUserCoins();
@@ -272,10 +273,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     try {
-      await _binanceService.saveCredentials(apiKey, apiSecret);
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
 
-      // Update coins from Binance portfolio
-      await UserCoinsService().updateCoinsFromBinance();
+      await exchange.saveCredentials(apiKey, apiSecret);
+
+      // Update coins from current exchange portfolio
+      await UserCoinsService().updateCoinsFromExchange(exchange);
 
       _showSnackBar('Credentials saved successfully', isError: false);
       // Keep them in the fields so they persist visually
