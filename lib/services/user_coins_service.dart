@@ -89,10 +89,13 @@ class UserCoinsService with ChangeNotifier {
       }
 
       // Extract unique coins (assets with balance > 0)
+      // Exclude fiat currencies and stablecoins (quote currencies only)
+      final excludedCurrencies = {'EUR', 'USD', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'USDP'};
+
       final coins = balances.entries
           .where((entry) => entry.value > 0) // Only coins with positive balance
           .map((entry) => entry.key) // Get coin symbol
-          .where((coin) => coin != 'EUR' && coin != 'USD' && coin != 'USDT' && coin != 'USDC' && coin != 'BUSD') // Exclude quote currencies
+          .where((coin) => !excludedCurrencies.contains(coin.toUpperCase())) // Exclude fiat & stablecoins
           .toList();
 
       if (coins.isEmpty) {

@@ -278,32 +278,34 @@ class _PortfolioValueCard extends StatelessWidget {
 
           const SizedBox(height: AppTheme.spacing12),
 
-          Container(
-            padding: const EdgeInsets.all(AppTheme.spacing12),
-            decoration: BoxDecoration(
-              color: AppTheme.glassWhite,
-              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-              border: Border.all(
-                color: AppTheme.glassBorder,
-                width: 1,
+          Consumer<ExchangeProvider>(
+            builder: (context, exchangeProvider, _) => Container(
+              padding: const EdgeInsets.all(AppTheme.spacing12),
+              decoration: BoxDecoration(
+                color: AppTheme.glassWhite,
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                border: Border.all(
+                  color: AppTheme.glassBorder,
+                  width: 1,
+                ),
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  color: AppTheme.getTextTertiary(context),
-                  size: 16,
-                ),
-                const SizedBox(width: AppTheme.spacing8),
-                Text(
-                  'Live portfolio value from Binance',
-                  style: AppTheme.bodySmall.copyWith(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.info_outline,
                     color: AppTheme.getTextTertiary(context),
+                    size: 16,
                   ),
-                ),
-              ],
+                  const SizedBox(width: AppTheme.spacing8),
+                  Text(
+                    'Live portfolio value from ${exchangeProvider.selectedExchange}',
+                    style: AppTheme.bodySmall.copyWith(
+                      color: AppTheme.getTextTertiary(context),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -481,8 +483,22 @@ class _HoldingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final quote = AppSettingsService().quoteCurrency;
+    final quote = AppSettingsService().quoteCurrency.toUpperCase();
     final prefix = AppSettingsService.currencyPrefix(quote);
+
+    // Determine if this asset IS the quote currency (e.g., EUR when quote is EUR)
+    final isQuoteCurrency = asset.toUpperCase() == quote;
+
+    // Format amount display
+    String amountDisplay;
+    if (isQuoteCurrency) {
+      // If holding IS the quote currency, show in quote format
+      // E.g., if holding EUR and quote is USD → show as "$10.86"
+      amountDisplay = '$prefix${value.toStringAsFixed(2)}';
+    } else {
+      // If holding is crypto, show amount + symbol
+      amountDisplay = '${amount.toStringAsFixed(4)} $asset';
+    }
 
     return GlassCard(
       child: Row(
@@ -504,7 +520,7 @@ class _HoldingCard extends StatelessWidget {
                 ),
                 const SizedBox(height: AppTheme.spacing4),
                 Text(
-                  '$amount $asset',
+                  amountDisplay,
                   style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
                 ),
               ],
