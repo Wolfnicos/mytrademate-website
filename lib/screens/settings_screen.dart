@@ -84,10 +84,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
+    // Get current exchange
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final currentExchange = exchangeProvider.currentExchange;
+
     // Load settings and credentials in parallel for faster startup
     final results = await Future.wait([
       SharedPreferences.getInstance(),
-      _binanceService.loadCredentials(),
+      currentExchange.loadCredentials(),
       BackgroundAIMonitor.getSettings(),
       UserCoinsService().getUserCoins(),
       UserCoinsService().getCoinsSource(),
@@ -104,8 +108,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _biometricEnabled = prefs.getBool('biometric_enabled') ?? false;
         _permissionLevel = AppSettingsService().permissionLevel;
         _quote = AppSettingsService().quoteCurrency;
-        _apiKeyController.text = _binanceService.apiKey ?? '';
-        _apiSecretController.text = _binanceService.apiSecret ?? '';
+
+        // Load credentials from CURRENT exchange (not hardcoded Binance)
+        _apiKeyController.text = currentExchange.apiKey ?? '';
+        _apiSecretController.text = currentExchange.apiSecret ?? '';
 
         // AI Alerts settings
         _aiAlertsEnabled = aiSettings['enabled'] as bool;
@@ -113,6 +119,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _alertTimeframe = aiSettings['timeframe'] as String;
         _userCoinsCount = userCoins.length;
         _coinsSource = coinsSource;
+      });
+    }
+  }
+
+  /// Reload credentials when switching exchanges
+  void _reloadExchangeCredentials() {
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final currentExchange = exchangeProvider.currentExchange;
+
+    if (mounted) {
+      setState(() {
+        _apiKeyController.text = currentExchange.apiKey ?? '';
+        _apiSecretController.text = currentExchange.apiSecret ?? '';
       });
     }
   }
@@ -293,7 +312,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _isTestingConnection = true);
 
     try {
-      final success = await _binanceService.testConnection();
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
+
+      final success = await exchange.testConnection();
       if (success) {
         _showSnackBar('Connection successful! API keys are valid.', isError: false);
       } else {
@@ -335,7 +357,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (confirm == true) {
-      await _binanceService.clearCredentials();
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
+
+      await exchange.clearCredentials();
       _showSnackBar('Credentials deleted', isError: false);
     }
   }
@@ -844,6 +869,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: GestureDetector(
                             onTap: () async {
                               await exchangeProvider.setExchange(exchange);
+                              // Reload credentials for the new exchange
+                              _reloadExchangeCredentials();
                               _showSnackBar('Switched to $exchange', isError: false);
                             },
                             child: Container(
@@ -1035,14 +1062,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Select the currency for prices and totals (Binance supported)',
+                    'Select the currency for prices and totals',
                     style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
                   ),
                   const SizedBox(height: AppTheme.spacing16),
                   Wrap(
                     spacing: AppTheme.spacing8,
                     runSpacing: AppTheme.spacing8,
-                    children: ['USDT', 'EUR', 'USDC'].map((q) {
+                    children: ['USDT', 'EUR', 'USDC', 'USD'].map((q) {
                       final isSelected = _quote == q;
                       return GestureDetector(
                         onTap: () async {

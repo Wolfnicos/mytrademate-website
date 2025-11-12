@@ -197,7 +197,6 @@ class PortfolioOverviewCard extends StatefulWidget {
 
 class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
   bool _isLoading = false;
-  bool _hasLoadedOnce = false;
   double _totalValue = 0.0;
   String? _error;
 
@@ -205,6 +204,33 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
   void initState() {
     super.initState();
     _loadCachedValue();
+    _loadPortfolio();
+
+    // Listen to exchange changes and reload portfolio (same as Portfolio screen)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<ExchangeProvider>(context, listen: false).addListener(_onExchangeChanged);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    try {
+      Provider.of<ExchangeProvider>(context, listen: false).removeListener(_onExchangeChanged);
+    } catch (e) {
+      // Ignore if provider not available
+    }
+    super.dispose();
+  }
+
+  void _onExchangeChanged() {
+    // Exchange changed - clear cache and reload
+    debugPrint('[PortfolioOverview] Exchange changed, reloading...');
+    setState(() {
+      _totalValue = 0.0; // Clear old cached value immediately
+      _isLoading = true; // Show loading state
+    });
     _loadPortfolio();
   }
 
@@ -220,9 +246,6 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
   }
 
   Future<void> _loadPortfolio() async {
-    // Don't reload if we already have data (prevents reload on scroll/rebuild)
-    if (_hasLoadedOnce) return;
-
     // Don't show loading state, just update in background
     _error = null;
 
@@ -257,7 +280,7 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
           final price = ticker['lastPrice'] ?? 0.0;
           total += amount * price;
         } catch (e) {
-          print('Portfolio: Could not get price for $asset: $e');
+          debugPrint('[PortfolioOverview] Could not get price for $asset: $e');
         }
       }
 
@@ -265,7 +288,6 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
         setState(() {
           _totalValue = total;
           _isLoading = false;
-          _hasLoadedOnce = true;
         });
 
         // Cache the value for instant display next time
@@ -273,7 +295,7 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
         await prefs.setDouble('portfolio_total_value', total);
       }
     } catch (e) {
-      print('Portfolio: Error loading portfolio: $e');
+      debugPrint('[PortfolioOverview] Error loading portfolio: $e');
       if (mounted) {
         setState(() {
           _error = 'Failed to load portfolio';

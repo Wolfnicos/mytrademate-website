@@ -118,4 +118,9 @@ class ExchangeProvider with ChangeNotifier {
         return '';
     }
   }
+
+  /// Force refresh all listening widgets (e.g., after quote currency change)
+  void refresh() {
+    notifyListeners();
+  }
 }
