@@ -1151,12 +1151,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                       ),
                       prefixIcon: const Icon(Icons.vpn_key, color: AppTheme.primary),
-                      suffixIcon: _binanceService.hasCredentials
-                          ? Tooltip(
-                              message: 'Loaded from secure storage',
-                              child: const Icon(Icons.verified, color: AppTheme.success),
-                            )
-                          : null,
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_apiKeyController.text.isNotEmpty)
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(20),
+                                onTap: () async {
+                                  await Clipboard.setData(ClipboardData(text: _apiKeyController.text));
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text('API Key copied!'),
+                                        duration: const Duration(seconds: 1),
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: AppTheme.success,
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Icon(Icons.copy, color: AppTheme.getTextSecondary(context), size: 20),
+                                ),
+                              ),
+                            ),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () async {
+                                final data = await Clipboard.getData(Clipboard.kTextPlain);
+                                if (data != null && data.text != null) {
+                                  setState(() {
+                                    _apiKeyController.text = data.text!;
+                                  });
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text('API Key pasted!'),
+                                        duration: const Duration(seconds: 1),
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: AppTheme.primary,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Icon(Icons.paste, color: AppTheme.primary, size: 20),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: AppTheme.spacing16),
@@ -1188,12 +1239,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                       ),
                       prefixIcon: const Icon(Icons.lock, color: AppTheme.primary),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureSecret ? Icons.visibility : Icons.visibility_off,
-                          color: AppTheme.getTextSecondary(context),
-                        ),
-                        onPressed: () => setState(() => _obscureSecret = !_obscureSecret),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_apiSecretController.text.isNotEmpty)
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(20),
+                                onTap: () async {
+                                  await Clipboard.setData(ClipboardData(text: _apiSecretController.text));
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text('Secret Key copied!'),
+                                        duration: const Duration(seconds: 1),
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: AppTheme.success,
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Icon(Icons.copy, color: AppTheme.getTextSecondary(context), size: 20),
+                                ),
+                              ),
+                            ),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () async {
+                                final data = await Clipboard.getData(Clipboard.kTextPlain);
+                                if (data != null && data.text != null) {
+                                  setState(() {
+                                    _apiSecretController.text = data.text!;
+                                  });
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text('Secret Key pasted!'),
+                                        duration: const Duration(seconds: 1),
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: AppTheme.primary,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Icon(Icons.paste, color: AppTheme.primary, size: 20),
+                              ),
+                            ),
+                          ),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () => setState(() => _obscureSecret = !_obscureSecret),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Icon(
+                                  _obscureSecret ? Icons.visibility : Icons.visibility_off,
+                                  color: AppTheme.getTextSecondary(context),
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
