@@ -33,6 +33,27 @@ class CoinbaseService implements BaseExchangeService {
   DateTime? _lastTimeSyncTime;
   static const Duration _timeSyncInterval = Duration(minutes: 30);
 
+  // CACHE for candles to reduce API calls (Opțiunea 1+3)
+  final Map<String, List<Candle>> _candlesCache = {};
+  final Map<String, DateTime> _cacheTimestamp = {};
+
+  // Cache duration based on interval
+  Duration _getCacheDuration(String interval) {
+    switch (interval) {
+      case '5m':
+      case '15m':
+        return const Duration(minutes: 1); // Short intervals: 1 min cache
+      case '1h':
+      case '4h':
+        return const Duration(minutes: 5); // Medium intervals: 5 min cache
+      case '1d':
+      case '1w':
+        return const Duration(minutes: 15); // Long intervals: 15 min cache
+      default:
+        return const Duration(minutes: 5);
+    }
+  }
+
   @override
   String get exchangeName => 'Coinbase';
 
@@ -649,26 +670,66 @@ class CoinbaseService implements BaseExchangeService {
       symbol.contains('EUR') ? 'EUR' : (symbol.contains('USDT') ? 'USDT' : 'USD'),
     );
 
-    // Determine limit based on interval
-    int limit;
-    switch (interval) {
-      case '15m':
-      case '4h':
-      case '1d':
-      case '1w':
-        limit = 1000;
-        break;
-      default:
-        limit = 1000;
+    // Check cache first (Opțiunea 1)
+    final cacheKey = '${coinbaseSymbol}_$interval';
+    final now = DateTime.now();
+    final cacheDuration = _getCacheDuration(interval);
+
+    if (_candlesCache.containsKey(cacheKey) && _cacheTimestamp.containsKey(cacheKey)) {
+      final cacheAge = now.difference(_cacheTimestamp[cacheKey]!);
+      if (cacheAge < cacheDuration) {
+        final cachedCandles = _candlesCache[cacheKey]!;
+        debugPrint('[Coinbase] ⚡ Using CACHED candles for $coinbaseSymbol @ $interval (age: ${cacheAge.inSeconds}s)');
+
+        // Calculate ATR from cached data
+        final candlesForATR = cachedCandles.map((c) => [
+          c.openTime.millisecondsSinceEpoch.toDouble(),
+          c.open,
+          c.high,
+          c.low,
+          c.close,
+          c.volume,
+        ]).toList();
+
+        final atr = _calculateATR(candlesForATR, period: 14);
+
+        // Build features using FullFeatureBuilder
+        final fullBuilder = FullFeatureBuilder();
+        final features = fullBuilder.buildFeatures(candles: cachedCandles);
+
+        final currentPrice = cachedCandles.isNotEmpty ? cachedCandles.last.close : 0.0;
+
+        return FeaturesWithATR(
+          features: features,
+          atr: atr,
+          currentPrice: currentPrice,
+        );
+      }
     }
 
-    // Fetch candles
-    final candles = await fetchKlines(coinbaseSymbol, interval, limit: limit);
+    // Fetch candles with retry on rate limit (Opțiunea 3)
+    List<Candle> candles;
+    try {
+      candles = await fetchKlines(coinbaseSymbol, interval, limit: 1000);
+
+      // Store in cache
+      _candlesCache[cacheKey] = candles;
+      _cacheTimestamp[cacheKey] = now;
+
+      debugPrint('[Coinbase] 💾 CACHED candles for $coinbaseSymbol @ $interval (${candles.length} candles)');
+    } catch (e) {
+      // If rate limited and we have old cache, use it
+      if (_candlesCache.containsKey(cacheKey)) {
+        debugPrint('[Coinbase] ⚠️  Rate limited, using STALE cache for $coinbaseSymbol @ $interval');
+        candles = _candlesCache[cacheKey]!;
+      } else {
+        rethrow;
+      }
+    }
 
     // Log latest candle
     if (candles.isNotEmpty) {
       final latestCandle = candles.last;
-      final now = DateTime.now();
       final candleAge = now.difference(latestCandle.closeTime);
       debugPrint('[Coinbase] 📅 Latest candle: ${latestCandle.closeTime} (${candleAge.inMinutes}min ago) - DATA IS FRESH!');
       debugPrint('[Coinbase]    Close: \$${latestCandle.close.toStringAsFixed(2)}, Volume: ${latestCandle.volume.toStringAsFixed(2)}');
