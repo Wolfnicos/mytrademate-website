@@ -632,16 +632,16 @@ class UnifiedMLService {
     }
 
     // LOW VOLUME: Trust only higher timeframes (less noise)
-    if (volumePercentile < 30) {
+    if (volumePercentile < 0.30) {  // Fixed: 0.30 not 30 (0-1 scale)
       final filtered = models.where((m) => ['1h', '4h', '1d', '7d'].contains(m.tf)).toList();
       if (filtered.isNotEmpty) {
-        debugPrint('🔇 [Adaptive Selection] LOW VOLUME (percentile=$volumePercentile) → using ${filtered.length}/${models.length} models (1h+ only)');
+        debugPrint('🔇 [Adaptive Selection] LOW VOLUME (percentile=${(volumePercentile * 100).toStringAsFixed(1)}%) → using ${filtered.length}/${models.length} models (1h+ only)');
         return filtered;
       }
     }
 
     // NORMAL CONDITIONS: Use all models
-    debugPrint('✅ [Adaptive Selection] NORMAL CONDITIONS (ATR=$atr, vol=$volumePercentile) → using all ${models.length} models');
+    debugPrint('✅ [Adaptive Selection] NORMAL CONDITIONS (ATR=${atr.toStringAsFixed(2)}%, vol=${(volumePercentile * 100).toStringAsFixed(1)}%) → using all ${models.length} models');
     return models;
   }
 
