@@ -367,8 +367,11 @@ class CryptoMLService {
     // NEW: Fetch candles for EACH model's timeframe!
     final allTimeframes = ['5m', '15m', '1h', '4h', '1d'];
 
+    // Normalize coin symbol: "BTCUSD" → "btc", "BTCEUR" → "btc", "BTC" → "btc"
+    final normalizedCoin = coin.toLowerCase().replaceAll(RegExp(r'(usd|eur|usdt|usdc)$'), '');
+
     for (final tf in allTimeframes) {
-      final coinKey = '${coin.toLowerCase()}_$tf';
+      final coinKey = '${normalizedCoin}_$tf';
       if (_interpreters.containsKey(coinKey)) {
         try {
           // Fetch candles for THIS model's timeframe (using exchange-specific service)
