@@ -926,12 +926,20 @@ class CryptoMLService {
 
       final row = <double>[];
       for (int f = 0; f < data[0].length; f++) {
-        final col = window.map((r) => r[f]).toList();
-        final mean = col.reduce((a, b) => a + b) / col.length;
-        final variance = col.map((x) => (x - mean) * (x - mean)).reduce((a, b) => a + b) / col.length;
-        final std = variance > 0 ? sqrt(variance) : 0.0;
-        final value = std > 1e-8 ? (data[t][f] - mean) / std : 0.0;
-        row.add(double.parse(value.toStringAsFixed(6)));
+        // CRITICAL FIX: Pattern features (indices 0-5) are binary (0.0 or 1.0)
+        // DO NOT normalize binary features - models were trained on 0/1 values
+        if (f < 6) {
+          // Keep pattern features as-is (0.0 or 1.0)
+          row.add(data[t][f]);
+        } else {
+          // Normalize continuous features (indices 6-75)
+          final col = window.map((r) => r[f]).toList();
+          final mean = col.reduce((a, b) => a + b) / col.length;
+          final variance = col.map((x) => (x - mean) * (x - mean)).reduce((a, b) => a + b) / col.length;
+          final std = variance > 0 ? sqrt(variance) : 0.0;
+          final value = std > 1e-8 ? (data[t][f] - mean) / std : 0.0;
+          row.add(double.parse(value.toStringAsFixed(6)));
+        }
       }
       normalized.add(row);
     }
