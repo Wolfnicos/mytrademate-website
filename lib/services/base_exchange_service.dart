@@ -74,6 +74,12 @@ abstract class BaseExchangeService {
   /// Get exchange info for a specific symbol or all symbols
   Future<Map<String, dynamic>> getExchangeInfo({String? symbol});
 
+  /// Get volume percentile for a symbol (0.0 to 1.0)
+  /// Used by ML service for volume-aware predictions
+  /// @param symbol - Trading pair (e.g., 'BTCEUR', 'ETHUSDT')
+  /// @returns Volume percentile (0.0 = lowest, 1.0 = highest)
+  Future<double> getVolumePercentile(String symbol);
+
   /// Build trading pair symbol in exchange-specific format
   /// @param base - Base currency (e.g., 'BTC', 'ETH')
   /// @param quote - Quote currency (e.g., 'EUR', 'USDT')

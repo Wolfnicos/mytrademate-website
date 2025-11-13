@@ -536,4 +536,65 @@ class CoinbaseService implements BaseExchangeService {
 
     return map[interval] ?? 3600; // Default to 1h
   }
+
+  /// Get 24h volume for a symbol
+  Future<double> get24hVolume(String symbol) async {
+    try {
+      // Coinbase uses BTC-EUR format
+      final coinbaseSymbol = symbol.contains('-') ? symbol : buildTradingPair(
+        symbol.replaceAll(RegExp(r'(EUR|USD|USDC|USDT)$'), ''),
+        symbol.substring(symbol.length - 3),
+      );
+
+      final uri = Uri.https(_baseHost, '/products/$coinbaseSymbol/stats');
+      final response = await http.get(uri).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode != 200) {
+        return 0.0;
+      }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final volume = double.tryParse(data['volume']?.toString() ?? '0') ?? 0.0;
+      return volume;
+    } catch (e) {
+      debugPrint('[Coinbase] Error fetching volume for $symbol: $e');
+      return 0.0;
+    }
+  }
+
+  @override
+  Future<double> getVolumePercentile(String targetSymbol, {List<String>? comparisonSymbols}) async {
+    try {
+      // Extract quote currency from targetSymbol (e.g., BTC-EUR → EUR)
+      final RegExp quoteRegex = RegExp(r'(EUR|USD|USDC|USDT)$');
+      final match = quoteRegex.firstMatch(targetSymbol);
+      final quote = match?.group(1) ?? 'USD'; // Coinbase defaults to USD
+
+      // Build dynamic comparison list with same quote currency
+      final baseAssets = ['BTC', 'ETH', 'XRP', 'ADA', 'DOGE', 'DOT', 'LINK', 'UNI'];
+      final symbols = comparisonSymbols ?? baseAssets.map((base) => buildTradingPair(base, quote)).toList();
+
+      // Fetch volumes for all symbols in parallel
+      final volumeFutures = symbols.map((s) => get24hVolume(s));
+      final volumes = await Future.wait(volumeFutures, eagerError: false);
+
+      // Get target volume
+      final targetVolume = await get24hVolume(targetSymbol);
+
+      // Calculate percentile: % of symbols with lower volume
+      int lowerCount = 0;
+      for (final vol in volumes) {
+        if (vol < targetVolume) lowerCount++;
+      }
+
+      final percentile = lowerCount / volumes.length;
+      debugPrint('[Coinbase] 📊 Volume percentile for $targetSymbol: ${(percentile * 100).toStringAsFixed(1)}% (volume: ${targetVolume.toStringAsFixed(0)} units)');
+
+      return percentile;
+    } catch (e) {
+      debugPrint('[Coinbase] ❌ Failed to calculate volume percentile: $e');
+      // Return median (0.5) on error - no boost or penalty
+      return 0.5;
+    }
+  }
 }

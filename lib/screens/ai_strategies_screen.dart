@@ -215,7 +215,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         coin: coin,
         symbol: _selectedSymbol,
         timeframe: _interval,
-        exchangeService: exchangeProvider.currentExchange as BinanceService?,
+        exchangeService: exchangeProvider.currentExchange,
       );
 
       // Get current price for price change tracking
@@ -233,7 +233,8 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       }
 
       // Extract quote currency from symbol (e.g., BTCUSDT -> USDT, BTCEUR -> EUR)
-      final quoteCurrency = _selectedSymbol.replaceAll(RegExp(r'^[A-Z]{3,6}'), '');
+      // Remove the base currency (first 3-4 chars like BTC, ETH) to get quote (EUR, USDT, etc.)
+      final quoteCurrency = _selectedSymbol.replaceFirst(coin, '');
 
       // Debug-only: print final JSON-like summary for QA (no UI impact)
       // ignore: avoid_print

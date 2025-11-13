@@ -3,6 +3,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'dart:convert';
 import 'dart:math' show exp, log, sqrt;
 import 'package:mytrademate/services/binance_service.dart';
+import 'package:mytrademate/services/base_exchange_service.dart';
 import 'package:mytrademate/ml/ensemble_weights_v2.dart';
 
 /// Service pentru predicții ML crypto
@@ -302,7 +303,7 @@ class CryptoMLService {
     required String symbol, // NEW: Exchange symbol (e.g., BTCEUR, BTCUSDT)
     String timeframe = '5m',
     bool silent = false,
-    BinanceService? exchangeService, // NEW: Pass exchange service for volume calculation
+    BaseExchangeService? exchangeService, // NEW: Pass exchange service for volume calculation
   }) async {
     // ignore: avoid_print
     print('');

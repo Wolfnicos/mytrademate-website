@@ -508,4 +508,77 @@ class KrakenService implements BaseExchangeService {
 
     return map[interval] ?? 60; // Default to 1h
   }
+
+  /// Get 24h volume for a symbol
+  Future<double> get24hVolume(String symbol) async {
+    try {
+      final krakenSymbol = _convertToKrakenSymbol(symbol);
+      final queryParams = {'pair': krakenSymbol};
+      final uri = Uri.https(_baseHost, '/0/public/Ticker', queryParams);
+      final response = await http.get(uri).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode != 200) {
+        return 0.0;
+      }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final errors = data['error'] as List<dynamic>;
+      if (errors.isNotEmpty) {
+        return 0.0;
+      }
+
+      final result = data['result'] as Map<String, dynamic>;
+      if (result.isEmpty) {
+        return 0.0;
+      }
+
+      final pairData = result.values.first as Map<String, dynamic>;
+      // Kraken: 'v' = [today's volume, last 24h volume] in base currency
+      final volume = double.parse(pairData['v'][1]); // Last 24h volume
+      return volume;
+    } catch (e) {
+      debugPrint('[Kraken] Error fetching volume for $symbol: $e');
+      return 0.0;
+    }
+  }
+
+  @override
+  Future<double> getVolumePercentile(String targetSymbol, {List<String>? comparisonSymbols}) async {
+    try {
+      // Convert Binance-style symbol to Kraken format (BTCEUR → XBTEUR)
+      final krakenTargetSymbol = _convertToKrakenSymbol(targetSymbol);
+
+      // Extract quote currency from targetSymbol (e.g., XBTEUR → EUR)
+      final RegExp quoteRegex = RegExp(r'(EUR|USD|USDC|USDT)$');
+      final match = quoteRegex.firstMatch(krakenTargetSymbol);
+      final quote = match?.group(1) ?? 'EUR'; // Fallback to EUR if no match
+
+      // Build dynamic comparison list with same quote currency
+      // Note: Kraken uses XBT instead of BTC
+      final baseAssets = ['XBT', 'ETH', 'XRP', 'ADA', 'DOGE', 'DOT', 'LINK', 'UNI'];
+      final symbols = comparisonSymbols ?? baseAssets.map((base) => '$base$quote').toList();
+
+      // Fetch volumes for all symbols in parallel
+      final volumeFutures = symbols.map((s) => get24hVolume(s));
+      final volumes = await Future.wait(volumeFutures, eagerError: false);
+
+      // Get target volume (use Kraken-converted symbol)
+      final targetVolume = await get24hVolume(krakenTargetSymbol);
+
+      // Calculate percentile: % of symbols with lower volume
+      int lowerCount = 0;
+      for (final vol in volumes) {
+        if (vol < targetVolume) lowerCount++;
+      }
+
+      final percentile = lowerCount / volumes.length;
+      debugPrint('[Kraken] 📊 Volume percentile for $krakenTargetSymbol: ${(percentile * 100).toStringAsFixed(1)}% (volume: ${targetVolume.toStringAsFixed(0)} units)');
+
+      return percentile;
+    } catch (e) {
+      debugPrint('[Kraken] ❌ Failed to calculate volume percentile: $e');
+      // Return median (0.5) on error - no boost or penalty
+      return 0.5;
+    }
+  }
 }
