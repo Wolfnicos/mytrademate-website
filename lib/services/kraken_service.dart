@@ -533,9 +533,15 @@ class KrakenService implements BaseExchangeService {
       }
 
       final pairData = result.values.first as Map<String, dynamic>;
-      // Kraken: 'v' = [today's volume, last 24h volume] in base currency
-      final volume = double.parse(pairData['v'][1]); // Last 24h volume
-      return volume;
+      // Kraken: 'v' = [today's volume, last 24h volume] in base currency (e.g., BTC)
+      final volumeBase = double.parse(pairData['v'][1]); // Last 24h volume in BTC
+
+      // Convert to quote currency (EUR/USD) for fair comparison across assets
+      // Price 'c' = [price, lot volume] - use current price
+      final price = double.parse(pairData['c'][0]);
+      final volumeQuote = volumeBase * price; // Volume in EUR/USD
+
+      return volumeQuote;
     } catch (e) {
       debugPrint('[Kraken] Error fetching volume for $symbol: $e');
       return 0.0;
