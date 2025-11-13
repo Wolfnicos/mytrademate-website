@@ -6,7 +6,6 @@ import '../backtest/backtester.dart';
 import '../services/paper_broker.dart';
 import '../services/binance_service.dart';
 import '../services/hybrid_strategies_service.dart';
-import '../ml/ml_service.dart';
 import 'dart:async';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
@@ -39,7 +38,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
   final TextEditingController _limitPriceCtrl = TextEditingController();
   final TextEditingController _stopPriceCtrl = TextEditingController();
   bool _updatingFields = false;
-  final String _aiInterval = '1h';
+  // final String _aiInterval = '1h'; // Unused - commented out
   final bool _ocoEnabled = false;
   final double _stopLossPct = 3.0;
   final double _takeProfitPct = 6.0;
@@ -340,7 +339,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = isBuy ? AppTheme.buyGreen : AppTheme.sellRed;
+    // final activeColor = isBuy ? AppTheme.buyGreen : AppTheme.sellRed; // Unused - commented out
 
     return Scaffold(
       body: SafeArea(
@@ -1161,6 +1160,8 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
 
   // Removed unused _buildTextField
 
+  // Unused helper methods - kept for potential future use
+  /*
   Widget _buildAmountField() {
     final String base = _selectedPair.replaceAll(RegExp(r'(USDT|USDC|EUR)$'), '');
     return Column(
@@ -1313,9 +1314,12 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
       ],
     );
   }
+  */
 
   // Removed unused _buildAiIntervalChips
 
+  // Unused - kept for potential future use
+  /*
   String _orderTypeLabel(OrderType t) {
     switch (t) {
       case OrderType.market:
@@ -1328,7 +1332,10 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
         return 'Stop-Market';
     }
   }
+  */
 
+  // Unused - kept for potential future use
+  /*
   IconData _orderTypeIcon(OrderType t) {
     switch (t) {
       case OrderType.market:
@@ -1380,7 +1387,10 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
       await prefs.setString('order_type', _orderType.name);
     }
   }
+  */
 
+  // Unused - kept for potential future use
+  /*
   Widget _buildOrderTypeBanner(BuildContext context) {
     return InkWell(
       onTap: _pickOrderType,
@@ -1425,6 +1435,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
       ),
     );
   }
+  */
 
   Widget _buildPairSelector(BuildContext context) {
     return InkWell(

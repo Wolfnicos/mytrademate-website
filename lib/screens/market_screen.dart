@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import '../models/candle.dart';
-import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
 import '../services/user_coins_service.dart';
 import '../theme/app_theme.dart';

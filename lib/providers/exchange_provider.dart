@@ -5,6 +5,7 @@ import '../services/binance_service.dart';
 import '../services/coinbase_service.dart';
 import '../services/kraken_service.dart';
 import '../services/user_coins_service.dart';
+import '../ml/crypto_ml_service.dart';
 
 /// Provider for managing the currently selected exchange
 /// Handles switching between Binance, Coinbase, and Kraken
@@ -75,6 +76,9 @@ class ExchangeProvider with ChangeNotifier {
       // - If exchange has API keys → load coins from portfolio
       // - If NO API keys → use default TOP 10 coins
       await UserCoinsService().updateCoinsFromExchange(currentExchange);
+
+      // Clear ML volume cache to avoid using cached data from previous exchange
+      CryptoMLService.clearVolumeCache();
 
       debugPrint('[ExchangeProvider] Switched to: $_selectedExchange');
       notifyListeners();

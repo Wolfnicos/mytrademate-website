@@ -18,7 +18,7 @@ import 'hybrid_strategies_service.dart';
 /// - ❌ Disable: Momentum Scalper, Breakout (fail in choppy markets)
 class MetaStrategySelector {
   final HybridStrategiesService _strategiesService;
-  final MarketRegimeClassifier _regimeClassifier;
+  // final MarketRegimeClassifier _regimeClassifier; // Unused - commented out
 
   // Current regime and strategy state
   MarketRegime? _currentRegime;
@@ -30,9 +30,8 @@ class MetaStrategySelector {
 
   MetaStrategySelector({
     required HybridStrategiesService strategiesService,
-    required MarketRegimeClassifier regimeClassifier,
-  })  : _strategiesService = strategiesService,
-        _regimeClassifier = regimeClassifier;
+    required MarketRegimeClassifier regimeClassifier, // Not stored, unused
+  })  : _strategiesService = strategiesService;
 
   /// Strategy activation rules for each regime
   ///

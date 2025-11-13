@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_core/core.dart';
-import 'package:syncfusion_flutter_core/theme.dart';
 import 'dart:ui';
 import 'ml/tflite_predictor.dart';
 import 'ml/ml_service.dart';
@@ -28,7 +27,6 @@ import 'theme/app_theme.dart';
 import 'providers/navigation_provider.dart';
 import 'services/achievement_service.dart';
 import 'services/ml_loading_state.dart';
-import 'widgets/risk_disclaimer_dialog.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

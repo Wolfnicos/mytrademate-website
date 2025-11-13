@@ -210,10 +210,12 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
 
       // NEW: CryptoMLService now fetches candles for EACH model's timeframe!
       // We just pass the symbol and let the service handle multi-timeframe fetching
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
       final prediction = await CryptoMLService().getPrediction(
         coin: coin,
         symbol: _selectedSymbol,
         timeframe: _interval,
+        exchangeService: exchangeProvider.currentExchange as BinanceService?,
       );
 
       // Get current price for price change tracking
@@ -230,9 +232,12 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         debugPrint('💹 Price change: ${priceChange >= 0 ? '+' : ''}${priceChange.toStringAsFixed(2)} (${priceChangePercent >= 0 ? '+' : ''}${priceChangePercent.toStringAsFixed(3)}%)');
       }
 
+      // Extract quote currency from symbol (e.g., BTCUSDT -> USDT, BTCEUR -> EUR)
+      final quoteCurrency = _selectedSymbol.replaceAll(RegExp(r'^[A-Z]{3,6}'), '');
+
       // Debug-only: print final JSON-like summary for QA (no UI impact)
       // ignore: avoid_print
-      print('JSON_AI_STRATEGIES: {"coin":"$coin","timeframe":"$_interval","action":"${prediction.action}","confidence":${prediction.confidence.toStringAsFixed(4)},"atr":${(currentPriceResult.atr * 100).toStringAsFixed(2)}}');
+      print('JSON_AI_STRATEGIES: {"coin":"$coin","timeframe":"$_interval","action":"${prediction.action}","confidence":${prediction.confidence.toStringAsFixed(4)},"atr":${(currentPriceResult.atr * 100).toStringAsFixed(2)},"quote_currency":"$quoteCurrency"}');
 
       debugPrint('🚀 CryptoML: ${prediction.action} (${(prediction.confidence * 100).toStringAsFixed(1)}%)');
 

@@ -7,7 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/theme_provider.dart';
 import '../providers/subscription_provider.dart';
 import '../providers/exchange_provider.dart';
-import '../services/binance_service.dart';
+// import '../services/binance_service.dart'; // Unused - commented out
 import '../services/app_settings_service.dart';
 import '../services/auth_service.dart';
 import '../services/background_ai_monitor.dart';
@@ -28,7 +28,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final LocalAuthentication _localAuth = LocalAuthentication();
-  final BinanceService _binanceService = BinanceService();
+  // final BinanceService _binanceService = BinanceService(); // Unused - commented out
 
   final TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _apiSecretController = TextEditingController();
@@ -37,7 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _canCheckBiometrics = false;
   bool _isTestingConnection = false;
   bool _obscureSecret = true;
-  String _permissionLevel = 'read';
+  // String _permissionLevel = 'read'; // Unused - commented out
   String _quote = 'USDT';
 
   // AI Alerts settings
@@ -107,7 +107,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       setState(() {
         _biometricEnabled = prefs.getBool('biometric_enabled') ?? false;
-        _permissionLevel = AppSettingsService().permissionLevel;
+        // _permissionLevel = AppSettingsService().permissionLevel; // Unused - commented out
         _quote = AppSettingsService().quoteCurrency;
 
         // Load credentials from CURRENT exchange (not hardcoded Binance)
@@ -1624,6 +1624,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  // Unused - kept for potential future use
+  /*
   void _showAboutDialog() {
     showDialog(
       context: context,
@@ -1762,7 +1764,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+  */
 
+  // Unused - kept for potential future use
+  /*
   Widget _buildFeatureRow(String emoji, String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.spacing4),
@@ -1780,6 +1785,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+  */
 
   Widget _buildSectionHeader(String title, IconData icon) {
     return Padding(

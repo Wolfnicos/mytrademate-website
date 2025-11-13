@@ -44,6 +44,13 @@ class CryptoMLService {
   static final Map<String, (double, DateTime)> _volumeCache = {};
   static const Duration _volumeCacheTTL = Duration(minutes: 5);
 
+  /// Clear volume percentile cache (useful when switching exchanges)
+  static void clearVolumeCache() {
+    _volumeCache.clear();
+    // ignore: avoid_print
+    print('🧹 Cleared volume percentile cache');
+  }
+
   /// Inițializează serviciul și încarcă modelele
   Future<void> initialize() async {
     // ignore: avoid_print
@@ -292,9 +299,10 @@ class CryptoMLService {
   /// NOW fetches candles for EACH model's timeframe!
   Future<CryptoPrediction> getPrediction({
     required String coin,
-    required String symbol, // NEW: Binance symbol (e.g., BTCEUR)
+    required String symbol, // NEW: Exchange symbol (e.g., BTCEUR, BTCUSDT)
     String timeframe = '5m',
     bool silent = false,
+    BinanceService? exchangeService, // NEW: Pass exchange service for volume calculation
   }) async {
     // ignore: avoid_print
     print('');
@@ -324,24 +332,26 @@ class CryptoMLService {
     if (applyPhase3) {
       try {
         // Use the symbol parameter directly (e.g., BTCEUR, BTCUSDT, BTCUSD, BTCUSDC)
-        // Check cache first
-        final cached = _volumeCache[symbol];
+        // Check cache first (with exchange-specific key to avoid mixing data between exchanges)
+        final service = exchangeService ?? _binanceService;
+        final cacheKey = '${service.exchangeName}_$symbol';
+        final cached = _volumeCache[cacheKey];
         if (cached != null && DateTime.now().difference(cached.$2) < _volumeCacheTTL) {
           volumePercentile = cached.$1;
           if (!silent) {
             // ignore: avoid_print
-            print('📊 Phase 3: Volume percentile for $symbol: ${(volumePercentile * 100).toStringAsFixed(1)}% (cached)');
+            print('📊 Phase 3: Volume percentile for $symbol on ${service.exchangeName}: ${(volumePercentile * 100).toStringAsFixed(1)}% (cached)');
           }
         } else {
           // Not cached, fetch from API
-          volumePercentile = await _binanceService.getVolumePercentile(symbol);
+          volumePercentile = await service.getVolumePercentile(symbol);
 
-          // Cache for 5 minutes
-          _volumeCache[symbol] = (volumePercentile, DateTime.now());
+          // Cache for 5 minutes (include exchange name in cache key to avoid mixing data)
+          _volumeCache[cacheKey] = (volumePercentile, DateTime.now());
 
           if (!silent) {
             // ignore: avoid_print
-            print('📊 Phase 3: Volume percentile for $symbol: ${(volumePercentile * 100).toStringAsFixed(1)}%');
+            print('📊 Phase 3: Volume percentile for $symbol on ${service.exchangeName}: ${(volumePercentile * 100).toStringAsFixed(1)}%');
           }
         }
       } catch (e) {

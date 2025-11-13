@@ -17,7 +17,7 @@ class TechnicalIndicatorCalculator {
     final closes = candles.map((c) => c.close).toList();
     final highs = candles.map((c) => c.high).toList();
     final lows = candles.map((c) => c.low).toList();
-    final opens = candles.map((c) => c.open).toList();
+    // final opens = candles.map((c) => c.open).toList(); // Unused - commented out
     final volumes = candles.map((c) => c.volume).toList();
 
     // Calculate all indicators once

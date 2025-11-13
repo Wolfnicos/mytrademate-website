@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/crypto_avatar.dart';
-import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
 import '../providers/exchange_provider.dart';
 import '../utils/responsive.dart';
@@ -442,6 +441,8 @@ class _HoldingCard extends StatelessWidget {
     required this.value,
   });
 
+  // Unused - replaced by CryptoAvatar widget
+  /*
   IconData _getIcon(String asset) {
     switch (asset.toUpperCase()) {
       case 'BTC':
@@ -465,6 +466,7 @@ class _HoldingCard extends StatelessWidget {
         return Icons.monetization_on;
     }
   }
+  */
 
   String _getDisplayName(String asset) {
     switch (asset.toUpperCase()) {

@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../ml/crypto_ml_service.dart';
-import 'binance_service.dart';
+// import 'binance_service.dart'; // Unused - commented out
 
 /// Represents a trading signal with confidence
 class StrategySignal {

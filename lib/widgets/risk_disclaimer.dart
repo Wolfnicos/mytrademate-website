@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../design_system/app_colors.dart';
+// import '../design_system/app_colors.dart'; // Unused - commented out
 
 /// A simple, reusable widget for risk disclaimers.
 class RiskDisclaimer extends StatelessWidget {

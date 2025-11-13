@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
 import '../services/user_coins_service.dart';
-import '../providers/subscription_provider.dart';
+// import '../providers/subscription_provider.dart'; // Unused - commented out
 import '../providers/exchange_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/ai_indicator.dart';
 import '../widgets/crypto_avatar.dart';
 import '../widgets/trial_banner.dart';
-import '../widgets/trial_activation_dialog.dart';
+// import '../widgets/trial_activation_dialog.dart'; // Unused - commented out
 import '../ml/ensemble_predictor.dart';
 import '../utils/responsive.dart';
-import 'settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -73,23 +71,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _maybeShowTrialDialog() async {
-    if (!mounted) return;
-
-    final settings = AppSettingsService();
-    if (settings.shouldShowTrialDialog) {
-      final accepted = await TrialActivationDialog.show(context);
-      if (accepted) {
-        await settings.activateTrial();
-        // Notify SubscriptionProvider to rebuild UI (hide upgrade banners)
-        if (mounted) {
-          Provider.of<SubscriptionProvider>(context, listen: false).notifyListeners();
-        }
-      } else {
-        await settings.declineTrial();
-      }
-    }
-  }
+  // Future<void> _maybeShowTrialDialog() async { // UNUSED - commented out
+  //   if (!mounted) return;
+  //
+  //   final settings = AppSettingsService();
+  //   if (settings.shouldShowTrialDialog) {
+  //     final accepted = await TrialActivationDialog.show(context);
+  //     if (accepted) {
+  //       await settings.activateTrial();
+  //       // Notify SubscriptionProvider to rebuild UI (hide upgrade banners)
+  //       if (mounted) {
+  //         Provider.of<SubscriptionProvider>(context, listen: false).notifyListeners();
+  //       }
+  //     } else {
+  //       await settings.declineTrial();
+  //     }
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -196,7 +194,7 @@ class PortfolioOverviewCard extends StatefulWidget {
 }
 
 class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
-  bool _isLoading = false;
+  // bool _isLoading = false; // Unused - commented out
   double _totalValue = 0.0;
   String? _error;
 
@@ -229,7 +227,7 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
     debugPrint('[PortfolioOverview] Exchange changed, reloading...');
     setState(() {
       _totalValue = 0.0; // Clear old cached value immediately
-      _isLoading = true; // Show loading state
+      // _isLoading = true; // Unused - commented out
     });
     _loadCachedValue(); // Load cached value for new exchange
     _loadPortfolio(); // Then load fresh data
@@ -294,7 +292,7 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
       if (mounted) {
         setState(() {
           _totalValue = total;
-          _isLoading = false;
+          // _isLoading = false; // Unused - commented out
         });
 
         // Cache the value for instant display next time
@@ -308,7 +306,7 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
       if (mounted) {
         setState(() {
           _error = 'Failed to load portfolio';
-          _isLoading = false;
+          // _isLoading = false; // Unused - commented out
         });
       }
     }
@@ -415,7 +413,7 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
   late AnimationController _controller;
   late Animation<double> _pulseAnimation;
   int _progressKey = 0;
-  bool _hasLoadedOnce = false;  // Track if models loaded once
+  // bool _hasLoadedOnce = false;  // Unused - commented out
   bool _isLoaded = false;
 
   @override
@@ -740,37 +738,37 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
     );
   }
 
-  Widget _buildStatChip({
-    required IconData icon,
-    required String label,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacing8,
-        vertical: AppTheme.spacing4,
-      ),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: AppTheme.spacing4),
-          Text(
-            label,
-            style: AppTheme.bodySmall.copyWith(
-              color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Widget _buildStatChip({ // UNUSED - commented out
+  //   required IconData icon,
+  //   required String label,
+  //   required Color color,
+  // }) {
+  //   return Container(
+  //     padding: const EdgeInsets.symmetric(
+  //       horizontal: AppTheme.spacing8,
+  //       vertical: AppTheme.spacing4,
+  //     ),
+  //     decoration: BoxDecoration(
+  //       color: color.withOpacity(0.15),
+  //       borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+  //     ),
+  //     child: Row(
+  //       mainAxisSize: MainAxisSize.min,
+  //       children: [
+  //         Icon(icon, size: 12, color: color),
+  //         const SizedBox(width: AppTheme.spacing4),
+  //         Text(
+  //           label,
+  //           style: AppTheme.bodySmall.copyWith(
+  //             color: color,
+  //             fontSize: 10,
+  //             fontWeight: FontWeight.w600,
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildAIStatBox({
     required String label,

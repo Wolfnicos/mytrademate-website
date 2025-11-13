@@ -100,12 +100,12 @@ class MarketRegimeClassifier {
 
   /// Rule-based classification (fallback if model not available)
   MarketRegime _ruleBasedClassification(List<double> features, List<Candle> candles) {
-    final dirMove = features[0];
+    // final dirMove = features[0]; // Unused - commented out
     final adx = features[1];
     final atr = features[2];
-    final hurstExp = features[3];
-    final volumeSurge = features[4];
-    final autocorr = features[5];
+    // final hurstExp = features[3]; // Unused - commented out
+    // final volumeSurge = features[4]; // Unused - commented out
+    // final autocorr = features[5]; // Unused - commented out
 
     // Calculate 7-day return if candles provided
     double return7d = 0.0;

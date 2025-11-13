@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../ml/crypto_ml_service.dart';
-import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
 import '../widgets/premium_card.dart';
 import '../widgets/upgrade_banner.dart';

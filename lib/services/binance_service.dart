@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
-import 'dart:io';
+// import 'dart:io'; // Unused - commented out
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -158,6 +158,8 @@ class BinanceService implements BaseExchangeService {
   }
 
   /// Retry HTTP requests with exponential backoff
+  /// Unused - kept for potential future use
+  /*
   Future<http.Response> _requestWithRetry(
     Future<http.Response> Function() request, {
     int maxRetries = 3,
@@ -220,6 +222,7 @@ class BinanceService implements BaseExchangeService {
       }
     }
   }
+  */
 
   /// Clear stored credentials
   @override
@@ -1095,8 +1098,8 @@ class BinanceService implements BaseExchangeService {
 
   /// Convenience method to fetch last 1 year of daily candles.
   Future<List<Candle>> fetchLastYearDaily(String symbol) async {
-    final DateTime end = DateTime.now().toUtc();
-    final DateTime start = DateTime(end.year - 1, end.month, end.day).toUtc();
+    // final DateTime end = DateTime.now().toUtc(); // Unused - commented out
+    // final DateTime start = DateTime(end.year - 1, end.month, end.day).toUtc(); // Unused - commented out
     return fetchDailyKlines(symbol, limit: 1000);
   }
 

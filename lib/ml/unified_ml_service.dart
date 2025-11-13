@@ -6,7 +6,6 @@ import 'dart:convert' show utf8;
 // import '../services/full_feature_builder.dart';
 import '../services/binance_service.dart';
 import 'model_registry.dart';
-import 'crypto_ml_service.dart';
 
 /// Unified ML Service:
 /// - Loads Model Registry from assets

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../services/app_settings_service.dart';
+// import '../services/app_settings_service.dart'; // Unused - commented out
 
 /// Dialog shown to new users offering 48-hour free trial
 /// Shows on first app launch after onboarding
