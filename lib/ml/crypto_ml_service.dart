@@ -652,10 +652,10 @@ class CryptoMLService {
 
     // LOW VOLUME OVERRIDE: Force HOLD for extreme low volume on short timeframes
     // This runs AFTER ensemble display, so we always see the ensemble result in logs
-    if (volumePercentile < 5.0 && (timeframe == '5m' || timeframe == '15m')) {
+    if (volumePercentile < 0.05 && (timeframe == '5m' || timeframe == '15m')) {
       if (!silent) {
         // ignore: avoid_print
-        print('⚠️  [Low Volume Override] Extreme low volume (${(volumePercentile * 100).toStringAsFixed(0)}%) - forcing HOLD');
+        print('⚠️  [Low Volume Override] Extreme low volume (${(volumePercentile * 100).toStringAsFixed(1)}%) - forcing HOLD');
       }
       return CryptoPrediction(
         action: 'HOLD',
