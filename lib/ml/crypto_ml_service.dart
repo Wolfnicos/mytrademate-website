@@ -402,11 +402,11 @@ class CryptoMLService {
             }
             continue;
           }
-          // Low volume (< 30 percentile) → skip short timeframes (noisy signals)
-          if (volumePercentile < 30 && !['1h', '4h', '1d', '7d'].contains(tf)) {
+          // Low volume (< 30% percentile) → skip short timeframes (noisy signals)
+          if (volumePercentile < 0.30 && !['1h', '4h', '1d', '7d'].contains(tf)) {
             if (!silent) {
               // ignore: avoid_print
-              print('   🔇 [Adaptive Selection] LOW VOLUME (percentile=${volumePercentile.toStringAsFixed(0)}) → skipping short tf $coinKey');
+              print('   🔇 [Adaptive Selection] LOW VOLUME (percentile=${(volumePercentile * 100).toStringAsFixed(1)}%) → skipping short tf $coinKey');
             }
             continue;
           }
@@ -474,11 +474,11 @@ class CryptoMLService {
             }
             continue;
           }
-          // Low volume (< 30 percentile) → skip short timeframes (noisy signals)
-          if (volumePercentile < 30 && !['1h', '4h', '1d', '7d'].contains(tf)) {
+          // Low volume (< 30% percentile) → skip short timeframes (noisy signals)
+          if (volumePercentile < 0.30 && !['1h', '4h', '1d', '7d'].contains(tf)) {
             if (!silent) {
               // ignore: avoid_print
-              print('   🔇 [Adaptive Selection] LOW VOLUME (percentile=${volumePercentile.toStringAsFixed(0)}) → skipping short tf $generalKey');
+              print('   🔇 [Adaptive Selection] LOW VOLUME (percentile=${(volumePercentile * 100).toStringAsFixed(1)}%) → skipping short tf $generalKey');
             }
             continue;
           }
