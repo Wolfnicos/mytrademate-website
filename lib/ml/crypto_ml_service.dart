@@ -798,14 +798,19 @@ class CryptoMLService {
     // Fewer active features → higher T (model less reliable)
     var probabilities = output[0];
 
-    // Calculate dynamic temperature: T = 1.0 + 14.0 * (1 - signalStrength)
+    // Calculate dynamic temperature with nuanced scaling
     // Examples:
-    //   - 100% features active → T = 1.0 (no scaling)
-    //   - 50% features active → T = 8.0 (moderate scaling)
-    //   - 10% features active → T = 13.6 (aggressive scaling)
-    const double minT = 1.0;
-    const double maxT = 15.0;
-    final temperature = minT + maxT * (1.0 - signalStrength);
+    //   - signal < 30% → T = 20.0 (very low signal → heavy dampening)
+    //   - signal < 40% → T = 12.0 (low signal → moderate dampening)
+    //   - signal < 50% → T = 8.0 (medium signal → light dampening)
+    //   - signal < 60% → T = 5.0 (good signal → minimal dampening)
+    //   - signal >= 60% → T = 3.0 (strong signal → preserve confidence)
+    final signalPercent = signalStrength * 100;
+    final double temperature = signalPercent < 30 ? 20.0
+                              : signalPercent < 40 ? 12.0
+                              : signalPercent < 50 ? 8.0
+                              : signalPercent < 60 ? 5.0
+                              : 3.0;
 
     final maxProb = probabilities.reduce((a, b) => a > b ? a : b);
 
