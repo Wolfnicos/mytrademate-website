@@ -225,19 +225,26 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
   }
 
   void _onExchangeChanged() {
-    // Exchange changed - clear cache and reload
+    // Exchange changed - load new exchange's cached value and reload
     debugPrint('[PortfolioOverview] Exchange changed, reloading...');
     setState(() {
       _totalValue = 0.0; // Clear old cached value immediately
       _isLoading = true; // Show loading state
     });
-    _loadPortfolio();
+    _loadCachedValue(); // Load cached value for new exchange
+    _loadPortfolio(); // Then load fresh data
   }
 
   Future<void> _loadCachedValue() async {
     // Load cached value immediately for instant display
+    // Include exchange name in cache key to avoid showing wrong exchange data
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final exchangeName = exchangeProvider.selectedExchange;
+
     final prefs = await SharedPreferences.getInstance();
-    final cachedValue = prefs.getDouble('portfolio_total_value');
+    final cacheKey = 'portfolio_total_value_$exchangeName';
+    final cachedValue = prefs.getDouble(cacheKey);
+
     if (cachedValue != null && mounted) {
       setState(() {
         _totalValue = cachedValue;
@@ -291,8 +298,10 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
         });
 
         // Cache the value for instant display next time
+        // Include exchange name in cache key to avoid mixing data between exchanges
+        final cacheKey = 'portfolio_total_value_${exchange.exchangeName}';
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setDouble('portfolio_total_value', total);
+        await prefs.setDouble(cacheKey, total);
       }
     } catch (e) {
       debugPrint('[PortfolioOverview] Error loading portfolio: $e');

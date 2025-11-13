@@ -120,10 +120,14 @@ class CoinbaseService implements BaseExchangeService {
 
   @override
   Future<void> saveCredentials(String apiKey, String apiSecret) async {
-    await _secureStorage.write(key: '${_storageKeyPrefix}api_key', value: apiKey);
-    await _secureStorage.write(key: '${_storageKeyPrefix}api_secret', value: apiSecret);
-    _apiKey = apiKey;
-    _apiSecret = apiSecret;
+    // Remove ALL whitespace from credentials (common copy-paste issue)
+    final cleanApiKey = apiKey.replaceAll(RegExp(r'\s+'), '');
+    final cleanApiSecret = apiSecret.replaceAll(RegExp(r'\s+'), '');
+
+    await _secureStorage.write(key: '${_storageKeyPrefix}api_key', value: cleanApiKey);
+    await _secureStorage.write(key: '${_storageKeyPrefix}api_secret', value: cleanApiSecret);
+    _apiKey = cleanApiKey;
+    _apiSecret = cleanApiSecret;
     debugPrint('[Coinbase] Credentials saved');
   }
 

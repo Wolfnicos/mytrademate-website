@@ -642,9 +642,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       Expanded(
                                         child: Slider(
                                           value: _confidenceThreshold,
-                                          min: 0.50,
+                                          min: 0.41,
                                           max: 0.70,
-                                          divisions: 20,
+                                          divisions: 29,
                                           label: '${(_confidenceThreshold * 100).toStringAsFixed(0)}%',
                                           onChanged: _updateConfidenceThreshold,
                                           activeColor: AppTheme.primary,
@@ -693,10 +693,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       child: DropdownButton<String>(
                                         value: _alertTimeframe,
                                         isExpanded: true,
+                                        menuMaxHeight: 250, // Add scroll for dropdown
                                         items: const [
                                           DropdownMenuItem(value: '15m', child: Text('15 Minutes')),
                                           DropdownMenuItem(value: '1h', child: Text('1 Hour')),
-                                          DropdownMenuItem(value: '4h', child: Text('4 Hours (Recommended)')),
+                                          DropdownMenuItem(value: '4h', child: Text('4 Hours')),
+                                          DropdownMenuItem(value: '1d', child: Text('1 Day')),
                                         ],
                                         onChanged: _updateAlertTimeframe,
                                       ),

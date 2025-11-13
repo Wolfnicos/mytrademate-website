@@ -57,6 +57,14 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   void _onExchangeChanged() {
     // Reload portfolio when exchange changes
     debugPrint('Portfolio: Exchange changed, reloading portfolio...');
+    // Clear old data immediately to avoid showing stale data from previous exchange
+    setState(() {
+      _balances = {};
+      _prices = {};
+      _totalValue = 0.0;
+      _isLoading = true;
+      _error = null;
+    });
     _loadPortfolio();
   }
 

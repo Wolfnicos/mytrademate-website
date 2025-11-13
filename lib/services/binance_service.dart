@@ -147,10 +147,14 @@ class BinanceService implements BaseExchangeService {
   /// Save API credentials to secure storage
   @override
   Future<void> saveCredentials(String apiKey, String apiSecret) async {
-    await _secureStorage.write(key: 'binance_api_key', value: apiKey);
-    await _secureStorage.write(key: 'binance_api_secret', value: apiSecret);
-    _apiKey = apiKey;
-    _apiSecret = apiSecret;
+    // Remove ALL whitespace from credentials (common copy-paste issue)
+    final cleanApiKey = apiKey.replaceAll(RegExp(r'\s+'), '');
+    final cleanApiSecret = apiSecret.replaceAll(RegExp(r'\s+'), '');
+
+    await _secureStorage.write(key: 'binance_api_key', value: cleanApiKey);
+    await _secureStorage.write(key: 'binance_api_secret', value: cleanApiSecret);
+    _apiKey = cleanApiKey;
+    _apiSecret = cleanApiSecret;
   }
 
   /// Retry HTTP requests with exponential backoff
@@ -891,20 +895,14 @@ class BinanceService implements BaseExchangeService {
   /// Used by Phase 3: High-volume symbols (percentile > 0.5) get +5% confidence boost
   Future<double> getVolumePercentile(String targetSymbol, {List<String>? comparisonSymbols}) async {
     try {
-      // Default comparison set: major EUR pairs
-      final symbols = comparisonSymbols ?? [
-        'BTCEUR',
-        'ETHEUR',
-        'XRPEUR',
-        'ADAEUR',
-        'DOGEEUR',
-        'POLEUR',
-        'DOTEUR',
-        'LINKEUR',
-        'UNIEUR',
-        'TRUMPEUR',
-        'WLFIEUR',
-      ];
+      // Extract quote currency from targetSymbol (e.g., BTCUSDT → USDT)
+      final RegExp quoteRegex = RegExp(r'(USDT|USDC|EUR|USD)$');
+      final match = quoteRegex.firstMatch(targetSymbol);
+      final quote = match?.group(1) ?? 'EUR'; // Fallback to EUR if no match
+
+      // Build dynamic comparison list with same quote currency
+      final baseAssets = ['BTC', 'ETH', 'XRP', 'ADA', 'DOGE', 'POL', 'DOT', 'LINK', 'UNI', 'TRUMP', 'WLFI'];
+      final symbols = comparisonSymbols ?? baseAssets.map((base) => '$base$quote').toList();
 
       // Fetch volumes for all symbols in parallel
       final volumeFutures = symbols.map((s) => get24hVolume(s));
@@ -920,7 +918,7 @@ class BinanceService implements BaseExchangeService {
       }
 
       final percentile = lowerCount / volumes.length;
-      debugPrint('📊 Volume percentile for $targetSymbol: ${(percentile * 100).toStringAsFixed(1)}% (volume: ${targetVolume.toStringAsFixed(0)} EUR)');
+      debugPrint('📊 Volume percentile for $targetSymbol: ${(percentile * 100).toStringAsFixed(1)}% (volume: ${targetVolume.toStringAsFixed(0)} $quote)');
 
       return percentile;
     } catch (e) {

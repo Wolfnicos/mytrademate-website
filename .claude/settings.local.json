@@ -28,7 +28,10 @@
       "WebSearch",
       "Bash(git rm:*)",
       "WebFetch(domain:mytrademate.app)",
-      "Bash(timeout 30 flutter analyze:*)"
+      "Bash(timeout 30 flutter analyze:*)",
+      "Bash(pgrep:*)",
+      "Bash(curl:*)",
+      "Bash(timeout 30 flutter logs:*)"
     ],
     "deny": [],
     "ask": []
