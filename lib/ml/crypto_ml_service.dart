@@ -983,7 +983,8 @@ class CryptoMLService {
     return expValues.map((e) => e / sumExp).toList();
   }
 
-  /// Calculează puterea semnalului (0-100)
+  /// Calculează puterea semnalului (0.0-1.0)
+  /// Returns the difference between top 2 probabilities (conviction metric)
   double _calculateSignalStrength(List<double> probabilities) {
     if (probabilities.length < 2) return 0.0;
 
@@ -991,7 +992,7 @@ class CryptoMLService {
     final maxVal = sorted.last;
     final secondMax = sorted[sorted.length - 2];
     final diff = maxVal - secondMax;
-    return (diff * 100).clamp(0, 100);
+    return diff.clamp(0.0, 1.0); // Returns 0.0-1.0 (NOT 0-100)
   }
 
   /// Calculate calibrated confidence - varies by timeframe, coin, and model accuracy
@@ -1317,7 +1318,7 @@ class CryptoPrediction {
   final String action; // SELL, HOLD, BUY
   final double confidence; // 0.0 - 1.0
   final Map<String, double> probabilities;
-  final double signalStrength; // 0-100
+  final double signalStrength; // 0.0 - 1.0 (conviction: diff between top 2 probs)
   final double modelAccuracy;
   final DateTime timestamp;
   final bool isEnsemble;
