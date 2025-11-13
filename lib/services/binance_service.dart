@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:crypto/crypto.dart';
 
 import '../models/candle.dart';
+import '../models/features_with_atr.dart';
 // import '../services/technical_indicator_calculator.dart';
 import '../services/full_feature_builder.dart';
 import 'base_exchange_service.dart';
@@ -34,19 +35,6 @@ class FeatureResult {
   factory FeatureResult.error(String error, {int? need, int? got}) {
     return FeatureResult._(ok: false, error: error, need: need, got: got);
   }
-}
-
-/// Result wrapper for features + ATR + current price (for Phase 3 volatility-based weights)
-class FeaturesWithATR {
-  final List<List<double>> features;
-  final double atr;
-  final double currentPrice; // Latest candle close price
-
-  const FeaturesWithATR({
-    required this.features,
-    required this.atr,
-    required this.currentPrice,
-  });
 }
 
 class BinanceService implements BaseExchangeService {

@@ -371,8 +371,9 @@ class CryptoMLService {
       final coinKey = '${coin.toLowerCase()}_$tf';
       if (_interpreters.containsKey(coinKey)) {
         try {
-          // Fetch candles for THIS model's timeframe
-          final result = await _binanceService.getFeaturesWithATRFallback(symbol, interval: tf);
+          // Fetch candles for THIS model's timeframe (using exchange-specific service)
+          final service = exchangeService ?? _binanceService;
+          final result = await service.getFeaturesWithATRFallback(symbol, interval: tf);
 
           // Calculate ATR for the requested timeframe (for weights)
           if (tf == timeframe) {
@@ -451,8 +452,9 @@ class CryptoMLService {
       final generalKey = 'general_$tf';
       if (_interpreters.containsKey(generalKey)) {
         try {
-          // Fetch candles for THIS general model's timeframe
-          final result = await _binanceService.getFeaturesWithATRFallback(symbol, interval: tf);
+          // Fetch candles for THIS general model's timeframe (using exchange-specific service)
+          final service = exchangeService ?? _binanceService;
+          final result = await service.getFeaturesWithATRFallback(symbol, interval: tf);
 
           final pred = await _getPredictionWithModel(
             generalKey,

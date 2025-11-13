@@ -6,6 +6,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:crypto/crypto.dart';
 
 import '../models/candle.dart';
+import '../models/features_with_atr.dart';
+import '../services/full_feature_builder.dart';
 import 'base_exchange_service.dart';
 
 /// Coinbase Exchange API Service
@@ -596,5 +598,104 @@ class CoinbaseService implements BaseExchangeService {
       // Return median (0.5) on error - no boost or penalty
       return 0.5;
     }
+  }
+
+  // ===================================
+  // ML Feature Engineering
+  // ===================================
+
+  /// Helper: Calculate ATR (Average True Range) from candle data
+  double _calculateATR(List<List<double>> candles, {int period = 14}) {
+    if (candles.length < period + 1) return 0.02; // Default 2% if insufficient data
+
+    final trueRanges = <double>[];
+    for (int i = 1; i < candles.length; i++) {
+      final high = candles[i][2];
+      final low = candles[i][3];
+      final prevClose = candles[i - 1][4];
+
+      final tr = [
+        high - low,
+        (high - prevClose).abs(),
+        (low - prevClose).abs(),
+      ].reduce((a, b) => a > b ? a : b);
+
+      trueRanges.add(tr);
+    }
+
+    if (trueRanges.isEmpty) return 0.02;
+
+    // Simple average of last N true ranges
+    final atrValues = <double>[];
+    for (int i = period - 1; i < trueRanges.length; i++) {
+      final slice = trueRanges.sublist(i - period + 1, i + 1);
+      final avg = slice.reduce((a, b) => a + b) / slice.length;
+      atrValues.add(avg);
+    }
+
+    if (atrValues.isEmpty) return 0.02;
+
+    final latestATR = atrValues.last;
+    final latestPrice = candles.last[4];
+
+    return latestPrice > 0 ? latestATR / latestPrice : 0.02;
+  }
+
+  @override
+  Future<FeaturesWithATR> getFeaturesWithATRFallback(String symbol, {String interval = '1h'}) async {
+    // Convert Binance-style symbol to Coinbase format (BTCEUR → BTC-EUR)
+    final coinbaseSymbol = buildTradingPair(
+      symbol.replaceAll('USDT', '').replaceAll('EUR', '').replaceAll('USD', ''),
+      symbol.contains('EUR') ? 'EUR' : (symbol.contains('USDT') ? 'USDT' : 'USD'),
+    );
+
+    // Determine limit based on interval
+    int limit;
+    switch (interval) {
+      case '15m':
+      case '4h':
+      case '1d':
+      case '1w':
+        limit = 1000;
+        break;
+      default:
+        limit = 1000;
+    }
+
+    // Fetch candles
+    final candles = await fetchKlines(coinbaseSymbol, interval, limit: limit);
+
+    // Log latest candle
+    if (candles.isNotEmpty) {
+      final latestCandle = candles.last;
+      final now = DateTime.now();
+      final candleAge = now.difference(latestCandle.closeTime);
+      debugPrint('[Coinbase] 📅 Latest candle: ${latestCandle.closeTime} (${candleAge.inMinutes}min ago) - DATA IS FRESH!');
+      debugPrint('[Coinbase]    Close: \$${latestCandle.close.toStringAsFixed(2)}, Volume: ${latestCandle.volume.toStringAsFixed(2)}');
+    }
+
+    // Calculate ATR
+    final candlesForATR = candles.map((c) => [
+      c.openTime.millisecondsSinceEpoch.toDouble(),
+      c.open,
+      c.high,
+      c.low,
+      c.close,
+      c.volume,
+    ]).toList();
+
+    final atr = _calculateATR(candlesForATR, period: 14);
+
+    // Build features using FullFeatureBuilder
+    final fullBuilder = FullFeatureBuilder();
+    final features = fullBuilder.buildFeatures(candles: candles);
+
+    final currentPrice = candles.isNotEmpty ? candles.last.close : 0.0;
+
+    return FeaturesWithATR(
+      features: features,
+      atr: atr,
+      currentPrice: currentPrice,
+    );
   }
 }

@@ -1,4 +1,5 @@
 import '../models/candle.dart';
+import '../models/features_with_atr.dart';
 
 /// Base interface for all exchange services (Binance, Coinbase, Kraken, etc.)
 /// This ensures consistent API across all exchanges
@@ -99,4 +100,18 @@ abstract class BaseExchangeService {
 
   /// Get current timestamp adjusted for server time offset
   Future<int> getSynchronizedTimestamp();
+
+  // ===================================
+  // ML Feature Engineering
+  // ===================================
+
+  /// Build ML features + ATR with symbol fallback
+  /// Used by CryptoMLService for predictions
+  /// @param symbol - Trading pair (e.g., 'BTCEUR', 'ETHUSDT')
+  /// @param interval - Time interval (e.g., '5m', '1h', '1d')
+  /// @returns FeaturesWithATR containing:
+  ///   - features: 60 timesteps × 76 features for ML model
+  ///   - atr: Average True Range (volatility metric, 0.0-1.0)
+  ///   - currentPrice: Latest candle close price
+  Future<FeaturesWithATR> getFeaturesWithATRFallback(String symbol, {String interval = '1h'});
 }
