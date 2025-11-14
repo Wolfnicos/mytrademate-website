@@ -12,6 +12,9 @@ import 'candle_pattern_detector.dart';
 class FullFeatureBuilder {
   final _patternDetector = CandlePatternDetector();
 
+  /// Debug mode flag - set to true to enable detailed pattern logging
+  static const bool debugMode = false;
+
   /// Build complete 76-feature vector for 60 timesteps using SLIDING WINDOW
   /// Returns List<List<double>> of shape (60, 76)
   ///
@@ -50,8 +53,8 @@ class FullFeatureBuilder {
       throw ArgumentError('Need at least $timesteps candles, got $n');
     }
 
-    // DEBUG: Check allFeatures[997] BEFORE extraction
-    if (n >= 998) {
+    // DEBUG: Check allFeatures[997] BEFORE extraction (only in debug mode)
+    if (debugMode && n >= 998) {
       final row997 = allFeatures[997];
       final patterns997_11_13 = row997.sublist(11, 14).map((f) => f.toStringAsFixed(1)).join(', ');
       debugPrint('🔍 DEBUG BEFORE EXTRACTION: allFeatures[997] Features[11:13] = [$patterns997_11_13]');
@@ -62,8 +65,8 @@ class FullFeatureBuilder {
       output.add(allFeatures[i]);
     }
 
-    // DEBUG: Log first and last timestep with FULL pattern mapping
-    if (output.isNotEmpty) {
+    // DEBUG: Log timestep features (only in debug mode)
+    if (debugMode && output.isNotEmpty) {
       final firstRow = output.first;
       final lastRow = output.last;
 
@@ -106,19 +109,21 @@ class FullFeatureBuilder {
       final patterns59_11_13 = lastRow.sublist(11, 14).map((f) => f.toStringAsFixed(1)).join(', ');
       debugPrint('   Features[11:13] (multi-candle patterns: bullish_eng, bearish_eng, piercing): [$patterns59_11_13]');
 
-      // Detailed pattern breakdown for last timestep
-      debugPrint('');
-      debugPrint('📋 DETAILED PATTERN MAPPING for Last Timestep (t=59):');
-      final patternIndices = [0, 1, 2, 3, 4, 5, 11, 12, 13, 19, 20]; // Include morning_star, evening_star
-      final patternNames = ['doji', 'dragonfly_doji', 'gravestone_doji', 'long_legged_doji',
-                            'hammer', 'inverted_hammer', 'bullish_engulfing', 'bearish_engulfing',
-                            'piercing_line', 'morning_star', 'evening_star'];
-      for (int i = 0; i < patternIndices.length; i++) {
-        final idx = patternIndices[i];
-        final name = patternNames[i];
-        final value = lastRow[idx];
-        if (value > 0.0) {
-          debugPrint('   ✅ features[$idx] = $value → $name DETECTED');
+      // Detailed pattern breakdown for last timestep (only in debug mode)
+      if (debugMode) {
+        debugPrint('');
+        debugPrint('📋 DETAILED PATTERN MAPPING for Last Timestep (t=59):');
+        final patternIndices = [0, 1, 2, 3, 4, 5, 11, 12, 13, 19, 20]; // Include morning_star, evening_star
+        final patternNames = ['doji', 'dragonfly_doji', 'gravestone_doji', 'long_legged_doji',
+                              'hammer', 'inverted_hammer', 'bullish_engulfing', 'bearish_engulfing',
+                              'piercing_line', 'morning_star', 'evening_star'];
+        for (int i = 0; i < patternIndices.length; i++) {
+          final idx = patternIndices[i];
+          final name = patternNames[i];
+          final value = lastRow[idx];
+          if (value > 0.0) {
+            debugPrint('   ✅ features[$idx] = $value → $name DETECTED');
+          }
         }
       }
     }
@@ -370,8 +375,9 @@ class FullFeatureBuilder {
     return output; // [n, 76]
   }
 
-  /// Log detailed pattern detection for debugging
-  /// Shows OHLC data and detected patterns for the last 60 candles
+  /// Log pattern detection for debugging
+  /// Shows detected patterns for the last 60 candles
+  /// Detailed OHLC data only shown in debugMode
   void _logPatternDetection({
     required List<Candle> candles,
     required Map<String, List<double>> patterns,
@@ -399,14 +405,17 @@ class FullFeatureBuilder {
       }
     }
 
-    debugPrint('');
-    debugPrint('🔬 ════════════════════════════════════════════════════════════════');
-    debugPrint('🔬 PATTERN DETECTION ANALYSIS (Last 60 candles)');
-    debugPrint('🔬 ════════════════════════════════════════════════════════════════');
-    debugPrint('📊 Total patterns detected: $patternsDetected');
-    debugPrint('');
+    // Only show detailed pattern analysis in debug mode
+    if (debugMode) {
+      debugPrint('');
+      debugPrint('🔬 ════════════════════════════════════════════════════════════════');
+      debugPrint('🔬 PATTERN DETECTION ANALYSIS (Last 60 candles)');
+      debugPrint('🔬 ════════════════════════════════════════════════════════════════');
+      debugPrint('📊 Total patterns detected: $patternsDetected');
+      debugPrint('');
+    }
 
-    if (patternsDetected == 0) {
+    if (patternsDetected == 0 && debugMode) {
       debugPrint('⚠️  NO PATTERNS DETECTED in last 60 candles');
       debugPrint('   This is NORMAL for:');
       debugPrint('   • Low volatility periods');
@@ -429,7 +438,7 @@ class FullFeatureBuilder {
         debugPrint('   Body:  ${bodyPct.toStringAsFixed(1)}% of range');
         debugPrint('   Direction: ${lastCandle.close > lastCandle.open ? "BULLISH ▲" : "BEARISH ▼"}');
       }
-    } else {
+    } else if (debugMode) {
       // Show detailed info for each detected pattern
       for (final entry in detectedPatterns.entries) {
         final patternName = entry.key;
@@ -460,25 +469,13 @@ class FullFeatureBuilder {
       }
     }
 
-    debugPrint('🔬 ════════════════════════════════════════════════════════════════');
-    debugPrint('');
-
-    // === CRITICAL DEBUG: Check patterns in LAST 5 candles (model input) ===
-    debugPrint('🚨 CRITICAL: Pattern check in LAST 5 candles (indices ${n-5} to ${n-1}):');
-    for (final patternName in patternOrder.take(6)) {
-      final patternValues = patterns[patternName]!;
-      final lastFivePatterns = <int>[];
-
-      for (int i = n - 5; i < n; i++) {
-        if (patternValues[i] > 0.0) {
-          lastFivePatterns.add(i);
-        }
-      }
-
-      if (lastFivePatterns.isNotEmpty) {
-        debugPrint('   ✅ ${patternName.toUpperCase()}: detected at indices ${lastFivePatterns.join(", ")}');
-      }
+    if (debugMode) {
+      debugPrint('🔬 ════════════════════════════════════════════════════════════════');
+      debugPrint('');
     }
+
+    // === MINIMAL LOGGING: Check critical patterns in LAST 5 candles ===
+    // Only log multi-candle patterns (Bullish Engulfing, Piercing Line, etc.) - keep this always on
 
     // Check multi-candle patterns (bullish_engulfing, bearish_engulfing, morning_star, evening_star)
     final multiCandlePatterns = ['bullish_engulfing', 'bearish_engulfing', 'morning_star', 'evening_star'];
@@ -497,40 +494,28 @@ class FullFeatureBuilder {
       }
 
       if (lastFivePatterns.isNotEmpty) {
-        debugPrint('   🔥 ${patternName.toUpperCase().replaceAll('_', ' ')}: detected at indices ${lastFivePatterns.join(", ")}');
-
-        // Show which timesteps these correspond to
+        // Always log critical pattern detection
         final timesteps = lastFivePatterns.map((idx) => idx - startIdx).toList();
-        debugPrint('      → Corresponds to timesteps: ${timesteps.join(", ")} (in 60-timestep window)');
-        debugPrint('      → Should appear in features[$featureIdx] at these timesteps');
+        debugPrint('🔥 ${patternName.toUpperCase().replaceAll('_', ' ')}: detected at timesteps ${timesteps.join(", ")}');
 
-        // DEBUG: Show pattern values for debugging
-        debugPrint('      → Raw pattern values at detected indices:');
-        for (final candleIdx in lastFivePatterns) {
-          debugPrint('         index $candleIdx: ${patternValues[candleIdx]}');
-          if (candleIdx > 0 && candleIdx < candles.length) {
-            final prevCandle = candles[candleIdx - 1];
-            final currCandle = candles[candleIdx];
-            debugPrint('         Candle[${candleIdx-1}]: O=${prevCandle.open.toStringAsFixed(2)} C=${prevCandle.close.toStringAsFixed(2)} (${prevCandle.close > prevCandle.open ? "BULL" : "BEAR"})');
-            debugPrint('         Candle[$candleIdx]: O=${currCandle.open.toStringAsFixed(2)} C=${currCandle.close.toStringAsFixed(2)} (${currCandle.close > currCandle.open ? "BULL" : "BEAR"})');
+        // Only show detailed OHLC in debug mode
+        if (debugMode) {
+          debugPrint('   → Detected at candle indices: ${lastFivePatterns.join(", ")}');
+          debugPrint('   → Should appear in features[$featureIdx] at timesteps ${timesteps.join(", ")}');
+
+          // Show pattern values and OHLC for debugging
+          for (final candleIdx in lastFivePatterns) {
+            if (candleIdx > 0 && candleIdx < candles.length) {
+              final prevCandle = candles[candleIdx - 1];
+              final currCandle = candles[candleIdx];
+              debugPrint('   → Candle[${candleIdx-1}]: O=${prevCandle.open.toStringAsFixed(2)} C=${prevCandle.close.toStringAsFixed(2)} (${prevCandle.close > prevCandle.open ? "BULL" : "BEAR"})');
+              debugPrint('   → Candle[$candleIdx]: O=${currCandle.open.toStringAsFixed(2)} C=${currCandle.close.toStringAsFixed(2)} (${currCandle.close > currCandle.open ? "BULL" : "BEAR"})');
+            }
           }
         }
       }
     }
 
-    // Check if ANY pattern exists in last candle
-    bool hasPatternInLastCandle = false;
-    for (final patternName in [...patternOrder.take(6), ...multiCandlePatterns]) {
-      if (patterns[patternName]![n - 1] > 0.0) {
-        hasPatternInLastCandle = true;
-        debugPrint('   🎯 PATTERN IN LAST CANDLE (index ${n-1}): ${patternName.toUpperCase().replaceAll('_', ' ')}');
-      }
-    }
-
-    if (!hasPatternInLastCandle) {
-      debugPrint('   ⚠️  NO PATTERNS in last candle (index ${n-1}) - check if multi-candle patterns exist in last 2-3 candles');
-    }
-    debugPrint('');
   }
 
   /// Deterministic training signature (features order + scalers + lookbacks)
