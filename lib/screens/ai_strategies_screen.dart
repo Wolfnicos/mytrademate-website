@@ -14,7 +14,6 @@ import '../ml/crypto_ml_service.dart';
 // Theme & Widgets
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/risk_disclaimer.dart';
 import '../widgets/upgrade_banner.dart';
 import '../utils/responsive.dart';
 
@@ -407,16 +406,6 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           padding: const EdgeInsets.all(AppTheme.spacing20),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              // Risk Disclaimer
-              Container(
-                decoration: BoxDecoration(
-                  color: colors.surfaceContainerHighest.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-                  border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.5)),
-                ),
-                child: const RiskDisclaimer(),
-              ),
-              const SizedBox(height: AppTheme.spacing16),
 
               // Symbol & Interval Selector
               _buildSymbolSelector(),
@@ -426,13 +415,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
               _buildPredictionCard(),
               const SizedBox(height: AppTheme.spacing16),
 
-              // What does this mean? - User-friendly explanation
-              if (_lastPrediction != null)
-                _buildWhatDoesThisMean(),
-              const SizedBox(height: AppTheme.spacing16),
 
-              // Model Contributions / AI Technical Analysis (only for short-term trading signals, not long-term trends)
-              if (_lastPrediction != null && _interval != '1d' && _interval != '1w')
+              // Model Contributions / AI Technical Analysis
+              if (_lastPrediction != null && _interval != '1w')
                 _buildModelContributions(),
 
               // Upgrade to Premium CTA (FREE mode only, NOT during trial)
@@ -847,17 +832,6 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
               ),
             ),
           ],
-
-          const SizedBox(height: AppTheme.spacing16),
-          ElevatedButton.icon(
-            onPressed: _runInference,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Refresh Prediction'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              foregroundColor: Colors.white,
-            ),
-          ),
         ],
       ),
     );
@@ -1263,17 +1237,65 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.insights, color: AppTheme.primary, size: 20),
+              Icon(Icons.psychology_outlined, color: AppTheme.primary, size: 20),
               const SizedBox(width: AppTheme.spacing8),
               Expanded(
-                child: Text('AI Technical Analysis', style: AppTheme.headingMedium),
+                child: Text('🤖 Ensemble AI Engine', style: AppTheme.headingMedium),
               ),
             ],
           ),
-          const SizedBox(height: AppTheme.spacing8),
-          Text(
-            'Advanced deep learning model analyzes 76 technical indicators across multiple timeframes',
-            style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
+          const SizedBox(height: AppTheme.spacing12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.auto_awesome, color: AppTheme.primary.withValues(alpha: 0.8), size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Multi-timeframe deep learning analysis across 76+ technical features',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTheme.spacing8),
+              Row(
+                children: [
+                  Icon(Icons.flash_on, color: AppTheme.primary.withValues(alpha: 0.8), size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Real-time pattern detection: candlesticks, momentum, and volume analysis',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTheme.spacing8),
+              Row(
+                children: [
+                  Icon(Icons.hub_outlined, color: AppTheme.primary.withValues(alpha: 0.8), size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Smart decision fusion: combines 5 specialized models with dynamic weighting',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           const SizedBox(height: AppTheme.spacing20),
 
@@ -1394,73 +1416,6 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       ),
     );
   }
-  
-  /// Build "What does this mean?" section
-  Widget _buildWhatDoesThisMean() {
-    final prediction = _lastPrediction!;
-    final action = prediction.action;
-    final isBullish = action == 'BUY';
-    final isBearish = action == 'SELL';
-    final signalColor = isBullish ? AppTheme.buyGreen : (isBearish ? AppTheme.sellRed : const Color(0xFFFF9500));
-    
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.lightbulb_outline, color: signalColor, size: 20),
-              const SizedBox(width: AppTheme.spacing8),
-              Flexible(
-                child: Text(
-                  'What does this mean?',
-                  style: AppTheme.headingMedium.copyWith(
-                    color: signalColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppTheme.spacing12),
-          Text(
-            _getActionExplanation(action, _selectedSymbol, _interval),
-            style: AppTheme.bodyMedium.copyWith(
-              color: AppTheme.getTextSecondary(context),
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: AppTheme.spacing12),
-
-          // Educational reminder - Portfolio Tracker Lite (No Trading)
-          Container(
-            padding: const EdgeInsets.all(AppTheme.spacing12),
-            decoration: BoxDecoration(
-              color: signalColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-              border: Border.all(color: signalColor.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, color: signalColor, size: 18),
-                const SizedBox(width: AppTheme.spacing8),
-                Expanded(
-                  child: Text(
-                    '📚 This is an educational analysis. Use this information to learn about market patterns and technical indicators.',
-                    style: AppTheme.bodySmall.copyWith(
-                      color: signalColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   /// Build "Upgrade to Premium" CTA
   Widget _buildUpgradeToPremiumCTA() {
@@ -1523,63 +1478,5 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         ),
       ),
     );
-  }
-  
-  /// Generate user-friendly explanation of AI recommendation
-  String _getActionExplanation(String action, String symbol, String timeframe) {
-    final coin = symbol.replaceAll(RegExp(r'(USDT|EUR|USDC|USD)'), '');
-    final tfDisplay = timeframe == '5m' ? '5-minute' :
-                      timeframe == '15m' ? '15-minute' :
-                      timeframe == '1h' ? '1-hour' :
-                      timeframe == '4h' ? '4-hour' :
-                      timeframe == '1d' ? 'daily' : timeframe;
-    
-    switch (action) {
-      case 'BUY':
-        return 'Market analysis indicates $coin shows bullish momentum on the $tfDisplay timeframe. '
-               'Technical indicators suggest potential upward price movement in the coming ${_getTimeHorizon(timeframe)}. '
-               'This is an educational observation based on historical patterns.\n\n'
-               '⚠️ Not financial advice. Always do your own research. Cryptocurrency markets are highly volatile.';
-
-      case 'SELL':
-        return 'Market analysis indicates $coin shows bearish momentum on the $tfDisplay timeframe. '
-               'Technical indicators suggest potential downward price pressure in the coming ${_getTimeHorizon(timeframe)}. '
-               'This is an educational observation based on historical patterns.\n\n'
-               '⚠️ Not financial advice. Always do your own research. Cryptocurrency markets are highly volatile.';
-
-      case 'HOLD':
-        return 'Market analysis indicates $coin is in a consolidation phase on the $tfDisplay timeframe. '
-               'Price movement appears range-bound without clear directional bias. '
-               'Educational observation: monitor for potential breakout confirmation.\n\n'
-               '📊 WHY PREDICTIONS STAY STABLE:\n'
-               '• Data refreshes every time you click "Refresh Prediction" (check logs)\n'
-               '• Small price changes (<1%) are too minor to change AI predictions\n'
-               '• During consolidation, market features (RSI, MACD, volume) stay similar\n'
-               '• This is CORRECT behavior - AI needs significant movement (>1-2%) to change signals\n\n'
-               '💡 Check the debug logs to see:\n'
-               '• Fresh candle timestamps updating\n'
-               '• Price changes (e.g., +\$6 on BTC = +0.006%)\n'
-               '• The system IS working - predictions will update when market breaks out!';
-      
-      default:
-        return 'AI is analyzing market conditions for $coin. Check back soon for updated signals.';
-    }
-  }
-  
-  /// Get time horizon description based on timeframe
-  String _getTimeHorizon(String timeframe) {
-    switch (timeframe) {
-      case '5m':
-      case '15m':
-        return 'minutes to hours';
-      case '1h':
-        return 'hours';
-      case '4h':
-        return 'hours to days';
-      case '1d':
-        return 'days to weeks';
-      default:
-        return 'period';
-    }
   }
 }
