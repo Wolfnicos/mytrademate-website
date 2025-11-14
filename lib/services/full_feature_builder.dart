@@ -471,18 +471,10 @@ class FullFeatureBuilder {
       if (lastFivePatterns.isNotEmpty) {
         debugPrint('   🔥 ${patternName.toUpperCase().replaceAll('_', ' ')}: detected at indices ${lastFivePatterns.join(", ")}');
 
-        // CRITICAL: Verify pattern appears in feature vector at correct timestep
-        for (final candleIdx in lastFivePatterns) {
-          final timestep = candleIdx - startIdx; // Convert candle index to timestep (0-59)
-          if (timestep >= 0 && timestep < allFeatures.length) {
-            final featureValue = allFeatures[candleIdx][featureIdx];
-            if (featureValue > 0.0) {
-              debugPrint('      ✅ VERIFIED in features[$featureIdx] at timestep $timestep (candle $candleIdx): $featureValue');
-            } else {
-              debugPrint('      ❌ MISSING in features[$featureIdx] at timestep $timestep (candle $candleIdx): expected 1.0, got $featureValue');
-            }
-          }
-        }
+        // Show which timesteps these correspond to
+        final timesteps = lastFivePatterns.map((idx) => idx - startIdx).toList();
+        debugPrint('      → Corresponds to timesteps: ${timesteps.join(", ")} (in 60-timestep window)');
+        debugPrint('      → Should appear in features[$featureIdx] at these timesteps');
       }
     }
 
