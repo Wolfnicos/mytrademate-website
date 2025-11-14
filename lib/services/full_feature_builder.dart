@@ -113,11 +113,12 @@ class FullFeatureBuilder {
       if (debugMode) {
         debugPrint('');
         debugPrint('📋 DETAILED PATTERN MAPPING for Last Timestep (t=59):');
-        final patternIndices = [0, 1, 2, 3, 4, 5, 11, 12, 13, 14, 19, 20, 21, 22]; // All critical patterns
+        final patternIndices = [0, 1, 2, 3, 4, 5, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]; // All patterns
         final patternNames = ['doji', 'dragonfly_doji', 'gravestone_doji', 'long_legged_doji',
                               'hammer', 'inverted_hammer', 'bullish_engulfing', 'bearish_engulfing',
-                              'piercing_line', 'dark_cloud_cover', 'morning_star', 'evening_star',
-                              'three_white_soldiers', 'three_black_crows'];
+                              'piercing_line', 'dark_cloud_cover', 'bullish_harami', 'bearish_harami',
+                              'tweezer_bottom', 'tweezer_top', 'morning_star', 'evening_star',
+                              'three_white_soldiers', 'three_black_crows', 'rising_three', 'falling_three'];
         for (int i = 0; i < patternIndices.length; i++) {
           final idx = patternIndices[i];
           final name = patternNames[i];
@@ -476,14 +477,17 @@ class FullFeatureBuilder {
     }
 
     // === MINIMAL LOGGING: Check critical patterns in LAST 5 candles ===
-    // Only log multi-candle patterns (Bullish Engulfing, Dark Cloud Cover, Three White Soldiers, etc.) - keep this always on
+    // Log ALL multi-candle patterns for comprehensive trading signal analysis
+    // These patterns are always logged (even with debugMode=false) as they're critical for trading decisions
 
     // Check multi-candle patterns with their feature indices
     final multiCandlePatterns = [
       'bullish_engulfing', 'bearish_engulfing', 'piercing_line', 'dark_cloud_cover',
-      'morning_star', 'evening_star', 'three_white_soldiers', 'three_black_crows'
+      'bullish_harami', 'bearish_harami', 'tweezer_bottom', 'tweezer_top',
+      'morning_star', 'evening_star', 'three_white_soldiers', 'three_black_crows',
+      'rising_three', 'falling_three'
     ];
-    final multiCandleIndices = [11, 12, 13, 14, 19, 20, 21, 22]; // Feature indices for these patterns
+    final multiCandleIndices = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]; // Feature indices for these patterns
 
     for (int idx = 0; idx < multiCandlePatterns.length; idx++) {
       final patternName = multiCandlePatterns[idx];
