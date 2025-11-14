@@ -55,7 +55,7 @@ class FullFeatureBuilder {
       output.add(allFeatures[i]);
     }
 
-    // DEBUG: Log first and last timestep
+    // DEBUG: Log first and last timestep with FULL pattern mapping
     if (output.isNotEmpty) {
       final firstRow = output.first;
       final lastRow = output.last;
@@ -64,15 +64,35 @@ class FullFeatureBuilder {
       debugPrint('🔬 FEATURE DEBUG | First timestep (t=0, candle index=$startIdx)');
       final priceAction0 = firstRow.sublist(25, 30).map((f) => f.toStringAsFixed(4)).join(', ');
       debugPrint('   Features[25:30] (price action): [$priceAction0]');
-      final patterns0 = firstRow.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
-      debugPrint('   Features[0:6] (patterns): [$patterns0]');
+      final patterns0_6 = firstRow.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
+      debugPrint('   Features[0:6] (single-candle patterns): [$patterns0_6]');
+      final patterns11_13 = firstRow.sublist(11, 14).map((f) => f.toStringAsFixed(1)).join(', ');
+      debugPrint('   Features[11:13] (multi-candle patterns: bullish_eng, bearish_eng, piercing): [$patterns11_13]');
 
       debugPrint('');
       debugPrint('🔬 FEATURE DEBUG | Last timestep (t=59, candle index=${n-1})');
       final priceAction59 = lastRow.sublist(25, 30).map((f) => f.toStringAsFixed(4)).join(', ');
       debugPrint('   Features[25:30] (price action): [$priceAction59]');
-      final patterns59 = lastRow.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
-      debugPrint('   Features[0:6] (patterns): [$patterns59]');
+      final patterns59_6 = lastRow.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
+      debugPrint('   Features[0:6] (single-candle patterns): [$patterns59_6]');
+      final patterns59_11_13 = lastRow.sublist(11, 14).map((f) => f.toStringAsFixed(1)).join(', ');
+      debugPrint('   Features[11:13] (multi-candle patterns: bullish_eng, bearish_eng, piercing): [$patterns59_11_13]');
+
+      // Detailed pattern breakdown for last timestep
+      debugPrint('');
+      debugPrint('📋 DETAILED PATTERN MAPPING for Last Timestep (t=59):');
+      final patternIndices = [0, 1, 2, 3, 4, 5, 11, 12, 13, 19, 20]; // Include morning_star, evening_star
+      final patternNames = ['doji', 'dragonfly_doji', 'gravestone_doji', 'long_legged_doji',
+                            'hammer', 'inverted_hammer', 'bullish_engulfing', 'bearish_engulfing',
+                            'piercing_line', 'morning_star', 'evening_star'];
+      for (int i = 0; i < patternIndices.length; i++) {
+        final idx = patternIndices[i];
+        final name = patternNames[i];
+        final value = lastRow[idx];
+        if (value > 0.0) {
+          debugPrint('   ✅ features[$idx] = $value → $name DETECTED');
+        }
+      }
     }
 
     debugPrint('🔍 FullFeatureBuilder: Generated ${output.length} timesteps × ${output.first.length} features');
