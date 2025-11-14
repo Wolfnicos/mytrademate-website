@@ -31,6 +31,26 @@ void callbackDispatcher() {
       // Get timeframe (default: 4h)
       final timeframe = prefs.getString('alert_timeframe') ?? '4h';
 
+      // Get exchange name (default: binance)
+      final exchangeName = prefs.getString('ai_alerts_exchange') ?? 'binance';
+
+      // Build correct symbol based on exchange
+      String buildSymbol(String coin, String exchange) {
+        switch (exchange.toLowerCase()) {
+          case 'kraken':
+            // Kraken uses XBT for Bitcoin
+            final krakenCoin = coin == 'BTC' ? 'XBT' : coin;
+            return '${krakenCoin}EUR';
+          case 'coinbase':
+            // Coinbase uses hyphen separator
+            return '$coin-EUR';
+          case 'binance':
+          default:
+            // Binance uses direct concatenation
+            return '${coin}EUR';
+        }
+      }
+
       // Initialize ML service
       final mlService = CryptoMLService();
       await mlService.initialize();
@@ -44,9 +64,12 @@ void callbackDispatcher() {
       // Check each coin
       for (final coin in coinsJson) {
         try {
+          final symbol = buildSymbol(coin, exchangeName);
+          debugPrint('🔍 Checking $coin on $exchangeName: $symbol');
+
           final prediction = await mlService.getPrediction(
             coin: coin,
-            symbol: '${coin}EUR',
+            symbol: symbol,
             timeframe: timeframe,
             silent: true, // Don't print debug logs in background
           );
@@ -115,6 +138,7 @@ class BackgroundAIMonitor {
   /// Start monitoring
   static Future<void> startMonitoring({
     Duration frequency = const Duration(minutes: 30),
+    required String exchangeName,
   }) async {
     // Background monitoring only works on Android
     if (Platform.isAndroid) {
@@ -134,9 +158,11 @@ class BackgroundAIMonitor {
       debugPrint('⚠️  iOS: Background monitoring limited - alerts work when app is open');
     }
 
-    // Save enabled state
+    // Save enabled state and exchange name
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('ai_alerts_enabled', true);
+    await prefs.setString('ai_alerts_exchange', exchangeName);
+    debugPrint('📝 AI Alerts exchange set to: $exchangeName');
   }
 
   /// Stop monitoring

@@ -242,13 +242,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
 
-      // Start background monitoring
+      // Get current exchange
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+
+      // Start background monitoring with current exchange
       await BackgroundAIMonitor.startMonitoring(
         frequency: const Duration(minutes: 30),
+        exchangeName: exchangeProvider.selectedExchange,
       );
 
       // Update coins from current exchange if API connected
-      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
       await UserCoinsService().updateCoinsFromExchange(exchangeProvider.currentExchange);
 
       // Get updated coin count
