@@ -1225,6 +1225,16 @@ class CryptoMLService {
       avgSignalStrength += wp.prediction.signalStrength * weight;
     }
 
+    // SIGNAL STRENGTH THRESHOLD: Force HOLD if signal strength < 5%
+    // Low signal strength indicates weak/noisy data → not confident enough for BUY/SELL
+    const double minSignalStrength = 0.05; // 5% minimum
+    if (avgSignalStrength < minSignalStrength && (finalAction == 'BUY' || finalAction == 'SELL')) {
+      // ignore: avoid_print
+      print('⚠️  SIGNAL TOO WEAK: ${(avgSignalStrength * 100).toStringAsFixed(1)}% < ${(minSignalStrength * 100).toStringAsFixed(1)}% → Forcing HOLD');
+      finalAction = 'HOLD';
+      finalConfidence = 0.50; // Neutral confidence for forced HOLD
+    }
+
     return CryptoPrediction(
       action: finalAction,
       confidence: finalConfidence,
