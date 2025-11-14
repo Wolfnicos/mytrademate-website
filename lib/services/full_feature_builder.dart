@@ -76,7 +76,17 @@ class FullFeatureBuilder {
       final patterns11_13 = firstRow.sublist(11, 14).map((f) => f.toStringAsFixed(1)).join(', ');
       debugPrint('   Features[11:13] (multi-candle patterns: bullish_eng, bearish_eng, piercing): [$patterns11_13]');
 
-      // Check timestep 57 (candle index 997) for ALL patterns
+      // Check timestep 55 (where Bearish Engulfing should be) and timestep 57
+      if (output.length >= 56) {
+        final row55 = output[55];
+        final patterns55_0_6 = row55.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
+        final patterns55_11_13 = row55.sublist(11, 14).map((f) => f.toStringAsFixed(1)).join(', ');
+        debugPrint('');
+        debugPrint('🔬 FEATURE DEBUG | Timestep 55 (candle index=${startIdx + 55})');
+        debugPrint('   Features[0:6] (single-candle patterns): [$patterns55_0_6]');
+        debugPrint('   Features[11:13] (multi-candle patterns: bullish_eng, bearish_eng, piercing): [$patterns55_11_13]');
+      }
+
       if (output.length >= 58) {
         final row57 = output[57];
         final patterns57_0_6 = row57.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
