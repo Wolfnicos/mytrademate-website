@@ -215,4 +215,75 @@ class BackgroundAIMonitor {
       'timeframe': prefs.getString('alert_timeframe') ?? '4h',
     };
   }
+
+  /// Run a manual test check (for testing notifications immediately)
+  static Future<void> runTestCheck() async {
+    debugPrint('🧪 Running manual AI Alerts test...');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final enabled = prefs.getBool('ai_alerts_enabled') ?? false;
+
+      if (!enabled) {
+        debugPrint('⚠️  AI Alerts disabled - enable first!');
+        return;
+      }
+
+      // Get monitored coins
+      final coinsJson = prefs.getStringList('monitored_coins') ?? ['BTC', 'ETH', 'SOL'];
+      final threshold = prefs.getDouble('confidence_threshold') ?? 0.58;
+      final timeframe = prefs.getString('alert_timeframe') ?? '4h';
+      final exchangeName = prefs.getString('ai_alerts_exchange') ?? 'binance';
+
+      debugPrint('🧪 Test settings:');
+      debugPrint('   Exchange: $exchangeName');
+      debugPrint('   Coins: ${coinsJson.join(", ")}');
+      debugPrint('   Threshold: ${(threshold * 100).toStringAsFixed(0)}%');
+      debugPrint('   Timeframe: $timeframe');
+
+      // Build correct symbol based on exchange
+      String buildSymbol(String coin, String exchange) {
+        switch (exchange.toLowerCase()) {
+          case 'kraken':
+            final krakenCoin = coin == 'BTC' ? 'XBT' : coin;
+            return '${krakenCoin}EUR';
+          case 'coinbase':
+            return '$coin-EUR';
+          case 'binance':
+          default:
+            return '${coin}EUR';
+        }
+      }
+
+      // Initialize ML service
+      final mlService = CryptoMLService();
+      await mlService.initialize();
+
+      // Check first coin only for test
+      final coin = coinsJson.first;
+      final symbol = buildSymbol(coin, exchangeName);
+      debugPrint('🧪 Testing with $coin ($symbol)...');
+
+      final prediction = await mlService.getPrediction(
+        coin: coin,
+        symbol: symbol,
+        timeframe: timeframe,
+        silent: false, // Show debug logs for test
+      );
+
+      final confidence = prediction.confidence;
+      debugPrint('🧪 Test result: ${prediction.action} (${(confidence * 100).toStringAsFixed(1)}%)');
+
+      // Always show notification for test (ignore threshold)
+      await LocalNotificationService.showOpportunityAlert(
+        coin: coin,
+        confidence: confidence,
+        action: prediction.action,
+        timeframe: timeframe,
+      );
+
+      debugPrint('✅ Test notification sent!');
+    } catch (e) {
+      debugPrint('❌ Test error: $e');
+    }
+  }
 }

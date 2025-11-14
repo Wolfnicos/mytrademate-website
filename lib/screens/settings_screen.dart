@@ -256,13 +256,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       // Get updated coin count
       final coins = await UserCoinsService().getUserCoins();
+      final coinsSource = await UserCoinsService().getCoinsSource();
+
+      // Save coins to BackgroundAIMonitor (so background task uses correct coins)
+      await BackgroundAIMonitor.setMonitoredCoins(coins);
 
       if (mounted) {
         setState(() {
           _aiAlertsEnabled = true;
           _userCoinsCount = coins.length;
+          _coinsSource = coinsSource;
         });
-        _showSnackBar('AI Alerts enabled - monitoring ${coins.length} coins', isError: false);
+        _showSnackBar('AI Alerts enabled - monitoring ${coins.length} ${coinsSource == "api" ? "portfolio" : "popular"} coins', isError: false);
       }
     } else {
       // Stop background monitoring
@@ -284,6 +289,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (value == null) return;
     await BackgroundAIMonitor.setAlertTimeframe(value);
     setState(() => _alertTimeframe = value);
+  }
+
+  Future<void> _testAIAlerts() async {
+    if (!_aiAlertsEnabled) {
+      _showSnackBar('Enable AI Alerts first', isError: true);
+      return;
+    }
+
+    _showSnackBar('Running test...', isError: false);
+
+    try {
+      await BackgroundAIMonitor.runTestCheck();
+      _showSnackBar('Test notification sent! Check your notifications.', isError: false);
+    } catch (e) {
+      _showSnackBar('Test failed: $e', isError: true);
+    }
   }
 
   Future<void> _saveApiCredentials() async {
@@ -645,9 +666,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       Expanded(
                                         child: Slider(
                                           value: _confidenceThreshold,
-                                          min: 0.41,
+                                          min: 0.30,
                                           max: 0.70,
-                                          divisions: 29,
+                                          divisions: 40,
                                           label: '${(_confidenceThreshold * 100).toStringAsFixed(0)}%',
                                           onChanged: _updateConfidenceThreshold,
                                           activeColor: AppTheme.primary,
@@ -723,11 +744,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         Icon(Icons.info_outline, color: AppTheme.primary, size: 20),
                                         const SizedBox(width: AppTheme.spacing8),
                                         Expanded(
-                                          child: Text(
-                                            _coinsSource == 'api'
-                                                ? 'Monitoring your portfolio coins from Binance API'
-                                                : 'Monitoring TOP 10 popular coins (connect Binance API to track your portfolio)',
-                                            style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
+                                          child: Consumer<ExchangeProvider>(
+                                            builder: (context, exchangeProvider, _) {
+                                              final exchangeName = exchangeProvider.selectedExchange;
+                                              return Text(
+                                                _coinsSource == 'api'
+                                                    ? 'Monitoring your portfolio coins from $exchangeName API'
+                                                    : 'Monitoring TOP 10 popular coins (connect $exchangeName API to track your portfolio)',
+                                                style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
+                                              );
+                                            },
                                           ),
                                         ),
                                       ],
@@ -740,6 +766,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         )
                       : const SizedBox.shrink(),
                 ),
+
+                // Test Button (only show when AI Alerts is enabled)
+                if (_aiAlertsEnabled) ...[
+                  const SizedBox(height: AppTheme.spacing16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _testAIAlerts,
+                      icon: const Icon(Icons.bug_report, size: 18),
+                      label: const Text('Test Notification'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.primary,
+                        side: BorderSide(color: AppTheme.primary.withValues(alpha: 0.5)),
+                        padding: const EdgeInsets.symmetric(vertical: AppTheme.spacing12),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

@@ -92,8 +92,13 @@ class UserCoinsService with ChangeNotifier {
       // Exclude fiat currencies and stablecoins (quote currencies only)
       final excludedCurrencies = {'EUR', 'USD', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'USDP'};
 
+      // Minimum balance threshold to filter out dust (very small amounts)
+      // Strategy: Filter by relative balance size
+      // Keep only coins that have meaningful balances (not tiny dust amounts)
+      const minBalanceThreshold = 0.001; // Ignore balances < 0.001 (increased from 0.00001)
+
       final coins = balances.entries
-          .where((entry) => entry.value > 0) // Only coins with positive balance
+          .where((entry) => entry.value > minBalanceThreshold) // Filter out dust balances
           .map((entry) => entry.key) // Get coin symbol
           .where((coin) => !excludedCurrencies.contains(coin.toUpperCase())) // Exclude fiat & stablecoins
           .toList();
@@ -111,6 +116,12 @@ class UserCoinsService with ChangeNotifier {
 
       debugPrint('✅ Updated coins from ${exchange.exchangeName} API: ${coins.length} coins');
       debugPrint('   Coins: ${coins.join(", ")}');
+
+      // Debug: Show balances for each detected coin
+      for (final coin in coins) {
+        final balance = balances[coin] ?? 0.0;
+        debugPrint('   - $coin: $balance');
+      }
 
       // Notify listeners that coins changed
       notifyListeners();
