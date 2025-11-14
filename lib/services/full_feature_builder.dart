@@ -50,6 +50,13 @@ class FullFeatureBuilder {
       throw ArgumentError('Need at least $timesteps candles, got $n');
     }
 
+    // DEBUG: Check allFeatures[997] BEFORE extraction
+    if (n >= 998) {
+      final row997 = allFeatures[997];
+      final patterns997_11_13 = row997.sublist(11, 14).map((f) => f.toStringAsFixed(1)).join(', ');
+      debugPrint('🔍 DEBUG BEFORE EXTRACTION: allFeatures[997] Features[11:13] = [$patterns997_11_13]');
+    }
+
     final output = <List<double>>[];
     for (int i = startIdx; i < n; i++) {
       output.add(allFeatures[i]);
@@ -68,6 +75,15 @@ class FullFeatureBuilder {
       debugPrint('   Features[0:6] (single-candle patterns): [$patterns0_6]');
       final patterns11_13 = firstRow.sublist(11, 14).map((f) => f.toStringAsFixed(1)).join(', ');
       debugPrint('   Features[11:13] (multi-candle patterns: bullish_eng, bearish_eng, piercing): [$patterns11_13]');
+
+      // Check timestep 57 (candle index 997) for Bearish Engulfing
+      if (output.length >= 58) {
+        final row57 = output[57];
+        final patterns57_11_13 = row57.sublist(11, 14).map((f) => f.toStringAsFixed(1)).join(', ');
+        debugPrint('');
+        debugPrint('🔬 FEATURE DEBUG | Timestep 57 (candle index=${startIdx + 57})');
+        debugPrint('   Features[11:13] (multi-candle patterns: bullish_eng, bearish_eng, piercing): [$patterns57_11_13]');
+      }
 
       debugPrint('');
       debugPrint('🔬 FEATURE DEBUG | Last timestep (t=59, candle index=${n-1})');
