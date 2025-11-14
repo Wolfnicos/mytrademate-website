@@ -532,6 +532,15 @@ class KrakenService implements BaseExchangeService {
     return map[interval] ?? 60; // Default to 1h
   }
 
+  /// Get currency symbol from trading pair (EUR → €, USD → $)
+  String _getCurrencySymbol(String symbol) {
+    if (symbol.contains('EUR')) return '€';
+    if (symbol.contains('USD')) return '\$';
+    if (symbol.contains('GBP')) return '£';
+    if (symbol.contains('JPY')) return '¥';
+    return '\$'; // Default to $
+  }
+
   /// Get 24h volume for a symbol
   Future<double> get24hVolume(String symbol) async {
     try {
@@ -718,8 +727,9 @@ class KrakenService implements BaseExchangeService {
     if (candles.isNotEmpty) {
       final latestCandle = candles.last;
       final candleAge = now.difference(latestCandle.closeTime);
+      final currencySymbol = _getCurrencySymbol(krakenSymbol);
       debugPrint('[Kraken] 📅 Latest candle: ${latestCandle.closeTime} (${candleAge.inMinutes}min ago) - DATA IS FRESH!');
-      debugPrint('[Kraken]    Close: \$${latestCandle.close.toStringAsFixed(2)}, Volume: ${latestCandle.volume.toStringAsFixed(2)}');
+      debugPrint('[Kraken]    Close: $currencySymbol${latestCandle.close.toStringAsFixed(2)}, Volume: ${latestCandle.volume.toStringAsFixed(2)}');
     }
 
     // Calculate ATR

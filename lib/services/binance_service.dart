@@ -306,6 +306,15 @@ class BinanceService implements BaseExchangeService {
     return digest.toString();
   }
 
+  /// Get currency symbol from trading pair (EUR → €, USD → $)
+  String _getCurrencySymbol(String symbol) {
+    if (symbol.contains('EUR')) return '€';
+    if (symbol.contains('USD')) return '\$';
+    if (symbol.contains('GBP')) return '£';
+    if (symbol.contains('JPY')) return '¥';
+    return '\$'; // Default to $
+  }
+
   // Cache for exchange info to avoid repeated API calls
   Map<String, dynamic>? _exchangeInfoCache;
   DateTime? _exchangeInfoCacheTime;
@@ -1007,8 +1016,9 @@ class BinanceService implements BaseExchangeService {
       final latestCandle = candles.last;
       final now = DateTime.now();
       final candleAge = now.difference(latestCandle.closeTime);
+      final currencySymbol = _getCurrencySymbol(resolved);
       debugPrint('📅 Latest candle: ${latestCandle.closeTime} (${candleAge.inMinutes}min ago) - DATA IS FRESH!');
-      debugPrint('   Close: \$${latestCandle.close.toStringAsFixed(2)}, Volume: ${latestCandle.volume.toStringAsFixed(2)}');
+      debugPrint('   Close: $currencySymbol${latestCandle.close.toStringAsFixed(2)}, Volume: ${latestCandle.volume.toStringAsFixed(2)}');
     }
 
     // Calculate ATR from raw candles

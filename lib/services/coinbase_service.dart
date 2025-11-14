@@ -77,6 +77,15 @@ class CoinbaseService implements BaseExchangeService {
     return '$coinbaseBase-$quote';
   }
 
+  /// Get currency symbol from trading pair (EUR → €, USD → $)
+  String _getCurrencySymbol(String symbol) {
+    if (symbol.contains('EUR')) return '€';
+    if (symbol.contains('USD')) return '\$';
+    if (symbol.contains('GBP')) return '£';
+    if (symbol.contains('JPY')) return '¥';
+    return '\$'; // Default to $
+  }
+
   // ===================================
   // Time Synchronization
   // ===================================
@@ -731,8 +740,9 @@ class CoinbaseService implements BaseExchangeService {
     if (candles.isNotEmpty) {
       final latestCandle = candles.last;
       final candleAge = now.difference(latestCandle.closeTime);
+      final currencySymbol = _getCurrencySymbol(coinbaseSymbol);
       debugPrint('[Coinbase] 📅 Latest candle: ${latestCandle.closeTime} (${candleAge.inMinutes}min ago) - DATA IS FRESH!');
-      debugPrint('[Coinbase]    Close: \$${latestCandle.close.toStringAsFixed(2)}, Volume: ${latestCandle.volume.toStringAsFixed(2)}');
+      debugPrint('[Coinbase]    Close: $currencySymbol${latestCandle.close.toStringAsFixed(2)}, Volume: ${latestCandle.volume.toStringAsFixed(2)}');
     }
 
     // Calculate ATR
