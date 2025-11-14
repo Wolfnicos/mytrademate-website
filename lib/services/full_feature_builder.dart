@@ -475,6 +475,18 @@ class FullFeatureBuilder {
         final timesteps = lastFivePatterns.map((idx) => idx - startIdx).toList();
         debugPrint('      → Corresponds to timesteps: ${timesteps.join(", ")} (in 60-timestep window)');
         debugPrint('      → Should appear in features[$featureIdx] at these timesteps');
+
+        // DEBUG: Show pattern values for debugging
+        debugPrint('      → Raw pattern values at detected indices:');
+        for (final candleIdx in lastFivePatterns) {
+          debugPrint('         index $candleIdx: ${patternValues[candleIdx]}');
+          if (candleIdx > 0 && candleIdx < candles.length) {
+            final prevCandle = candles[candleIdx - 1];
+            final currCandle = candles[candleIdx];
+            debugPrint('         Candle[${candleIdx-1}]: O=${prevCandle.open.toStringAsFixed(2)} C=${prevCandle.close.toStringAsFixed(2)} (${prevCandle.close > prevCandle.open ? "BULL" : "BEAR"})');
+            debugPrint('         Candle[$candleIdx]: O=${currCandle.open.toStringAsFixed(2)} C=${currCandle.close.toStringAsFixed(2)} (${currCandle.close > currCandle.open ? "BULL" : "BEAR"})');
+          }
+        }
       }
     }
 
