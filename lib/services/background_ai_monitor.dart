@@ -258,30 +258,41 @@ class BackgroundAIMonitor {
       final mlService = CryptoMLService();
       await mlService.initialize();
 
-      // Check first coin only for test
-      final coin = coinsJson.first;
-      final symbol = buildSymbol(coin, exchangeName);
-      debugPrint('🧪 Testing with $coin ($symbol)...');
+      // Test with first 3 coins to show variety
+      final testCoins = coinsJson.take(3).toList();
+      debugPrint('🧪 Testing with ${testCoins.length} coins: ${testCoins.join(", ")}');
 
-      final prediction = await mlService.getPrediction(
-        coin: coin,
-        symbol: symbol,
-        timeframe: timeframe,
-        silent: false, // Show debug logs for test
-      );
+      for (final coin in testCoins) {
+        try {
+          final symbol = buildSymbol(coin, exchangeName);
+          debugPrint('🧪 Testing $coin ($symbol)...');
 
-      final confidence = prediction.confidence;
-      debugPrint('🧪 Test result: ${prediction.action} (${(confidence * 100).toStringAsFixed(1)}%)');
+          final prediction = await mlService.getPrediction(
+            coin: coin,
+            symbol: symbol,
+            timeframe: timeframe,
+            silent: true, // Keep it quiet for multiple coins
+          );
 
-      // Always show notification for test (ignore threshold)
-      await LocalNotificationService.showOpportunityAlert(
-        coin: coin,
-        confidence: confidence,
-        action: prediction.action,
-        timeframe: timeframe,
-      );
+          final confidence = prediction.confidence;
+          debugPrint('🧪 $coin: ${prediction.action} (${(confidence * 100).toStringAsFixed(1)}%)');
 
-      debugPrint('✅ Test notification sent!');
+          // Always show notification for test (ignore threshold)
+          await LocalNotificationService.showOpportunityAlert(
+            coin: coin,
+            confidence: confidence,
+            action: prediction.action,
+            timeframe: timeframe,
+          );
+
+          // Delay between notifications so they don't group (1 second)
+          await Future.delayed(const Duration(seconds: 1));
+        } catch (e) {
+          debugPrint('❌ Error testing $coin: $e');
+        }
+      }
+
+      debugPrint('✅ Test notifications sent for ${testCoins.length} coins!');
     } catch (e) {
       debugPrint('❌ Test error: $e');
     }

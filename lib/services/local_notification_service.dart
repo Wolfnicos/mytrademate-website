@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 /// Local Notification Service - 100% NO CLOUD
 /// Sends notifications when AI detects trading opportunities
@@ -18,6 +19,10 @@ class LocalNotificationService {
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
+      // Show notifications even when app is in foreground
+      defaultPresentAlert: true,
+      defaultPresentBadge: true,
+      defaultPresentSound: true,
     );
 
     const initSettings = InitializationSettings(
@@ -34,18 +39,29 @@ class LocalNotificationService {
     debugPrint('✅ Local Notifications initialized');
   }
 
-  /// Request permissions (iOS)
+  /// Request permissions (iOS & Android 13+)
   static Future<bool> requestPermissions() async {
-    final result = await _notifications
-        .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
+    debugPrint('🔔 Requesting notification permissions...');
 
-    return result ?? true; // Android doesn't need runtime permission
+    // Request notification permission (works on both iOS and Android 13+)
+    final status = await Permission.notification.request();
+
+    debugPrint('🔔 Permission status: $status');
+
+    if (status.isGranted) {
+      debugPrint('✅ Notification permissions GRANTED');
+      return true;
+    } else if (status.isDenied) {
+      debugPrint('⚠️  Notification permissions DENIED');
+      return false;
+    } else if (status.isPermanentlyDenied) {
+      debugPrint('❌ Notification permissions PERMANENTLY DENIED - open settings');
+      // User needs to enable in settings
+      await openAppSettings();
+      return false;
+    }
+
+    return false;
   }
 
   /// Show AI opportunity alert
@@ -57,21 +73,36 @@ class LocalNotificationService {
   }) async {
     await initialize();
 
-    // Choose emoji and color based on action
-    final emoji = action == 'BUY' ? '🚀' : action == 'SELL' ? '📉' : '⏸️';
-    final actionText = action == 'BUY' ? 'BUY Signal' : action == 'SELL' ? 'SELL Signal' : 'HOLD';
+    // Request permissions if not already granted (iOS)
+    await requestPermissions();
 
-    const androidDetails = AndroidNotificationDetails(
+    // Premium 2025 design - subtle, professional
+    final emoji = action == 'BUY' ? '📈' : action == 'SELL' ? '📉' : '⏸️';
+    final actionText = action == 'BUY' ? 'Strong Buy' : action == 'SELL' ? 'Strong Sell' : 'Hold Position';
+    final confidencePercent = (confidence * 100).toStringAsFixed(0);
+
+    // Color based on action
+    final color = action == 'BUY'
+        ? const Color(0xFF10B981) // Premium green
+        : action == 'SELL'
+            ? const Color(0xFFEF4444) // Premium red
+            : const Color(0xFF6366F1); // Premium indigo
+
+    final androidDetails = AndroidNotificationDetails(
       'ai_opportunities',
-      'AI Trading Opportunities',
-      channelDescription: 'Notifications for high-confidence AI predictions',
+      'AI Trading Signals',
+      channelDescription: 'Premium AI-powered trading opportunities',
       importance: Importance.high,
       priority: Priority.high,
       playSound: true,
       enableVibration: true,
       icon: '@mipmap/ic_launcher',
-      color: Color(0xFF2196F3),
-      styleInformation: BigTextStyleInformation(''),
+      color: color,
+      styleInformation: BigTextStyleInformation(
+        'AI detected a $confidencePercent% confidence $actionText signal for $coin on the $timeframe timeframe.\n\nTap to view detailed analysis and market insights.',
+        contentTitle: '$emoji $coin $actionText',
+        summaryText: 'MyTradeMate AI',
+      ),
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -79,13 +110,17 @@ class LocalNotificationService {
       presentBadge: true,
       presentSound: true,
       interruptionLevel: InterruptionLevel.timeSensitive,
+      threadIdentifier: 'ai_trading_signals',
     );
 
+    // Generate unique ID for each coin to prevent notifications from replacing each other
+    final notificationId = coin.hashCode.abs();
+
     await _notifications.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      '$emoji $actionText: $coin',
-      '${(confidence * 100).toStringAsFixed(1)}% confidence @ $timeframe - Tap to view',
-      const NotificationDetails(android: androidDetails, iOS: iosDetails),
+      notificationId,
+      '$emoji $coin $actionText',
+      '$action @ $confidencePercent% • $timeframe',
+      NotificationDetails(android: androidDetails, iOS: iosDetails),
       payload: 'ai_prediction:$coin:$timeframe',
     );
 
@@ -100,29 +135,49 @@ class LocalNotificationService {
   }) async {
     await initialize();
 
-    final emoji = trend.contains('ACCELERATING') ? '📈' : '📉';
+    // Premium 2025 design
+    final isAccelerating = trend.contains('ACCELERATING');
+    final emoji = isAccelerating ? '⚡' : '⚠️';
+    final trendText = isAccelerating ? 'Momentum Surge' : 'Trend Reversal';
+    final momentumPercent = (momentum.abs() * 100).toStringAsFixed(0);
+    final direction = momentum > 0 ? 'up' : 'down';
 
-    const androidDetails = AndroidNotificationDetails(
+    // Color based on momentum
+    final color = isAccelerating
+        ? const Color(0xFF10B981) // Premium green
+        : const Color(0xFFEF4444); // Premium red
+
+    final androidDetails = AndroidNotificationDetails(
       'ai_momentum',
       'AI Momentum Alerts',
-      channelDescription: 'Notifications for significant confidence changes',
+      channelDescription: 'Premium AI momentum change detection',
       importance: Importance.defaultImportance,
       priority: Priority.defaultPriority,
       playSound: true,
       icon: '@mipmap/ic_launcher',
+      color: color,
+      styleInformation: BigTextStyleInformation(
+        'AI confidence shifted $direction by $momentumPercent% for $coin.\n\nMarket conditions may be changing - review your position.',
+        contentTitle: '$emoji $coin $trendText',
+        summaryText: 'MyTradeMate AI',
+      ),
     );
 
     const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
+      threadIdentifier: 'ai_momentum',
     );
 
+    // Generate unique ID for each coin (offset by 1000000 to avoid collision with opportunity alerts)
+    final notificationId = coin.hashCode.abs() + 1000000;
+
     await _notifications.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      '$emoji $trend: $coin',
-      'Confidence ${momentum > 0 ? "increased" : "decreased"} by ${(momentum.abs() * 100).toStringAsFixed(1)}%',
-      const NotificationDetails(android: androidDetails, iOS: iosDetails),
+      notificationId,
+      '$emoji $coin $trendText',
+      '$momentumPercent% $direction',
+      NotificationDetails(android: androidDetails, iOS: iosDetails),
     );
 
     debugPrint('🔔 Momentum notification: $trend $coin (${(momentum * 100).toStringAsFixed(1)}%)');
