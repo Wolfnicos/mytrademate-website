@@ -414,6 +414,37 @@ class FullFeatureBuilder {
 
     debugPrint('🔬 ════════════════════════════════════════════════════════════════');
     debugPrint('');
+
+    // === CRITICAL DEBUG: Check patterns in LAST 5 candles (model input) ===
+    debugPrint('🚨 CRITICAL: Pattern check in LAST 5 candles (indices ${n-5} to ${n-1}):');
+    for (final patternName in patternOrder.take(6)) {
+      final patternValues = patterns[patternName]!;
+      final lastFivePatterns = <int>[];
+
+      for (int i = n - 5; i < n; i++) {
+        if (patternValues[i] > 0.0) {
+          lastFivePatterns.add(i);
+        }
+      }
+
+      if (lastFivePatterns.isNotEmpty) {
+        debugPrint('   ✅ ${patternName.toUpperCase()}: detected at indices ${lastFivePatterns.join(", ")}');
+      }
+    }
+
+    // Check if ANY pattern exists in last candle
+    bool hasPatternInLastCandle = false;
+    for (final patternName in patternOrder.take(6)) {
+      if (patterns[patternName]![n - 1] > 0.0) {
+        hasPatternInLastCandle = true;
+        debugPrint('   🎯 PATTERN IN LAST CANDLE (index ${n-1}): $patternName');
+      }
+    }
+
+    if (!hasPatternInLastCandle) {
+      debugPrint('   ⚠️  NO PATTERNS in last candle (index ${n-1}) - this is why features[0:6] are all 0.0!');
+    }
+    debugPrint('');
   }
 
   /// Deterministic training signature (features order + scalers + lookbacks)
