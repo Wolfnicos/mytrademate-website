@@ -432,17 +432,34 @@ class FullFeatureBuilder {
       }
     }
 
+    // Check multi-candle patterns (bullish_engulfing, bearish_engulfing, morning_star, evening_star)
+    final multiCandlePatterns = ['bullish_engulfing', 'bearish_engulfing', 'morning_star', 'evening_star'];
+    for (final patternName in multiCandlePatterns) {
+      final patternValues = patterns[patternName]!;
+      final lastFivePatterns = <int>[];
+
+      for (int i = n - 5; i < n; i++) {
+        if (patternValues[i] > 0.0) {
+          lastFivePatterns.add(i);
+        }
+      }
+
+      if (lastFivePatterns.isNotEmpty) {
+        debugPrint('   🔥 ${patternName.toUpperCase().replaceAll('_', ' ')}: detected at indices ${lastFivePatterns.join(", ")}');
+      }
+    }
+
     // Check if ANY pattern exists in last candle
     bool hasPatternInLastCandle = false;
-    for (final patternName in patternOrder.take(6)) {
+    for (final patternName in [...patternOrder.take(6), ...multiCandlePatterns]) {
       if (patterns[patternName]![n - 1] > 0.0) {
         hasPatternInLastCandle = true;
-        debugPrint('   🎯 PATTERN IN LAST CANDLE (index ${n-1}): $patternName');
+        debugPrint('   🎯 PATTERN IN LAST CANDLE (index ${n-1}): ${patternName.toUpperCase().replaceAll('_', ' ')}');
       }
     }
 
     if (!hasPatternInLastCandle) {
-      debugPrint('   ⚠️  NO PATTERNS in last candle (index ${n-1}) - this is why features[0:6] are all 0.0!');
+      debugPrint('   ⚠️  NO PATTERNS in last candle (index ${n-1}) - check if multi-candle patterns exist in last 2-3 candles');
     }
     debugPrint('');
   }
