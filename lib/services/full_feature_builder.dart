@@ -454,7 +454,11 @@ class FullFeatureBuilder {
 
     // Check multi-candle patterns (bullish_engulfing, bearish_engulfing, morning_star, evening_star)
     final multiCandlePatterns = ['bullish_engulfing', 'bearish_engulfing', 'morning_star', 'evening_star'];
-    for (final patternName in multiCandlePatterns) {
+    final multiCandleIndices = [11, 12, 19, 20]; // Feature indices for these patterns
+
+    for (int idx = 0; idx < multiCandlePatterns.length; idx++) {
+      final patternName = multiCandlePatterns[idx];
+      final featureIdx = multiCandleIndices[idx];
       final patternValues = patterns[patternName]!;
       final lastFivePatterns = <int>[];
 
@@ -466,6 +470,19 @@ class FullFeatureBuilder {
 
       if (lastFivePatterns.isNotEmpty) {
         debugPrint('   🔥 ${patternName.toUpperCase().replaceAll('_', ' ')}: detected at indices ${lastFivePatterns.join(", ")}');
+
+        // CRITICAL: Verify pattern appears in feature vector at correct timestep
+        for (final candleIdx in lastFivePatterns) {
+          final timestep = candleIdx - startIdx; // Convert candle index to timestep (0-59)
+          if (timestep >= 0 && timestep < allFeatures.length) {
+            final featureValue = allFeatures[candleIdx][featureIdx];
+            if (featureValue > 0.0) {
+              debugPrint('      ✅ VERIFIED in features[$featureIdx] at timestep $timestep (candle $candleIdx): $featureValue');
+            } else {
+              debugPrint('      ❌ MISSING in features[$featureIdx] at timestep $timestep (candle $candleIdx): expected 1.0, got $featureValue');
+            }
+          }
+        }
       }
     }
 
