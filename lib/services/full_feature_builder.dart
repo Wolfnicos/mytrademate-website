@@ -115,6 +115,14 @@ class FullFeatureBuilder {
       volumes: volumes,
     );
 
+    // === PATTERN DETECTION LOGGING ===
+    _logPatternDetection(
+      candles: candles,
+      patterns: patterns,
+      patternOrder: patternOrder,
+      startIdx: n >= 60 ? n - 60 : 0,  // Log last 60 candles
+    );
+
     final returns = _calculateReturns(closes);
     final logReturns = _calculateLogReturns(closes);
     final volatility = _calculateVolatility(returns);
@@ -312,6 +320,100 @@ class FullFeatureBuilder {
     }
 
     return output; // [n, 76]
+  }
+
+  /// Log detailed pattern detection for debugging
+  /// Shows OHLC data and detected patterns for the last 60 candles
+  void _logPatternDetection({
+    required List<Candle> candles,
+    required Map<String, List<double>> patterns,
+    required List<String> patternOrder,
+    required int startIdx,
+  }) {
+    final n = candles.length;
+    int patternsDetected = 0;
+    final detectedPatterns = <String, List<int>>{};
+
+    // First pass: count total patterns detected and collect indices
+    for (final patternName in patternOrder.take(6)) {  // Only first 6 patterns (indices 0-5)
+      final patternValues = patterns[patternName]!;
+      final detectedIndices = <int>[];
+
+      for (int i = startIdx; i < n; i++) {
+        if (patternValues[i] > 0.0) {
+          patternsDetected++;
+          detectedIndices.add(i);
+        }
+      }
+
+      if (detectedIndices.isNotEmpty) {
+        detectedPatterns[patternName] = detectedIndices;
+      }
+    }
+
+    debugPrint('');
+    debugPrint('🔬 ════════════════════════════════════════════════════════════════');
+    debugPrint('🔬 PATTERN DETECTION ANALYSIS (Last 60 candles)');
+    debugPrint('🔬 ════════════════════════════════════════════════════════════════');
+    debugPrint('📊 Total patterns detected: $patternsDetected');
+    debugPrint('');
+
+    if (patternsDetected == 0) {
+      debugPrint('⚠️  NO PATTERNS DETECTED in last 60 candles');
+      debugPrint('   This is NORMAL for:');
+      debugPrint('   • Low volatility periods');
+      debugPrint('   • Short timeframes (5m, 15m)');
+      debugPrint('   • Stable/ranging markets');
+      debugPrint('');
+
+      // Show sample candles to verify data quality
+      if (n > 0) {
+        final lastCandle = candles[n - 1];
+        final body = (lastCandle.close - lastCandle.open).abs();
+        final range = lastCandle.high - lastCandle.low;
+        final bodyPct = range > 0 ? (body / range * 100) : 0;
+
+        debugPrint('📍 Last candle analysis:');
+        debugPrint('   Open:  \$${lastCandle.open.toStringAsFixed(2)}');
+        debugPrint('   High:  \$${lastCandle.high.toStringAsFixed(2)}');
+        debugPrint('   Low:   \$${lastCandle.low.toStringAsFixed(2)}');
+        debugPrint('   Close: \$${lastCandle.close.toStringAsFixed(2)}');
+        debugPrint('   Body:  ${bodyPct.toStringAsFixed(1)}% of range');
+        debugPrint('   Direction: ${lastCandle.close > lastCandle.open ? "BULLISH ▲" : "BEARISH ▼"}');
+      }
+    } else {
+      // Show detailed info for each detected pattern
+      for (final entry in detectedPatterns.entries) {
+        final patternName = entry.key;
+        final indices = entry.value;
+
+        debugPrint('✅ Pattern: ${patternName.toUpperCase().replaceAll('_', ' ')}');
+        debugPrint('   Detected at ${indices.length} timestep(s): ${indices.map((i) => i - startIdx).join(', ')}');
+
+        // Show OHLC for first detection
+        if (indices.isNotEmpty) {
+          final idx = indices.first;
+          final candle = candles[idx];
+          final body = (candle.close - candle.open).abs();
+          final range = candle.high - candle.low;
+          final upperShadow = candle.high - math.max(candle.open, candle.close);
+          final lowerShadow = math.min(candle.open, candle.close) - candle.low;
+
+          debugPrint('   📊 Candle @ timestep ${idx - startIdx}:');
+          debugPrint('      Open:  \$${candle.open.toStringAsFixed(2)}');
+          debugPrint('      High:  \$${candle.high.toStringAsFixed(2)}');
+          debugPrint('      Low:   \$${candle.low.toStringAsFixed(2)}');
+          debugPrint('      Close: \$${candle.close.toStringAsFixed(2)}');
+          debugPrint('      Body: \$${body.toStringAsFixed(2)} (${(body/range*100).toStringAsFixed(1)}%)');
+          debugPrint('      Upper shadow: \$${upperShadow.toStringAsFixed(2)} (${(upperShadow/range*100).toStringAsFixed(1)}%)');
+          debugPrint('      Lower shadow: \$${lowerShadow.toStringAsFixed(2)} (${(lowerShadow/range*100).toStringAsFixed(1)}%)');
+          debugPrint('');
+        }
+      }
+    }
+
+    debugPrint('🔬 ════════════════════════════════════════════════════════════════');
+    debugPrint('');
   }
 
   /// Deterministic training signature (features order + scalers + lookbacks)
