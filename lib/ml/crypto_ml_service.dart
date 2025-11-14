@@ -1259,9 +1259,10 @@ class CryptoMLService {
       print('   Conflict Score: ${(conflictScore * 100).toStringAsFixed(1)}% (0%=clear, 100%=balanced conflict)');
     }
 
-    // SIGNAL STRENGTH THRESHOLD: Force HOLD if signal strength < 5%
+    // SIGNAL STRENGTH THRESHOLD: Force HOLD if signal strength < 3%
     // Low signal strength indicates weak/noisy data → not confident enough for BUY/SELL
-    const double minSignalStrength = 0.05; // 5% minimum
+    // Reduced from 5% to 3% to allow more trading signals in normal market conditions
+    const double minSignalStrength = 0.03; // 3% minimum
     if (avgSignalStrength < minSignalStrength && (finalAction == 'BUY' || finalAction == 'SELL')) {
       // ignore: avoid_print
       print('⚠️  SIGNAL TOO WEAK: ${(avgSignalStrength * 100).toStringAsFixed(1)}% < ${(minSignalStrength * 100).toStringAsFixed(1)}% → Forcing HOLD');
