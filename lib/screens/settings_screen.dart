@@ -733,8 +733,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               final exchangeName = exchangeProvider.selectedExchange;
                                               return Text(
                                                 _coinsSource == 'api'
-                                                    ? 'Monitoring your portfolio coins from $exchangeName API'
-                                                    : 'Monitoring TOP 10 popular coins (connect $exchangeName API to track your portfolio)',
+                                                    ? 'Monitoring $_userCoinsCount portfolio coins from $exchangeName API'
+                                                    : 'Monitoring TOP 10 popular coins (connect $exchangeName API to monitor your portfolio)',
                                                 style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
                                               );
                                             },
