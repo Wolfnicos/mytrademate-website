@@ -225,12 +225,14 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
   void _onExchangeChanged() {
     // Exchange changed - load new exchange's cached value and reload
     debugPrint('[PortfolioOverview] Exchange changed, reloading...');
-    setState(() {
-      _totalValue = 0.0; // Clear old cached value immediately
-      // _isLoading = true; // Unused - commented out
-    });
-    _loadCachedValue(); // Load cached value for new exchange
-    _loadPortfolio(); // Then load fresh data
+    if (mounted) {
+      setState(() {
+        _totalValue = 0.0; // Clear old cached value immediately
+        // _isLoading = true; // Unused - commented out
+      });
+      _loadCachedValue(); // Load cached value for new exchange
+      _loadPortfolio(); // Then load fresh data
+    }
   }
 
   Future<void> _loadCachedValue() async {

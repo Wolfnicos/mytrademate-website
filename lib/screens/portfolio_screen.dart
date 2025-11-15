@@ -57,17 +57,20 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     // Reload portfolio when exchange changes
     debugPrint('Portfolio: Exchange changed, reloading portfolio...');
     // Clear old data immediately to avoid showing stale data from previous exchange
-    setState(() {
-      _balances = {};
-      _prices = {};
-      _totalValue = 0.0;
-      _isLoading = true;
-      _error = null;
-    });
-    _loadPortfolio();
+    if (mounted) {
+      setState(() {
+        _balances = {};
+        _prices = {};
+        _totalValue = 0.0;
+        _isLoading = true;
+        _error = null;
+      });
+      _loadPortfolio();
+    }
   }
 
   Future<void> _loadPortfolio() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _error = null;
