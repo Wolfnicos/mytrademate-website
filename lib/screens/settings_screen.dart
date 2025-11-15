@@ -309,6 +309,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Update coins from current exchange portfolio
       await UserCoinsService().updateCoinsFromExchange(exchange);
 
+      // Notify all listeners (Portfolio, Dashboard) to reload
+      exchangeProvider.refresh();
+
       _showSnackBar('Credentials saved successfully', isError: false);
       // Keep them in the fields so they persist visually
       setState(() {});

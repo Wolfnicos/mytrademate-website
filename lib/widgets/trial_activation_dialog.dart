@@ -159,7 +159,7 @@ class TrialActivationDialog extends StatelessWidget {
                     const SizedBox(height: AppTheme.spacing8),
                     Text(
                       '• FREE tier: 4H timeframe only\n'
-                      '• PRO: €5.99/month - unlock all features',
+                      '• PRO: €6.99/month - unlock all features',
                       style: AppTheme.bodySmall.copyWith(
                         color: AppTheme.textSecondary,
                         height: 1.5,

@@ -91,7 +91,7 @@ class SubscriptionProvider extends ChangeNotifier {
     }
   }
 
-  /// Purchase monthly subscription (€9.99/month)
+  /// Purchase monthly subscription (€6.99/month)
   Future<bool> purchaseMonthly(BuildContext context) async {
     return await _purchasePackage(context, 'monthly');
   }
