@@ -55,7 +55,8 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
 
   void _onExchangeChanged() {
     // Reload portfolio when exchange changes
-    debugPrint('Portfolio: Exchange changed, reloading portfolio...');
+    debugPrint('[Portfolio] 📢 Exchange changed listener triggered');
+    debugPrint('[Portfolio] 🔄 Clearing old data and reloading...');
     // Clear old data immediately to avoid showing stale data from previous exchange
     if (mounted) {
       setState(() {
@@ -66,6 +67,8 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
         _error = null;
       });
       _loadPortfolio();
+    } else {
+      debugPrint('[Portfolio] ⚠️  Widget not mounted, skipping reload');
     }
   }
 

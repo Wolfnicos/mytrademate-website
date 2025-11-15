@@ -58,11 +58,14 @@ class ExchangeProvider with ChangeNotifier {
     }
 
     if (_selectedExchange == exchangeName) {
-      debugPrint('[ExchangeProvider] Already using $exchangeName');
+      debugPrint('[ExchangeProvider] Already using $exchangeName - forcing refresh');
+      // Still notify listeners to force refresh
+      notifyListeners();
       return;
     }
 
     try {
+      final previousExchange = _selectedExchange;
       _selectedExchange = exchangeName;
 
       // Save preference
@@ -80,10 +83,12 @@ class ExchangeProvider with ChangeNotifier {
       // Clear ML volume cache to avoid using cached data from previous exchange
       CryptoMLService.clearVolumeCache();
 
-      debugPrint('[ExchangeProvider] Switched to: $_selectedExchange');
+      debugPrint('[ExchangeProvider] ✅ Switched from $previousExchange to $_selectedExchange');
+      debugPrint('[ExchangeProvider] 📢 Notifying listeners...');
       notifyListeners();
+      debugPrint('[ExchangeProvider] ✅ Listeners notified');
     } catch (e) {
-      debugPrint('[ExchangeProvider] Error switching exchange: $e');
+      debugPrint('[ExchangeProvider] ❌ Error switching exchange: $e');
     }
   }
 

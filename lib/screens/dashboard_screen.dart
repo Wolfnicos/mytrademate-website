@@ -224,7 +224,8 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
 
   void _onExchangeChanged() {
     // Exchange changed - load new exchange's cached value and reload
-    debugPrint('[PortfolioOverview] Exchange changed, reloading...');
+    debugPrint('[PortfolioOverview] 📢 Exchange changed listener triggered');
+    debugPrint('[PortfolioOverview] 🔄 Reloading portfolio overview...');
     if (mounted) {
       setState(() {
         _totalValue = 0.0; // Clear old cached value immediately
@@ -232,6 +233,8 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
       });
       _loadCachedValue(); // Load cached value for new exchange
       _loadPortfolio(); // Then load fresh data
+    } else {
+      debugPrint('[PortfolioOverview] ⚠️  Widget not mounted, skipping reload');
     }
   }
 
