@@ -291,22 +291,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _alertTimeframe = value);
   }
 
-  Future<void> _testAIAlerts() async {
-    if (!_aiAlertsEnabled) {
-      _showSnackBar('Enable AI Alerts first', isError: true);
-      return;
-    }
-
-    _showSnackBar('Running test...', isError: false);
-
-    try {
-      await BackgroundAIMonitor.runTestCheck();
-      _showSnackBar('Test notification sent! Check your notifications.', isError: false);
-    } catch (e) {
-      _showSnackBar('Test failed: $e', isError: true);
-    }
-  }
-
   Future<void> _saveApiCredentials() async {
     final apiKey = _apiKeyController.text.trim();
     final apiSecret = _apiSecretController.text.trim();
@@ -766,24 +750,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         )
                       : const SizedBox.shrink(),
                 ),
-
-                // Test Button (only show when AI Alerts is enabled)
-                if (_aiAlertsEnabled) ...[
-                  const SizedBox(height: AppTheme.spacing16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _testAIAlerts,
-                      icon: const Icon(Icons.bug_report, size: 18),
-                      label: const Text('Test Notification'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.primary,
-                        side: BorderSide(color: AppTheme.primary.withValues(alpha: 0.5)),
-                        padding: const EdgeInsets.symmetric(vertical: AppTheme.spacing12),
-                      ),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
