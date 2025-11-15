@@ -1,9 +1,14 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:math';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:crypto/crypto.dart';
+import 'package:pointycastle/export.dart';
+import 'package:pointycastle/asn1/asn1_parser.dart';
+import 'package:pointycastle/asn1/primitives/asn1_sequence.dart';
+import 'package:pointycastle/asn1/primitives/asn1_octet_string.dart';
 
 import '../models/candle.dart';
 import '../models/features_with_atr.dart';
@@ -25,8 +30,8 @@ class CoinbaseService implements BaseExchangeService {
   factory CoinbaseService() => _instance;
   CoinbaseService._internal();
 
-  String? _apiKey;
-  String? _apiSecret;
+  String? _apiKey; // For Cloud API: organizations/{org_id}/apiKeys/{key_id}
+  String? _apiSecret; // For Cloud API: EC Private Key in PEM format
 
   // Time synchronization
   int _serverTimeOffset = 0;
@@ -151,15 +156,21 @@ class CoinbaseService implements BaseExchangeService {
 
   @override
   Future<void> saveCredentials(String apiKey, String apiSecret) async {
-    // Remove ALL whitespace from credentials (common copy-paste issue)
+    // Clean API key (removes copy-paste whitespace)
     final cleanApiKey = apiKey.replaceAll(RegExp(r'\s+'), '');
-    final cleanApiSecret = apiSecret.replaceAll(RegExp(r'\s+'), '');
+
+    // For API secret: handle both literal \n and actual newlines
+    // Coinbase sometimes provides keys with literal \n characters
+    var cleanApiSecret = apiSecret.trim();
+
+    // Convert literal \n to actual newlines (from Coinbase copy-paste)
+    cleanApiSecret = cleanApiSecret.replaceAll(r'\n', '\n');
 
     await _secureStorage.write(key: '${_storageKeyPrefix}api_key', value: cleanApiKey);
     await _secureStorage.write(key: '${_storageKeyPrefix}api_secret', value: cleanApiSecret);
     _apiKey = cleanApiKey;
     _apiSecret = cleanApiSecret;
-    debugPrint('[Coinbase] Credentials saved');
+    debugPrint('[Coinbase] ✅ Credentials saved (PEM format preserved)');
   }
 
   @override
@@ -188,28 +199,164 @@ class CoinbaseService implements BaseExchangeService {
   }
 
   // ===================================
-  // Signature Generation (Coinbase uses HMAC-SHA256)
+  // JWT Authentication (Coinbase Cloud API with ES256)
   // ===================================
 
-  String _generateSignature(String timestamp, String method, String path, String body) {
-    final message = '$timestamp$method$path$body';
-    final key = utf8.encode(_apiSecret!);
-    final bytes = utf8.encode(message);
-    final hmac = Hmac(sha256, key);
-    final digest = hmac.convert(bytes);
-    return digest.toString();
+  /// Generate random nonce (hex string)
+  String _generateNonce() {
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
+  /// Base64URL encode (without padding)
+  String _base64UrlEncode(List<int> bytes) {
+    return base64Url.encode(bytes).replaceAll('=', '');
+  }
+
+  /// Parse EC Private Key from SEC1 PEM format
+  ECPrivateKey _parseECPrivateKey(String pemKey) {
+    try {
+      // Handle literal \n characters (from Coinbase copy-paste)
+      var pemContent = pemKey.replaceAll(r'\n', '\n');
+
+      // Trim
+      pemContent = pemContent.trim();
+
+      // Remove BEGIN header if present
+      if (pemContent.contains('BEGIN EC PRIVATE KEY')) {
+        pemContent = pemContent.replaceAll('-----BEGIN EC PRIVATE KEY-----', '');
+      }
+
+      // Remove END footer if present
+      if (pemContent.contains('END EC PRIVATE KEY')) {
+        pemContent = pemContent.replaceAll('-----END EC PRIVATE KEY-----', '');
+      }
+
+      // Remove ALL whitespace (spaces, newlines, tabs, etc.)
+      pemContent = pemContent.replaceAll(RegExp(r'\s'), '');
+
+      // Decode base64
+      final bytes = base64.decode(pemContent);
+
+      // Parse ASN.1 DER structure (SEC1 format)
+      final asn1Parser = ASN1Parser(bytes);
+      final topLevelSeq = asn1Parser.nextObject() as ASN1Sequence;
+
+      // Extract private key value (octet string at index 1)
+      final privateKeyOctetString = topLevelSeq.elements![1] as ASN1OctetString;
+      final privateKeyBytes = privateKeyOctetString.valueBytes!;
+
+      // Create BigInt from bytes
+      final d = BigInt.parse(
+        privateKeyBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
+        radix: 16,
+      );
+
+      // P-256 curve parameters (secp256r1)
+      final domainParams = ECDomainParameters('prime256v1');
+
+      return ECPrivateKey(d, domainParams);
+    } catch (e) {
+      debugPrint('[Coinbase] ❌ Failed to parse EC private key: $e');
+      rethrow;
+    }
+  }
+
+  /// Sign data with ECDSA SHA-256 (ES256)
+  Uint8List _signES256(Uint8List data, ECPrivateKey privateKey) {
+    final signer = Signer('SHA-256/ECDSA');
+    final params = ParametersWithRandom(
+      PrivateKeyParameter<ECPrivateKey>(privateKey),
+      FortunaRandom()..seed(KeyParameter(Uint8List.fromList(List.generate(32, (i) => Random.secure().nextInt(256))))),
+    );
+
+    signer.init(true, params);
+    final signature = signer.generateSignature(data) as ECSignature;
+
+    // Convert signature to DER format then to raw R|S format (64 bytes for P-256)
+    final r = signature.r;
+    final s = signature.s;
+
+    // Ensure R and S are 32 bytes each (pad with zeros if needed)
+    final rBytes = _bigIntToBytes(r, 32);
+    final sBytes = _bigIntToBytes(s, 32);
+
+    return Uint8List.fromList([...rBytes, ...sBytes]);
+  }
+
+  /// Convert BigInt to bytes with padding
+  Uint8List _bigIntToBytes(BigInt number, int length) {
+    final hexString = number.toRadixString(16).padLeft(length * 2, '0');
+    final bytes = <int>[];
+    for (int i = 0; i < hexString.length; i += 2) {
+      bytes.add(int.parse(hexString.substring(i, i + 2), radix: 16));
+    }
+    return Uint8List.fromList(bytes);
+  }
+
+  /// Generate JWT token for Coinbase Cloud API authentication
+  String _generateJWT(String method, String path) {
+    try {
+      // Parse EC private key
+      final privateKey = _parseECPrivateKey(_apiSecret!);
+
+      // Create JWT header
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final uri = '$method $_baseHost$path';
+
+      final header = {
+        'alg': 'ES256',
+        'kid': _apiKey!,
+        'nonce': _generateNonce(),
+        'typ': 'JWT',
+      };
+
+      // Create JWT payload
+      final payload = {
+        'sub': _apiKey!,
+        'iss': 'cdp',
+        'nbf': now,
+        'exp': now + 120,
+        'uri': uri,
+      };
+
+      // Encode header and payload
+      final headerEncoded = _base64UrlEncode(utf8.encode(json.encode(header)));
+      final payloadEncoded = _base64UrlEncode(utf8.encode(json.encode(payload)));
+
+      // Create signing input
+      final signingInput = '$headerEncoded.$payloadEncoded';
+      final signingInputBytes = Uint8List.fromList(utf8.encode(signingInput));
+
+      // Sign
+      final signature = _signES256(signingInputBytes, privateKey);
+      final signatureEncoded = _base64UrlEncode(signature);
+
+      // Build final JWT
+      final jwt = '$signingInput.$signatureEncoded';
+
+      debugPrint('[Coinbase] 🔐 Generated JWT for: $uri');
+      return jwt;
+    } catch (e) {
+      debugPrint('[Coinbase] ❌ Failed to generate JWT: $e');
+      rethrow;
+    }
   }
 
   Map<String, String> _buildHeaders(String method, String path, {String body = ''}) {
-    final timestamp = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
-    final signature = _generateSignature(timestamp, method, path, body);
+    try {
+      // Generate JWT token
+      final token = _generateJWT(method, path);
 
-    return {
-      'CB-ACCESS-KEY': _apiKey!,
-      'CB-ACCESS-SIGN': signature,
-      'CB-ACCESS-TIMESTAMP': timestamp,
-      'Content-Type': 'application/json',
-    };
+      return {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      };
+    } catch (e) {
+      debugPrint('[Coinbase] ❌ Failed to build headers: $e');
+      rethrow;
+    }
   }
 
   // ===================================
@@ -227,9 +374,16 @@ class CoinbaseService implements BaseExchangeService {
       final uri = Uri.https(_baseHost, path);
       final headers = _buildHeaders('GET', path);
 
+      debugPrint('[Coinbase] 📡 Calling: $uri');
+      debugPrint('[Coinbase] 📝 Headers: ${headers.keys.join(", ")}');
+      debugPrint('[Coinbase] 🔑 API Key: ${_apiKey?.substring(0, 30)}...');
+
       final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
 
+      debugPrint('[Coinbase] 📥 Response status: ${response.statusCode}');
+
       if (response.statusCode != 200) {
+        debugPrint('[Coinbase] ❌ Response body: ${response.body}');
         throw Exception('[Coinbase] Failed to fetch accounts: ${response.statusCode} ${response.body}');
       }
 
@@ -247,10 +401,10 @@ class CoinbaseService implements BaseExchangeService {
         }
       }
 
-      debugPrint('[Coinbase] Fetched ${balances.length} balances');
+      debugPrint('[Coinbase] ✅ Fetched ${balances.length} balances');
       return balances;
     } catch (e) {
-      debugPrint('[Coinbase] Error fetching balances: $e');
+      debugPrint('[Coinbase] ❌ Error fetching balances: $e');
       rethrow;
     }
   }
