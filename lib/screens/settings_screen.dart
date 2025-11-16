@@ -1088,7 +1088,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Wrap(
                     spacing: AppTheme.spacing8,
                     runSpacing: AppTheme.spacing8,
-                    children: ['USDT', 'EUR', 'USDC', 'USD'].map((q) {
+                    children: ['EUR', 'USDT', 'USD'].map((q) {
                       final isSelected = _quote == q;
                       return GestureDetector(
                         onTap: () async {
