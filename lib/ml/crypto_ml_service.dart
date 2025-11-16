@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:math' show exp, log, sqrt;
 import 'package:mytrademate/services/binance_service.dart';
 import 'package:mytrademate/services/base_exchange_service.dart';
+import 'package:mytrademate/services/volume_profile_service.dart';
 import 'package:mytrademate/ml/ensemble_weights_v2.dart';
 
 /// Service pentru predicții ML crypto
@@ -24,6 +25,9 @@ class CryptoMLService {
 
   // PHASE 3: Binance service for volume percentile
   final BinanceService _binanceService = BinanceService();
+
+  // PHASE 4: Volume Profile service for order book analysis
+  final VolumeProfileService _volumeProfileService = VolumeProfileService();
 
   // PHASE 3: Model registry with trained_date
   Map<String, dynamic>? _modelRegistry;
@@ -363,6 +367,33 @@ class CryptoMLService {
       }
     }
 
+    // PHASE 4: Fetch Volume Profile (bid/ask imbalance + whale walls)
+    double bidAskRatio = 1.0; // Default to neutral (1.0 = balanced)
+    int whaleWallCount = 0;
+    if (applyPhase3) {
+      try {
+        final service = exchangeService ?? _binanceService;
+        final volumeProfile = await _volumeProfileService.analyzeVolume(
+          symbol: symbol,
+          exchange: service.exchangeName.toLowerCase(),
+          depth: 100,
+        );
+
+        bidAskRatio = volumeProfile.bidAskRatio;
+        whaleWallCount = volumeProfile.whaleWalls.length;
+
+        if (!silent) {
+          // ignore: avoid_print
+          print('📊 Phase 4: Order book for $symbol → bidAskRatio=${bidAskRatio.toStringAsFixed(2)}, whaleWalls=$whaleWallCount, signal=${volumeProfile.getSignal()}');
+        }
+      } catch (e) {
+        if (!silent) {
+          // ignore: avoid_print
+          print('⚠️  Phase 4: Failed to fetch order book for $symbol, using defaults: $e');
+        }
+      }
+    }
+
     // STEP 1: Load ALL coin-specific models across ALL timeframes
     // NEW: Fetch candles for EACH model's timeframe!
     final allTimeframes = ['5m', '15m', '1h', '4h', '1d'];
@@ -394,6 +425,7 @@ class CryptoMLService {
             timeframe: tf,
             atr: volatility,
             volumePercentile: volumePercentile,
+            bidAskRatio: bidAskRatio,
           );
 
           // ADAPTIVE MODEL SELECTION: Filter models based on market conditions
@@ -466,6 +498,7 @@ class CryptoMLService {
             timeframe: timeframe, // Use requested timeframe for confidence
             atr: result.atr,
             volumePercentile: volumePercentile,
+            bidAskRatio: bidAskRatio,
           );
 
           // ADAPTIVE MODEL SELECTION: Filter general models based on market conditions
@@ -715,6 +748,7 @@ class CryptoMLService {
       String? timeframe,
       double? atr,
       double? volumePercentile,
+      double? bidAskRatio = 1.0,
     }
   ) async {
     final interpreter = _interpreters[modelKey]!;
@@ -834,16 +868,47 @@ class CryptoMLService {
       }
     }
 
-    // STEP 1: Apply bullish bias on individual model predictions
-    // (before combining in ensemble)
+    // STEP 1: Apply bullish/bearish bias on individual model predictions
+    // (before combining in ensemble) - based on volume, volatility, AND order book
     final atrPercent = (atr ?? 0.02) * 100;
     final volPercent = (volumePercentile ?? 0.5) * 100;
 
-    if (volPercent > 90.0 && atrPercent < 50.0) {
-      // Get current BUY and SELL probabilities
-      final currentBuy = probabilities.length == 3 ? probabilities[2] : (probabilities.length == 2 ? probabilities[1] : 0.0);
-      final currentSell = probabilities[0];
+    // Get current BUY and SELL probabilities
+    final currentBuy = probabilities.length == 3 ? probabilities[2] : (probabilities.length == 2 ? probabilities[1] : 0.0);
+    final currentSell = probabilities[0];
 
+    // PHASE 4: Bid/Ask imbalance bias (order book pressure)
+    final ratio = bidAskRatio ?? 1.0; // Default to neutral if null
+    if (ratio > 1.2) {
+      // Strong buying pressure (more bids than asks)
+      if (currentBuy > currentSell) {
+        // Apply +5% bullish bias to BUY probability
+        if (probabilities.length == 3) {
+          probabilities[2] = (probabilities[2] + 0.05).clamp(0.0, 1.0);
+        } else if (probabilities.length == 2) {
+          probabilities[1] = (probabilities[1] + 0.05).clamp(0.0, 1.0);
+        }
+
+        if (!silent) {
+          // ignore: avoid_print
+          print('📈 ORDER BOOK BULLISH BIAS in $modelKey: +5% to BUY (bidAskRatio=${ratio.toStringAsFixed(2)})');
+        }
+      }
+    } else if (ratio < 0.8) {
+      // Strong selling pressure (more asks than bids)
+      if (currentSell > currentBuy) {
+        // Apply +5% bearish bias to SELL probability
+        probabilities[0] = (probabilities[0] + 0.05).clamp(0.0, 1.0);
+
+        if (!silent) {
+          // ignore: avoid_print
+          print('📉 ORDER BOOK BEARISH BIAS in $modelKey: +5% to SELL (bidAskRatio=${ratio.toStringAsFixed(2)})');
+        }
+      }
+    }
+
+    // PHASE 3: Volume percentile bias (existing logic)
+    if (volPercent > 90.0 && atrPercent < 50.0) {
       if (currentBuy > currentSell) {
         // Apply +10% bullish bias to BUY probability
         if (probabilities.length == 3) {
@@ -854,7 +919,7 @@ class CryptoMLService {
 
         if (!silent) {
           // ignore: avoid_print
-          print('📈 BULLISH BIAS APPLIED in $modelKey: +10% to BUY (vol=${volPercent.toStringAsFixed(0)}%, ATR=${atrPercent.toStringAsFixed(2)}%)');
+          print('📈 VOLUME BULLISH BIAS in $modelKey: +10% to BUY (vol=${volPercent.toStringAsFixed(0)}%, ATR=${atrPercent.toStringAsFixed(2)}%)');
         }
       }
     }
