@@ -156,12 +156,26 @@ class VolumeProfileService {
 
   /// Fetch Coinbase order book
   Future<OrderBookData> _fetchCoinbaseOrderBook(String symbol, int depth) async {
-    // Convert symbol format (BTCUSDT -> BTC-USD for Coinbase)
-    final coinbaseSymbol = symbol
-        .toUpperCase()
-        .replaceAll('USDT', '')
-        .replaceAll('USDC', '');
-    final pair = '$coinbaseSymbol-USD';
+    // Convert symbol format (BTCUSDT -> BTC-USD, BTCEUR -> BTC-EUR for Coinbase)
+    final upperSymbol = symbol.toUpperCase();
+
+    String pair;
+    if (upperSymbol.endsWith('EUR')) {
+      // EUR pair: BTCEUR -> BTC-EUR
+      final base = upperSymbol.replaceAll('EUR', '');
+      pair = '$base-EUR';
+    } else if (upperSymbol.endsWith('USDT')) {
+      // USDT pair: BTCUSDT -> BTC-USD
+      final base = upperSymbol.replaceAll('USDT', '');
+      pair = '$base-USD';
+    } else if (upperSymbol.endsWith('USDC')) {
+      // USDC pair: BTCUSDC -> BTC-USD
+      final base = upperSymbol.replaceAll('USDC', '');
+      pair = '$base-USD';
+    } else {
+      // Default: assume USD
+      pair = '$upperSymbol-USD';
+    }
 
     final response = await _dio.get(
       'https://api.exchange.coinbase.com/products/$pair/book',
