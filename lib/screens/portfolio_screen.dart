@@ -24,6 +24,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   @override
   void initState() {
     super.initState();
+    debugPrint('[Portfolio] 🚀 initState called');
     _loadPortfolio();
     // Listen to quote currency changes and reload portfolio
     AppSettingsService().addListener(_onSettingsChanged);
@@ -31,7 +32,11 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     // Listen to exchange changes and reload portfolio
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        debugPrint('[Portfolio] 📡 Registering ExchangeProvider listener');
         Provider.of<ExchangeProvider>(context, listen: false).addListener(_onExchangeChanged);
+        debugPrint('[Portfolio] ✅ Listener registered successfully');
+      } else {
+        debugPrint('[Portfolio] ⚠️  Widget not mounted, cannot register listener');
       }
     });
   }
@@ -73,7 +78,11 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   }
 
   Future<void> _loadPortfolio() async {
-    if (!mounted) return;
+    debugPrint('[Portfolio] 🔄 _loadPortfolio() called');
+    if (!mounted) {
+      debugPrint('[Portfolio] ⚠️  Widget not mounted, aborting load');
+      return;
+    }
     setState(() {
       _isLoading = true;
       _error = null;
@@ -82,6 +91,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     try {
       final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
       final exchange = exchangeProvider.currentExchange;
+      debugPrint('[Portfolio] 💼 Loading portfolio for ${exchangeProvider.selectedExchange}');
 
       await exchange.loadCredentials();
       final balances = await exchange.getAccountBalances();
@@ -125,9 +135,10 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
           _totalValue = total;
           _isLoading = false;
         });
+        debugPrint('[Portfolio] ✅ Portfolio loaded successfully: ${balances.length} assets, total value: ${total.toStringAsFixed(2)}');
       }
     } catch (e) {
-      debugPrint('Portfolio: Error loading portfolio: $e');
+      debugPrint('[Portfolio] ❌ Error loading portfolio: $e');
       if (mounted) {
         setState(() {
           _error = 'Failed to load portfolio';

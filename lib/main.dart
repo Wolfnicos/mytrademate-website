@@ -177,13 +177,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  static const List<Widget> _widgetOptions = <Widget>[
-    DashboardScreen(),
-    MarketScreen(),
-    AiStrategiesScreen(),
-    PortfolioScreen(),
-  ];
-
   static const List<_NavItem> _navItems = [
     _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'Dashboard'),
     _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: 'Market'),
@@ -193,6 +186,13 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Create widget list in build() so they can respond to Provider changes
+    final widgetOptions = <Widget>[
+      const DashboardScreen(),
+      const MarketScreen(),
+      const AiStrategiesScreen(),
+      const PortfolioScreen(),
+    ];
 
     final nav = Provider.of<NavigationProvider>(context);
     return Scaffold(
@@ -200,7 +200,7 @@ class _HomePageState extends State<HomePage> {
       appBar: _PremiumAppBar(),
       body: IndexedStack(
         index: nav.index,
-        children: _widgetOptions,
+        children: widgetOptions,
       ),
       bottomNavigationBar: _PremiumBottomNav(
         currentIndex: nav.index,

@@ -153,9 +153,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: AppTheme.spacing16),
 
                   // Portfolio Overview Card
-                  RepaintBoundary(
-                    key: ValueKey('portfolio_${AppSettingsService().quoteCurrency}'),
-                    child: const PortfolioOverviewCard(),
+                  Consumer<ExchangeProvider>(
+                    builder: (context, exchangeProvider, _) => RepaintBoundary(
+                      key: ValueKey('portfolio_${exchangeProvider.selectedExchange}_${AppSettingsService().quoteCurrency}'),
+                      child: PortfolioOverviewCard(),
+                    ),
                   ),
 
                   const SizedBox(height: AppTheme.spacing16),
