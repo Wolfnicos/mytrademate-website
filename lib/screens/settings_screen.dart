@@ -706,6 +706,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         isExpanded: true,
                                         menuMaxHeight: 250, // Add scroll for dropdown
                                         items: const [
+                                          DropdownMenuItem(value: '5m', child: Text('5 Minutes')),
                                           DropdownMenuItem(value: '15m', child: Text('15 Minutes')),
                                           DropdownMenuItem(value: '1h', child: Text('1 Hour')),
                                           DropdownMenuItem(value: '4h', child: Text('4 Hours')),
