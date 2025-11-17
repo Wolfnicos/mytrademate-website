@@ -65,25 +65,46 @@ void callbackDispatcher() {
       for (final coin in coinsJson) {
         try {
           final symbol = buildSymbol(coin, exchangeName);
-          debugPrint('🔍 Checking $coin on $exchangeName: $symbol');
+          debugPrint('');
+          debugPrint('🔍 ==========================================');
+          debugPrint('🔍 BACKGROUND CHECK: $coin on $exchangeName');
+          debugPrint('🔍 Symbol: $symbol, Timeframe: $timeframe');
+          debugPrint('🔍 Threshold: ${(threshold * 100).toStringAsFixed(0)}%');
+          debugPrint('🔍 ==========================================');
 
           final prediction = await mlService.getPrediction(
             coin: coin,
             symbol: symbol,
             timeframe: timeframe,
-            silent: true, // Don't print debug logs in background
+            silent: false, // SHOW ALL DEBUG LOGS to understand what's happening
           );
 
           final currentConfidence = prediction.confidence;
           final previousConfidence = prevConfidences[coin] ?? 0.0;
           final momentum = currentConfidence - previousConfidence;
 
+          debugPrint('');
+          debugPrint('📊 CONFIDENCE ANALYSIS:');
+          debugPrint('   Previous: ${(previousConfidence * 100).toStringAsFixed(1)}%');
+          debugPrint('   Current:  ${(currentConfidence * 100).toStringAsFixed(1)}%');
+          debugPrint('   Momentum: ${(momentum * 100).toStringAsFixed(1)}%');
+          debugPrint('   Action: ${prediction.action}');
+          debugPrint('');
+
           // Save current confidence for next check
           await prefs.setDouble('prev_confidence_$coin', currentConfidence);
 
           // ALERT 1: High confidence opportunity
-          if (currentConfidence > threshold &&
-              previousConfidence < threshold - 0.05) {
+          final shouldSendOpportunityAlert = currentConfidence > threshold &&
+              previousConfidence < threshold - 0.05;
+
+          debugPrint('🔔 ALERT CHECK 1 (Opportunity):');
+          debugPrint('   Current > threshold? ${currentConfidence > threshold} (${(currentConfidence * 100).toStringAsFixed(1)}% > ${(threshold * 100).toStringAsFixed(0)}%)');
+          debugPrint('   Previous < threshold-5%? ${previousConfidence < threshold - 0.05} (${(previousConfidence * 100).toStringAsFixed(1)}% < ${((threshold - 0.05) * 100).toStringAsFixed(0)}%)');
+          debugPrint('   → Will send alert? $shouldSendOpportunityAlert');
+
+          if (shouldSendOpportunityAlert) {
+            debugPrint('🔔 SENDING OPPORTUNITY ALERT for $coin!');
             await LocalNotificationService.showOpportunityAlert(
               coin: coin,
               confidence: currentConfidence,
@@ -93,8 +114,16 @@ void callbackDispatcher() {
           }
 
           // ALERT 2: Strong momentum (>3% change)
-          if (momentum.abs() > 0.03) {
+          final shouldSendMomentumAlert = momentum.abs() > 0.03;
+
+          debugPrint('');
+          debugPrint('🔔 ALERT CHECK 2 (Momentum):');
+          debugPrint('   |Momentum| > 3%? ${momentum.abs() > 0.03} (${(momentum.abs() * 100).toStringAsFixed(1)}% > 3.0%)');
+          debugPrint('   → Will send alert? $shouldSendMomentumAlert');
+
+          if (shouldSendMomentumAlert) {
             final trend = momentum > 0 ? '📈 ACCELERATING' : '📉 REVERSAL RISK';
+            debugPrint('🔔 SENDING MOMENTUM ALERT for $coin!');
             await LocalNotificationService.showMomentumAlert(
               coin: coin,
               momentum: momentum,
@@ -102,7 +131,9 @@ void callbackDispatcher() {
             );
           }
 
-          debugPrint('✅ $coin: ${(currentConfidence * 100).toStringAsFixed(1)}% (momentum: ${(momentum * 100).toStringAsFixed(1)}%)');
+          debugPrint('');
+          debugPrint('✅ $coin check complete: ${(currentConfidence * 100).toStringAsFixed(1)}% ${prediction.action}');
+          debugPrint('==========================================');
         } catch (e) {
           debugPrint('❌ Error checking $coin: $e');
         }
