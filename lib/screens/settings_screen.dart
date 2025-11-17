@@ -118,6 +118,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _aiAlertsEnabled = aiSettings['enabled'] as bool;
         _confidenceThreshold = aiSettings['threshold'] as double;
         _alertTimeframe = aiSettings['timeframe'] as String;
+
+        // Migration: Auto-upgrade 5m to 15m (Android WorkManager minimum is 15 minutes)
+        if (_alertTimeframe == '5m') {
+          _alertTimeframe = '15m';
+          BackgroundAIMonitor.setAlertTimeframe('15m'); // Update stored value
+          debugPrint('🔄 Migrated AI Alerts timeframe from 5m to 15m (Android minimum)');
+        }
+
         _userCoinsCount = userCoins.length;
         _coinsSource = coinsSource;
       });
@@ -705,7 +713,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         isExpanded: true,
                                         menuMaxHeight: 250, // Add scroll for dropdown
                                         items: const [
-                                          DropdownMenuItem(value: '5m', child: Text('5 Minutes')),
                                           DropdownMenuItem(value: '15m', child: Text('15 Minutes')),
                                           DropdownMenuItem(value: '1h', child: Text('1 Hour')),
                                           DropdownMenuItem(value: '4h', child: Text('4 Hours')),
@@ -765,7 +772,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             coin: 'BTC',
                                             confidence: 0.85,
                                             action: 'BUY',
-                                            timeframe: '5m',
+                                            timeframe: '15m',
                                           );
                                           _showSnackBar('Test notification sent! Check your notification panel.', isError: false);
                                         } catch (e) {
