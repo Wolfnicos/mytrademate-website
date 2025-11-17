@@ -121,6 +121,24 @@ void callbackDispatcher() {
 class BackgroundAIMonitor {
   static const String _taskName = 'ai_monitoring_task';
 
+  /// Calculate adaptive polling interval based on timeframe
+  /// - 5M → check every 5 minutes
+  /// - 15M → check every 15 minutes
+  /// - 1H+ → check every 30 minutes
+  static Duration _getPollingInterval(String timeframe) {
+    switch (timeframe) {
+      case '5m':
+        return const Duration(minutes: 5);
+      case '15m':
+        return const Duration(minutes: 15);
+      case '1h':
+      case '4h':
+      case '1d':
+      default:
+        return const Duration(minutes: 30);
+    }
+  }
+
   /// Initialize background monitoring
   static Future<void> initialize() async {
     // Workmanager only works on Android
@@ -135,11 +153,15 @@ class BackgroundAIMonitor {
     }
   }
 
-  /// Start monitoring
+  /// Start monitoring with adaptive frequency based on timeframe
   static Future<void> startMonitoring({
-    Duration frequency = const Duration(minutes: 30),
     required String exchangeName,
   }) async {
+    // Read timeframe from SharedPreferences to calculate adaptive frequency
+    final prefs = await SharedPreferences.getInstance();
+    final timeframe = prefs.getString('alert_timeframe') ?? '4h';
+    final frequency = _getPollingInterval(timeframe);
+
     // Background monitoring only works on Android
     if (Platform.isAndroid) {
       await Workmanager().registerPeriodicTask(
@@ -152,14 +174,13 @@ class BackgroundAIMonitor {
           requiresBatteryNotLow: true, // Don't drain battery
         ),
       );
-      debugPrint('🚀 Background monitoring started (every ${frequency.inMinutes} minutes)');
+      debugPrint('🚀 Background monitoring started: $timeframe → check every ${frequency.inMinutes} minutes');
     } else {
       // iOS: Just save the enabled state, notifications work in foreground
       debugPrint('⚠️  iOS: Background monitoring limited - alerts work when app is open');
     }
 
     // Save enabled state and exchange name
-    final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('ai_alerts_enabled', true);
     await prefs.setString('ai_alerts_exchange', exchangeName);
     debugPrint('📝 AI Alerts exchange set to: $exchangeName');
@@ -198,11 +219,21 @@ class BackgroundAIMonitor {
     debugPrint('📝 Confidence threshold updated: ${(threshold * 100).toStringAsFixed(0)}%');
   }
 
-  /// Update alert timeframe
+  /// Update alert timeframe and restart monitoring with new interval
   static Future<void> setAlertTimeframe(String timeframe) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('alert_timeframe', timeframe);
-    debugPrint('📝 Alert timeframe updated: $timeframe');
+
+    // If monitoring is active, restart with new adaptive interval
+    final isActive = prefs.getBool('ai_alerts_enabled') ?? false;
+    if (isActive) {
+      final exchangeName = prefs.getString('ai_alerts_exchange') ?? 'binance';
+      await stopMonitoring();
+      await startMonitoring(exchangeName: exchangeName);
+      debugPrint('🔄 Restarted monitoring with new timeframe: $timeframe → ${_getPollingInterval(timeframe).inMinutes} min');
+    } else {
+      debugPrint('📝 Alert timeframe updated: $timeframe');
+    }
   }
 
   /// Get current settings

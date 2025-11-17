@@ -245,9 +245,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Get current exchange
       final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
 
-      // Start background monitoring with current exchange
+      // Start background monitoring with current exchange (uses adaptive interval)
       await BackgroundAIMonitor.startMonitoring(
-        frequency: const Duration(minutes: 30),
         exchangeName: exchangeProvider.selectedExchange,
       );
 
