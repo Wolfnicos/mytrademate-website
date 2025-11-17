@@ -1,6 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' show Platform;
 
 /// Local Notification Service - 100% NO CLOUD
 /// Sends notifications when AI detects trading opportunities
@@ -10,16 +11,18 @@ class LocalNotificationService {
 
   static bool _initialized = false;
 
-  /// Initialize local notifications
+  /// Initialize local notifications (does NOT request permissions)
   static Future<void> initialize() async {
     if (_initialized) return;
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    // iOS: Don't request permissions during initialization
+    // We'll request them explicitly when user toggles "Enable AI Alerts"
     const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-      // Show notifications even when app is in foreground
+      requestAlertPermission: false,  // Changed to false
+      requestBadgePermission: false,  // Changed to false
+      requestSoundPermission: false,  // Changed to false
+      // Show notifications even when app is in foreground (once permission is granted)
       defaultPresentAlert: true,
       defaultPresentBadge: true,
       defaultPresentSound: true,
@@ -39,26 +42,58 @@ class LocalNotificationService {
     debugPrint('✅ Local Notifications initialized');
   }
 
-  /// Request permissions (iOS & Android 13+)
+  /// Request permissions - iOS uses native API, Android uses system settings
   static Future<bool> requestPermissions() async {
+    await initialize();
+
     debugPrint('🔔 Requesting notification permissions...');
 
-    // Request notification permission (works on both iOS and Android 13+)
-    final status = await Permission.notification.request();
-
-    debugPrint('🔔 Permission status: $status');
-
-    if (status.isGranted) {
-      debugPrint('✅ Notification permissions GRANTED');
-      return true;
-    } else if (status.isDenied) {
-      debugPrint('⚠️  Notification permissions DENIED');
+    if (kIsWeb) {
+      debugPrint('⚠️  Notifications not supported on web');
       return false;
-    } else if (status.isPermanentlyDenied) {
-      debugPrint('❌ Notification permissions PERMANENTLY DENIED - open settings');
-      // User needs to enable in settings
-      await openAppSettings();
-      return false;
+    }
+
+    // iOS: Use flutter_local_notifications native API (most reliable)
+    if (Platform.isIOS) {
+      debugPrint('🔔 iOS: Requesting permissions via native API...');
+
+      final iosImpl = _notifications.resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin>();
+
+      if (iosImpl == null) {
+        debugPrint('❌ iOS plugin not available');
+        return false;
+      }
+
+      // Request permissions
+      final granted = await iosImpl.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      debugPrint('🔔 iOS permission result: $granted');
+      return granted ?? false;
+    }
+
+    // Android: Check if notifications are enabled
+    if (Platform.isAndroid) {
+      debugPrint('🔔 Android: Checking notification settings...');
+
+      final androidImpl = _notifications.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+
+      if (androidImpl == null) {
+        debugPrint('❌ Android plugin not available');
+        return false;
+      }
+
+      final enabled = await androidImpl.areNotificationsEnabled();
+      debugPrint('🔔 Android notifications enabled: $enabled');
+
+      // On Android 13+, if not enabled, the system will show permission dialog automatically
+      // when we try to show a notification
+      return enabled ?? false;
     }
 
     return false;

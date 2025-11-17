@@ -102,8 +102,8 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     final quote = AppSettingsService().quoteCurrency.toUpperCase();
     debugPrint('AI Strategies: Quote currency changed to $quote, updating pairs...');
 
-    // Extract base asset from current pair (e.g., BTCUSDT -> BTC)
-    String baseAsset = _selectedSymbol;
+    // Extract base asset from current pair (e.g., BTCUSDT -> BTC, BTC-USD -> BTC)
+    String baseAsset = _selectedSymbol.replaceAll('-', ''); // Remove Coinbase hyphens
     for (final q in ['USDT', 'USDC', 'EUR', 'USD']) {
       baseAsset = baseAsset.replaceAll(q, '');
     }
@@ -202,8 +202,10 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     });
 
     try {
-      // Get coin from symbol (e.g., BTCUSDT -> BTC)
-      final coin = _selectedSymbol.replaceAll(RegExp(r'(USDT|EUR|USDC)$'), '');
+      // Get coin from symbol (e.g., BTCUSDT -> BTC, BTC-USD -> BTC)
+      // Remove Coinbase hyphens first, then extract base currency
+      final cleanSymbol = _selectedSymbol.replaceAll('-', '');
+      final coin = cleanSymbol.replaceAll(RegExp(r'(USDT|USDC|EUR|USD)$'), '');
 
       debugPrint('🚀 AI Strategies: fetching CryptoML prediction for $coin @$_interval');
 
@@ -291,8 +293,10 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     // DO NOT set _isRunningPrediction = true (no UI spinner/text)
 
     try {
-      // Get coin from symbol (e.g., BTCUSDT -> BTC)
-      final coin = _selectedSymbol.replaceAll(RegExp(r'(USDT|EUR|USDC)$'), '');
+      // Get coin from symbol (e.g., BTCUSDT -> BTC, BTC-USD -> BTC)
+      // Remove Coinbase hyphens first, then extract base currency
+      final cleanSymbol = _selectedSymbol.replaceAll('-', '');
+      final coin = cleanSymbol.replaceAll(RegExp(r'(USDT|USDC|EUR|USD)$'), '');
 
       debugPrint('🔄 AI Strategies (SILENT): fetching CryptoML prediction for $coin @$_interval');
 
