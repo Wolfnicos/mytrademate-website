@@ -200,7 +200,9 @@ class KrakenService implements BaseExchangeService {
   }
 
   Map<String, String> _buildHeaders(String path, String postData) {
-    final nonce = DateTime.now().millisecondsSinceEpoch.toString();
+    // Use microseconds for nonce - Kraken requires strictly increasing nonce
+    // Microseconds provide 1000x more precision than milliseconds
+    final nonce = DateTime.now().microsecondsSinceEpoch.toString();
     final signature = _generateSignature(path, nonce, postData);
 
     return {
@@ -222,7 +224,8 @@ class KrakenService implements BaseExchangeService {
 
     try {
       final path = '/0/private/Balance';
-      final nonce = DateTime.now().millisecondsSinceEpoch.toString();
+      // Use microseconds for nonce - Kraken requires strictly increasing nonce
+      final nonce = DateTime.now().microsecondsSinceEpoch.toString();
       final postData = 'nonce=$nonce';
 
       final uri = Uri.https(_baseHost, path);
