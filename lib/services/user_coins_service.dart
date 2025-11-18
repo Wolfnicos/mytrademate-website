@@ -29,8 +29,23 @@ class UserCoinsService with ChangeNotifier {
     'LTC',  // Litecoin
   ];
 
+  // Exchange-specific coin exclusions
+  // Some exchanges don't support certain coins due to business conflicts or listing policies
+  static const Map<String, List<String>> excludedCoinsPerExchange = {
+    'Coinbase': ['BNB'],  // BNB (Binance Coin) not available on Coinbase
+    'Kraken': ['BNB'],    // BNB (Binance Coin) not available on Kraken
+  };
+
+  /// Get default coins filtered for specific exchange
+  /// Excludes coins that are not available on the given exchange
+  static List<String> getDefaultCoinsForExchange(String exchangeName) {
+    final excluded = excludedCoinsPerExchange[exchangeName] ?? [];
+    return defaultCoins.where((coin) => !excluded.contains(coin)).toList();
+  }
+
   List<String> _cachedCoins = [];
   String _cachedSource = 'default';
+  String? _cachedExchangeName; // Remember last exchange for filtering defaults
 
   /// Get user's coin list
   /// Returns coins from API if connected, otherwise TOP 10 default
@@ -54,7 +69,7 @@ class UserCoinsService with ChangeNotifier {
     }
 
     // No saved coins → return default
-    _cachedCoins = List.from(defaultCoins);
+    _cachedCoins = List<String>.from(defaultCoins);
     _cachedSource = 'default';
     await _saveCoins(_cachedCoins, 'default');
     debugPrint('✅ Using default TOP 10 coins');
@@ -65,6 +80,10 @@ class UserCoinsService with ChangeNotifier {
   /// Extracts unique coins from user's portfolio balances
   Future<void> updateCoinsFromExchange(BaseExchangeService exchange) async {
     debugPrint('🔄 UserCoinsService: updateCoinsFromExchange(${exchange.exchangeName}) called');
+
+    // Remember exchange name for future default coin filtering
+    _cachedExchangeName = exchange.exchangeName;
+
     try {
       // Check if API is connected
       final hasCredentials = exchange.hasCredentials;
@@ -73,7 +92,7 @@ class UserCoinsService with ChangeNotifier {
 
       if (!hasCredentials) {
         debugPrint('⚠️  No ${exchange.exchangeName} API connected - using default coins');
-        await setDefaultCoins();
+        await setDefaultCoins(exchangeName: exchange.exchangeName);
         return;
       }
 
@@ -84,7 +103,7 @@ class UserCoinsService with ChangeNotifier {
 
       if (balances.isEmpty) {
         debugPrint('⚠️  Empty balances - using default coins');
-        await setDefaultCoins();
+        await setDefaultCoins(exchangeName: exchange.exchangeName);
         return;
       }
 
@@ -105,7 +124,7 @@ class UserCoinsService with ChangeNotifier {
 
       if (coins.isEmpty) {
         debugPrint('⚠️  No valid coins in portfolio - using default coins');
-        await setDefaultCoins();
+        await setDefaultCoins(exchangeName: exchange.exchangeName);
         return;
       }
 
@@ -128,7 +147,7 @@ class UserCoinsService with ChangeNotifier {
     } catch (e) {
       debugPrint('❌ Error updating coins from ${exchange.exchangeName}: $e');
       // Fallback to default on error
-      await setDefaultCoins();
+      await setDefaultCoins(exchangeName: exchange.exchangeName);
     }
   }
 
@@ -140,12 +159,29 @@ class UserCoinsService with ChangeNotifier {
     debugPrint('⚠️  updateCoinsFromBinance is deprecated, please use updateCoinsFromExchange');
   }
 
-  /// Set default TOP 10 coins
-  Future<void> setDefaultCoins() async {
-    await _saveCoins(List.from(defaultCoins), 'default');
-    _cachedCoins = List.from(defaultCoins);
+  /// Set default coins (filtered by exchange compatibility)
+  ///
+  /// If [exchangeName] is provided, returns coins filtered for that exchange
+  /// (e.g., excludes BNB for Coinbase). If no exchange is provided but one was
+  /// previously cached, uses the cached exchange. Otherwise returns all default coins.
+  Future<void> setDefaultCoins({String? exchangeName}) async {
+    // Use provided exchange, or fall back to cached exchange, or use all defaults
+    final effectiveExchange = exchangeName ?? _cachedExchangeName;
+
+    final coinsToUse = effectiveExchange != null
+        ? getDefaultCoinsForExchange(effectiveExchange)
+        : List<String>.from(defaultCoins);
+
+    await _saveCoins(coinsToUse, 'default');
+    _cachedCoins = coinsToUse;
     _cachedSource = 'default';
-    debugPrint('✅ Reset to default TOP 10 coins');
+
+    if (effectiveExchange != null) {
+      debugPrint('✅ Reset to default coins for $effectiveExchange (${coinsToUse.length} coins)');
+      debugPrint('   Coins: ${coinsToUse.join(", ")}');
+    } else {
+      debugPrint('✅ Reset to default TOP 10 coins');
+    }
 
     // Notify listeners that coins changed
     notifyListeners();
@@ -230,6 +266,7 @@ class UserCoinsService with ChangeNotifier {
   void clearCache() {
     _cachedCoins = [];
     _cachedSource = '';
+    _cachedExchangeName = null;
     debugPrint('🗑️  Coins cache cleared');
   }
 
