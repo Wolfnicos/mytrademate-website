@@ -57,8 +57,19 @@ class VolumeProfileService {
       );
 
       return _analyzeOrderBook(orderBook, symbol);
+    } on DioException catch (e) {
+      // Network or API errors - silent fallback
+      if (e.response?.statusCode == 400) {
+        debugPrint('⚠️  VolumeProfile: Invalid symbol "$symbol" for $exchange (fallback to neutral)');
+      } else if (e.response?.statusCode == 429) {
+        debugPrint('⚠️  VolumeProfile: Rate limited by $exchange API (fallback to neutral)');
+      } else {
+        debugPrint('⚠️  VolumeProfile: Network error for $symbol on $exchange: ${e.message}');
+      }
+      return _neutralProfile();
     } catch (e) {
-      debugPrint('❌ VolumeProfileService: Error analyzing volume: $e');
+      // Generic errors - silent fallback
+      debugPrint('⚠️  VolumeProfile: Error analyzing $symbol: ${e.toString().split('\n').first}');
       return _neutralProfile();
     }
   }
@@ -83,10 +94,25 @@ class VolumeProfileService {
 
   /// Fetch Binance order book
   Future<OrderBookData> _fetchBinanceOrderBook(String symbol, int depth) async {
+    // Convert symbol format for Binance API
+    // Binance.com doesn't have USD pairs, only USDT
+    final upperSymbol = symbol.toUpperCase();
+
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      // Convert USD to USDT (Binance doesn't have raw USD pairs)
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
+    debugPrint('[VolumeProfile] Binance: Converting $symbol → $binanceSymbol');
+
     final response = await _dio.get(
       'https://api.binance.com/api/v3/depth',
       queryParameters: {
-        'symbol': symbol.toUpperCase(),
+        'symbol': binanceSymbol,
         'limit': min(depth, 5000), // Binance max is 5000
       },
     );
@@ -115,11 +141,22 @@ class VolumeProfileService {
 
   /// Fetch Kraken order book
   Future<OrderBookData> _fetchKrakenOrderBook(String symbol, int depth) async {
-    // Convert symbol format (BTCUSDT -> XBTUSDT for Kraken)
-    final krakenSymbol = symbol
-        .toUpperCase()
-        .replaceAll('BTC', 'XBT')
-        .replaceAll('USDT', 'USD');
+    // Convert symbol format for Kraken API
+    // BTCUSD -> XBTUSD, BTCEUR -> XBTEUR, ETHUSD -> ETHUSD, etc.
+    final upperSymbol = symbol.toUpperCase();
+
+    String krakenSymbol;
+    if (upperSymbol.startsWith('BTC')) {
+      // BTC pairs use XBT prefix in Kraken
+      krakenSymbol = upperSymbol.replaceFirst('BTC', 'XBT');
+    } else {
+      krakenSymbol = upperSymbol;
+    }
+
+    // USDT -> USD (Kraken doesn't have USDT pairs in old API)
+    krakenSymbol = krakenSymbol.replaceAll('USDT', 'USD');
+
+    debugPrint('[VolumeProfile] Kraken: Converting $symbol → $krakenSymbol');
 
     final response = await _dio.get(
       'https://api.kraken.com/0/public/Depth',
@@ -160,22 +197,32 @@ class VolumeProfileService {
     final upperSymbol = symbol.toUpperCase();
 
     String pair;
-    if (upperSymbol.endsWith('EUR')) {
+    if (upperSymbol.endsWith('USDT') || upperSymbol.endsWith('USDC')) {
+      // USDT/USDC pair: BTCUSDT -> BTC-USD
+      final base = upperSymbol.replaceAll(RegExp(r'USD[TC]$'), '');
+      pair = '$base-USD';
+    } else if (upperSymbol.endsWith('EUR')) {
       // EUR pair: BTCEUR -> BTC-EUR
-      final base = upperSymbol.replaceAll('EUR', '');
+      final base = upperSymbol.replaceAll(RegExp(r'EUR$'), '');
       pair = '$base-EUR';
-    } else if (upperSymbol.endsWith('USDT')) {
-      // USDT pair: BTCUSDT -> BTC-USD
-      final base = upperSymbol.replaceAll('USDT', '');
+    } else if (upperSymbol.endsWith('USD')) {
+      // USD pair: BTCUSD -> BTC-USD
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
       pair = '$base-USD';
-    } else if (upperSymbol.endsWith('USDC')) {
-      // USDC pair: BTCUSDC -> BTC-USD
-      final base = upperSymbol.replaceAll('USDC', '');
-      pair = '$base-USD';
+    } else if (upperSymbol.endsWith('BTC')) {
+      // BTC pair: ETHBTC -> ETH-BTC
+      final base = upperSymbol.replaceAll(RegExp(r'BTC$'), '');
+      pair = '$base-BTC';
+    } else if (upperSymbol.endsWith('ETH')) {
+      // ETH pair: LINKETH -> LINK-ETH
+      final base = upperSymbol.replaceAll(RegExp(r'ETH$'), '');
+      pair = '$base-ETH';
     } else {
-      // Default: assume USD
-      pair = '$upperSymbol-USD';
+      // Unsupported format
+      throw Exception('Unsupported Coinbase pair format: $upperSymbol');
     }
+
+    debugPrint('[VolumeProfile] Coinbase: Converting $symbol → $pair');
 
     final response = await _dio.get(
       'https://api.exchange.coinbase.com/products/$pair/book',

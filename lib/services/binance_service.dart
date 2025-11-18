@@ -332,8 +332,22 @@ class BinanceService implements BaseExchangeService {
     }
 
     try {
-      final uri = symbol != null
-          ? Uri.https(_baseHost, '/api/v3/exchangeInfo', {'symbol': symbol})
+      // Convert symbol format for Binance API if provided
+      String? binanceSymbol;
+      if (symbol != null) {
+        final upperSymbol = symbol.toUpperCase();
+        if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+          // Convert USD to USDT (Binance doesn't have raw USD pairs)
+          final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+          binanceSymbol = '${base}USDT';
+          debugPrint('[BinanceService] getExchangeInfo: Converting $symbol → $binanceSymbol');
+        } else {
+          binanceSymbol = upperSymbol;
+        }
+      }
+
+      final uri = binanceSymbol != null
+          ? Uri.https(_baseHost, '/api/v3/exchangeInfo', {'symbol': binanceSymbol})
           : Uri.https(_baseHost, '/api/v3/exchangeInfo');
 
       final response = await http.get(uri);
@@ -469,10 +483,23 @@ class BinanceService implements BaseExchangeService {
       throw Exception('Provide quantity (base) or quoteOrderQty (>0)');
     }
 
+    // Convert symbol format for Binance API
+    // Binance.com doesn't have USD pairs, only USDT
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      // Convert USD to USDT (Binance doesn't have raw USD pairs)
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] placeMarketOrder: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
     // Validate and round quantity to comply with LOT_SIZE filter
     if (quantity != null && quantity > 0) {
       try {
-        quantity = await validateQuantity(symbol, quantity);
+        quantity = await validateQuantity(binanceSymbol, quantity);
         debugPrint('✅ Validated quantity for $symbol: $quantity');
       } catch (e) {
         debugPrint('⚠️ Quantity validation failed: $e');
@@ -482,7 +509,7 @@ class BinanceService implements BaseExchangeService {
 
     final int timestamp = await getSynchronizedTimestamp();
     final Map<String, String> params = <String, String>{
-      'symbol': symbol,
+      'symbol': binanceSymbol,
       'side': side.toUpperCase(),
       'type': 'MARKET',
       'newOrderRespType': 'RESULT',
@@ -535,9 +562,22 @@ class BinanceService implements BaseExchangeService {
       throw Exception('Price must be > 0');
     }
 
+    // Convert symbol format for Binance API
+    // Binance.com doesn't have USD pairs, only USDT
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      // Convert USD to USDT (Binance doesn't have raw USD pairs)
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] placeLimitOrder: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
     final int timestamp = await getSynchronizedTimestamp();
     final Map<String, String> params = <String, String>{
-      'symbol': symbol,
+      'symbol': binanceSymbol,
       'side': side.toUpperCase(),
       'type': 'LIMIT',
       'timeInForce': timeInForce,
@@ -585,9 +625,20 @@ class BinanceService implements BaseExchangeService {
       throw Exception('Quantity, price, and stopPrice must be > 0');
     }
 
+    // Convert symbol format for Binance API
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] placeStopLimitOrder: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
     final int timestamp = await getSynchronizedTimestamp();
     final Map<String, String> params = <String, String>{
-      'symbol': symbol,
+      'symbol': binanceSymbol,
       'side': side.toUpperCase(),
       'type': 'STOP_LOSS_LIMIT',
       'timeInForce': timeInForce,
@@ -634,9 +685,20 @@ class BinanceService implements BaseExchangeService {
       throw Exception('Quantity and stopPrice must be > 0');
     }
 
+    // Convert symbol format for Binance API
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] placeStopMarketOrder: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
     final int timestamp = await getSynchronizedTimestamp();
     final Map<String, String> params = <String, String>{
-      'symbol': symbol,
+      'symbol': binanceSymbol,
       'side': side.toUpperCase(),
       'type': 'STOP_LOSS',
       'quantity': quantity.toString(),
@@ -670,12 +732,26 @@ class BinanceService implements BaseExchangeService {
     if (_apiKey == null || _apiSecret == null) {
       throw Exception('API credentials not set');
     }
+
+    // Convert symbol format for Binance API if provided
+    String? binanceSymbol;
+    if (symbol != null && symbol.isNotEmpty) {
+      final upperSymbol = symbol.toUpperCase();
+      if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+        final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+        binanceSymbol = '${base}USDT';
+        debugPrint('[BinanceService] fetchOpenOrders: Converting $symbol → $binanceSymbol');
+      } else {
+        binanceSymbol = upperSymbol;
+      }
+    }
+
     final int timestamp = await getSynchronizedTimestamp();
     final Map<String, String> params = <String, String>{
       'timestamp': timestamp.toString(),
       'recvWindow': recvWindowMs.toString(),
     };
-    if (symbol != null && symbol.isNotEmpty) params['symbol'] = symbol;
+    if (binanceSymbol != null) params['symbol'] = binanceSymbol;
 
     final String queryString = params.entries.map((e) => '${e.key}=${e.value}').join('&');
     final String signature = _generateSignature(queryString);
@@ -706,9 +782,21 @@ class BinanceService implements BaseExchangeService {
     if (orderId == null && (origClientOrderId == null || origClientOrderId.isEmpty)) {
       throw Exception('Provide orderId or origClientOrderId');
     }
+
+    // Convert symbol format for Binance API
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] cancelOrder: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
     final int timestamp = await getSynchronizedTimestamp();
     final Map<String, String> params = <String, String>{
-      'symbol': symbol,
+      'symbol': binanceSymbol,
       'recvWindow': recvWindowMs.toString(),
       'timestamp': timestamp.toString(),
     };
@@ -744,9 +832,21 @@ class BinanceService implements BaseExchangeService {
     if (_apiKey == null || _apiSecret == null) {
       throw Exception('API credentials not set');
     }
+
+    // Convert symbol format for Binance API
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] placeOcoOrder: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
     final int timestamp = await getSynchronizedTimestamp();
     final Map<String, String> params = <String, String>{
-      'symbol': symbol,
+      'symbol': binanceSymbol,
       'side': side.toUpperCase(),
       'quantity': quantity.toString(),
       'price': price.toString(),
@@ -787,8 +887,21 @@ class BinanceService implements BaseExchangeService {
     int limit = 500,
     int? endTime,
   }) async {
+    // Convert symbol format for Binance API
+    // Binance.com doesn't have USD pairs, only USDT
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      // Convert USD to USDT (Binance doesn't have raw USD pairs)
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] fetchKlines: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
     final Map<String, String> query = {
-      'symbol': symbol,
+      'symbol': binanceSymbol,
       'interval': interval,
       'limit': limit.toString(),
     };
@@ -853,7 +966,20 @@ class BinanceService implements BaseExchangeService {
   /// Fetch 24h ticker data for a symbol. Returns lastPrice and priceChangePercent.
   @override
   Future<Map<String, double>> fetchTicker24h(String symbol) async {
-    final uri = Uri.https(_baseHost, '/api/v3/ticker/24hr', {'symbol': symbol});
+    // Convert symbol format for Binance API
+    // Binance.com doesn't have USD pairs, only USDT
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      // Convert USD to USDT (Binance doesn't have raw USD pairs)
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] fetchTicker24h: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
+    final uri = Uri.https(_baseHost, '/api/v3/ticker/24hr', {'symbol': binanceSymbol});
     final http.Response res = await http.get(uri);
     if (res.statusCode != 200) {
       throw Exception('Binance 24hr ticker error ${res.statusCode}: ${res.body}');
@@ -871,7 +997,20 @@ class BinanceService implements BaseExchangeService {
   /// High-volume coins (> median) get +5% confidence boost for general models.
   Future<double> get24hVolume(String symbol) async {
     try {
-      final uri = Uri.https(_baseHost, '/api/v3/ticker/24hr', {'symbol': symbol});
+      // Convert symbol format for Binance API
+      // Binance.com doesn't have USD pairs, only USDT
+      final upperSymbol = symbol.toUpperCase();
+      String binanceSymbol;
+      if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+        // Convert USD to USDT (Binance doesn't have raw USD pairs)
+        final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+        binanceSymbol = '${base}USDT';
+        debugPrint('[BinanceService] 24h volume: Converting $symbol → $binanceSymbol');
+      } else {
+        binanceSymbol = upperSymbol;
+      }
+
+      final uri = Uri.https(_baseHost, '/api/v3/ticker/24hr', {'symbol': binanceSymbol});
       final http.Response res = await http.get(uri);
       if (res.statusCode != 200) {
         throw Exception('Binance 24hr volume error ${res.statusCode}: ${res.body}');
