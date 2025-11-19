@@ -20,7 +20,7 @@ class MultiExchangeAggregatorService {
   Future<MultiExchangeData> getData(String symbol) async {
     final Map<String, double> prices = {};
 
-    // Fetch from Binance
+    // Fetch from Binance (uses format: BTCUSDT)
     try {
       final binanceTicker = await _binance.fetchTicker24h(symbol);
       prices['Binance'] = binanceTicker['lastPrice'] ?? 0.0;
@@ -28,15 +28,18 @@ class MultiExchangeAggregatorService {
       debugPrint('[MultiExchange] Binance error: $e');
     }
 
-    // Fetch from Coinbase
+    // Fetch from Coinbase (uses format: BTC-USD)
     try {
-      final coinbaseTicker = await _coinbase.fetchTicker24h(symbol);
-      prices['Coinbase'] = coinbaseTicker['lastPrice'] ?? 0.0;
+      final coinbaseSymbol = _normalizeCoinbaseSymbol(symbol);
+      if (coinbaseSymbol != null) {
+        final coinbaseTicker = await _coinbase.fetchTicker24h(coinbaseSymbol);
+        prices['Coinbase'] = coinbaseTicker['lastPrice'] ?? 0.0;
+      }
     } catch (e) {
       debugPrint('[MultiExchange] Coinbase error: $e');
     }
 
-    // Fetch from Kraken
+    // Fetch from Kraken (uses format: XBTUSD)
     try {
       final krakenTicker = await _kraken.fetchTicker24h(symbol);
       prices['Kraken'] = krakenTicker['lastPrice'] ?? 0.0;
@@ -54,6 +57,34 @@ class MultiExchangeAggregatorService {
       prices: prices,
       spread: spread,
     );
+  }
+
+  /// Normalize symbol for Coinbase (BTCEUR → BTC-EUR)
+  /// Returns null if symbol cannot be parsed or Coinbase doesn't support the pair
+  String? _normalizeCoinbaseSymbol(String symbol) {
+    // Already in correct format
+    if (symbol.contains('-')) return symbol;
+
+    // Parse symbol to extract base and quote
+    // Supported quotes on Coinbase: USD, EUR, USDC, USDT
+    final match = RegExp(r'^([A-Z]+)(USD|EUR|USDC|USDT)$').firstMatch(symbol);
+    if (match == null) return null;
+
+    final base = match.group(1)!;
+    final quote = match.group(2)!;
+
+    // Coinbase doesn't support USDT for all coins (prefer USD)
+    // Check if this pair is likely supported
+    if (quote == 'USDT') {
+      // Only major coins have USDT on Coinbase
+      const majorCoins = {'BTC', 'ETH', 'SOL', 'AVAX', 'LINK'};
+      if (!majorCoins.contains(base)) {
+        return null; // Coinbase likely doesn't have this USDT pair
+      }
+    }
+
+    // Use CoinbaseService's buildTradingPair to ensure correct formatting
+    return _coinbase.buildTradingPair(base, quote);
   }
 
   /// Calculate price spread across exchanges

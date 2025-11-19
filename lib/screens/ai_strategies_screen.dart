@@ -1525,72 +1525,320 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
 
     final boost = _marketIntelligence!;
 
-    return Card(
-      margin: const EdgeInsets.only(top: 16, bottom: 16),
-      child: ExpansionTile(
-        title: Row(
-          children: [
-            const Text('🌐 Market Intelligence', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(width: 8),
-            if (boost.confidenceBoost != 0)
-              Chip(
-                label: Text('${boost.confidenceBoost > 0 ? '+' : ''}${boost.confidenceBoost}%'),
-                backgroundColor: boost.confidenceBoost > 0
-                  ? Colors.green.withValues(alpha: 0.2)
-                  : Colors.red.withValues(alpha: 0.2),
-              ),
-          ],
-        ),
+    // Determine boost color
+    final boostColor = boost.confidenceBoost > 0
+        ? AppTheme.buyGreen
+        : boost.confidenceBoost < 0
+            ? AppTheme.sellRed
+            : AppTheme.textSecondary;
+
+    // Fear & Greed color
+    final fearGreedColor = boost.fearGreedValue < 25
+        ? AppTheme.sellRed
+        : boost.fearGreedValue > 75
+            ? AppTheme.buyGreen
+            : AppTheme.holdYellow;
+
+    return GlassCard(
+      padding: const EdgeInsets.all(AppTheme.spacing20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // Header with boost badge
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(AppTheme.spacing8),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                    ),
+                    child: const Icon(
+                      Icons.insights,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: AppTheme.spacing12),
+                  Text(
+                    'Market Intelligence',
+                    style: AppTheme.headingSmall.copyWith(
+                      color: AppTheme.getTextPrimary(context),
+                    ),
+                  ),
+                ],
+              ),
+              if (boost.confidenceBoost != 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacing12,
+                    vertical: AppTheme.spacing4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: boostColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                    border: Border.all(
+                      color: boostColor.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    '${boost.confidenceBoost > 0 ? '+' : ''}${boost.confidenceBoost}%',
+                    style: AppTheme.labelMedium.copyWith(
+                      color: boostColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+
+          const SizedBox(height: AppTheme.spacing20),
+
+          // Metrics Grid
+          _buildMetricRow(
+            context,
+            icon: Icons.psychology,
+            iconColor: fearGreedColor,
+            label: 'Fear & Greed Index',
+            value: '${boost.fearGreedValue}/100',
+            subtitle: boost.fearGreedLevel,
+          ),
+
+          const SizedBox(height: AppTheme.spacing16),
+
+          _buildMetricRow(
+            context,
+            icon: Icons.article_outlined,
+            iconColor: boost.newsSentiment == 'Bullish'
+                ? AppTheme.buyGreen
+                : boost.newsSentiment == 'Bearish'
+                    ? AppTheme.sellRed
+                    : AppTheme.textSecondary,
+            label: 'News Sentiment',
+            value: boost.newsSentiment,
+            subtitle: '${(boost.newsSentimentScore * 100).toStringAsFixed(1)}% score',
+          ),
+
+          const SizedBox(height: AppTheme.spacing16),
+
+          _buildMetricRow(
+            context,
+            icon: Icons.public,
+            iconColor: boost.globalMarketTrend == 'bullish'
+                ? AppTheme.buyGreen
+                : boost.globalMarketTrend == 'bearish'
+                    ? AppTheme.sellRed
+                    : AppTheme.textSecondary,
+            label: 'Global Market',
+            value: '\$${(boost.globalMarketCap / 1e12).toStringAsFixed(2)}T',
+            subtitle: '${boost.globalMarketCapChange24h >= 0 ? '+' : ''}${boost.globalMarketCapChange24h.toStringAsFixed(2)}% (${boost.globalMarketTrend})',
+          ),
+
+          // Multi-Exchange Section
+          if (boost.multiExchangePrices.isNotEmpty) ...[
+            const SizedBox(height: AppTheme.spacing16),
+            _buildMetricRow(
+              context,
+              icon: Icons.compare_arrows,
+              iconColor: AppTheme.info,
+              label: 'Price Spread',
+              value: '${(boost.priceSpread * 100).toStringAsFixed(3)}%',
+              subtitle: '${boost.multiExchangePrices.length} exchanges',
+            ),
+          ],
+
+          // Analysis Section
+          if (boost.reasonsForBoost.isNotEmpty) ...[
+            const SizedBox(height: AppTheme.spacing20),
+            const Divider(height: 1),
+            const SizedBox(height: AppTheme.spacing16),
+
+            Row(
               children: [
-                // Fear & Greed
-                Text('😱 Fear & Greed: ${boost.fearGreedValue}/100 (${boost.fearGreedLevel})',
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-
-                // News Sentiment
-                Text('📰 News Sentiment: ${boost.newsSentiment}'),
-                const SizedBox(height: 8),
-
-                // Global Market
-                Text('🌍 Global Market: ${boost.globalMarketTrend.toUpperCase()} trend'),
-                Text('   Market Cap: \$${(boost.globalMarketCap / 1e12).toStringAsFixed(2)}T (${boost.globalMarketCapChange24h >= 0 ? '+' : ''}${boost.globalMarketCapChange24h.toStringAsFixed(2)}%)'),
-                const SizedBox(height: 8),
-
-                // Multi-Exchange
-                if (boost.multiExchangePrices.isNotEmpty) ...[
-                  const Text('🏦 Multi-Exchange:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ...boost.multiExchangePrices.entries.map((e) =>
-                    Text('   ${e.key}: \$${e.value.toStringAsFixed(2)}')),
-                  Text('   Spread: ${(boost.priceSpread * 100).toStringAsFixed(3)}%'),
-                  const SizedBox(height: 8),
-                ],
-
-                // Reasons
-                const Divider(),
-                const Text('💡 Analysis:', style: TextStyle(fontWeight: FontWeight.bold)),
-                ...boost.reasonsForBoost.map((reason) =>
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(reason),
-                  )),
-
-                // Enhanced confidence
-                if (_lastPrediction != null && boost.confidenceBoost != 0) ...[
-                  const Divider(),
-                  Text('Original: ${_lastPrediction!.action} (${(_lastPrediction!.confidence * 100).toStringAsFixed(1)}%)'),
-                  Text('Enhanced: ${_lastPrediction!.action} (${(boost.applyBoost(_lastPrediction!.confidence) * 100).toStringAsFixed(1)}%) ⭐',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                ],
+                Icon(
+                  Icons.lightbulb_outline,
+                  size: 16,
+                  color: AppTheme.getTextSecondary(context),
+                ),
+                const SizedBox(width: AppTheme.spacing8),
+                Text(
+                  'Analysis',
+                  style: AppTheme.labelLarge.copyWith(
+                    color: AppTheme.getTextPrimary(context),
+                  ),
+                ),
               ],
             ),
-          ),
+            const SizedBox(height: AppTheme.spacing12),
+            ...boost.reasonsForBoost.map((reason) => Padding(
+              padding: const EdgeInsets.only(bottom: AppTheme.spacing8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '• ',
+                    style: AppTheme.bodySmall.copyWith(
+                      color: AppTheme.getTextSecondary(context),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      reason,
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.getTextSecondary(context),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+          ],
+
+          // Enhanced Confidence Section
+          if (_lastPrediction != null && boost.confidenceBoost != 0) ...[
+            const SizedBox(height: AppTheme.spacing16),
+            const Divider(height: 1),
+            const SizedBox(height: AppTheme.spacing16),
+
+            Container(
+              padding: const EdgeInsets.all(AppTheme.spacing12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    boostColor.withValues(alpha: 0.1),
+                    boostColor.withValues(alpha: 0.05),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                border: Border.all(
+                  color: boostColor.withValues(alpha: 0.2),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Original Confidence',
+                        style: AppTheme.labelSmall.copyWith(
+                          color: AppTheme.getTextTertiary(context),
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacing4),
+                      Text(
+                        '${(_lastPrediction!.confidence * 100).toStringAsFixed(1)}%',
+                        style: AppTheme.labelLarge.copyWith(
+                          color: AppTheme.getTextPrimary(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Icon(
+                    Icons.arrow_forward,
+                    size: 20,
+                    color: AppTheme.getTextTertiary(context),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Enhanced',
+                            style: AppTheme.labelSmall.copyWith(
+                              color: AppTheme.getTextTertiary(context),
+                            ),
+                          ),
+                          const SizedBox(width: AppTheme.spacing4),
+                          Icon(
+                            Icons.auto_awesome,
+                            size: 12,
+                            color: boostColor,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppTheme.spacing4),
+                      Text(
+                        '${(boost.applyBoost(_lastPrediction!.confidence) * 100).toStringAsFixed(1)}%',
+                        style: AppTheme.labelLarge.copyWith(
+                          color: boostColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildMetricRow(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    String? subtitle,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(AppTheme.spacing8),
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: iconColor,
+          ),
+        ),
+        const SizedBox(width: AppTheme.spacing12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTheme.labelSmall.copyWith(
+                  color: AppTheme.getTextTertiary(context),
+                ),
+              ),
+              const SizedBox(height: AppTheme.spacing4),
+              Text(
+                value,
+                style: AppTheme.bodyMedium.copyWith(
+                  color: AppTheme.getTextPrimary(context),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: AppTheme.spacing4),
+                Text(
+                  subtitle,
+                  style: AppTheme.bodySmall.copyWith(
+                    color: AppTheme.getTextSecondary(context),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
