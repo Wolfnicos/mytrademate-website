@@ -45,6 +45,46 @@ class CryptoMLService {
            _phase3EnabledTimeframes.contains(timeframe);
   }
 
+  /// Get best available model for a coin+timeframe with fallback logic
+  /// If exact model doesn't exist (e.g., btc_4h), falls back to closest smaller timeframe
+  ///
+  /// Fallback hierarchy:
+  /// - 4h → 1h → 15m → 5m
+  /// - 1d → 4h → 1h → 15m → 5m
+  /// - 1h → 15m → 5m
+  /// - 15m → 5m
+  /// - 5m → (no fallback)
+  ///
+  /// Returns: model key (e.g., "btc_1h") or null if no model found
+  String? _getBestModelKey(String coin, String requestedTf) {
+    final normalizedCoin = coin.toLowerCase().replaceAll(RegExp(r'(usd|eur|usdt|usdc)$'), '');
+
+    // Define fallback chain for each timeframe
+    final Map<String, List<String>> fallbackChain = {
+      '1d': ['1d', '4h', '1h', '15m', '5m'],
+      '4h': ['4h', '1h', '15m', '5m'],
+      '1h': ['1h', '15m', '5m'],
+      '15m': ['15m', '5m'],
+      '5m': ['5m'],
+    };
+
+    final chain = fallbackChain[requestedTf] ?? ['1h', '15m', '5m'];
+
+    // Try each timeframe in the fallback chain
+    for (final tf in chain) {
+      final modelKey = '${normalizedCoin}_$tf';
+      if (_interpreters.containsKey(modelKey)) {
+        if (tf != requestedTf) {
+          // ignore: avoid_print
+          print('   🔄 Fallback: $normalizedCoin@$requestedTf not found, using $modelKey');
+        }
+        return modelKey;
+      }
+    }
+
+    return null; // No model found in fallback chain
+  }
+
   // PHASE 3 PILOT: Volume percentile cache (5 min TTL)
   static final Map<String, (double, DateTime)> _volumeCache = {};
   static const Duration _volumeCacheTTL = Duration(minutes: 5);
@@ -394,70 +434,84 @@ class CryptoMLService {
       }
     }
 
-    // STEP 1: Load ALL coin-specific models across ALL timeframes
+    // STEP 1: Load ALL coin-specific models across ALL timeframes with FALLBACK
     // NEW: Fetch candles for EACH model's timeframe!
     final allTimeframes = ['5m', '15m', '1h', '4h', '1d'];
 
     // Normalize coin symbol: "BTCUSD" → "btc", "BTCEUR" → "btc", "BTC" → "btc"
     final normalizedCoin = coin.toLowerCase().replaceAll(RegExp(r'(usd|eur|usdt|usdc)$'), '');
 
+    // Track which models we've already loaded to avoid duplicates
+    final Set<String> loadedModels = {};
+
     for (final tf in allTimeframes) {
-      final coinKey = '${normalizedCoin}_$tf';
-      if (_interpreters.containsKey(coinKey)) {
-        try {
-          // Fetch candles for THIS model's timeframe (using exchange-specific service)
-          final service = exchangeService ?? _binanceService;
-          final result = await service.getFeaturesWithATRFallback(symbol, interval: tf);
+      // Get best available model for this timeframe (with fallback)
+      final coinKey = _getBestModelKey(normalizedCoin, tf);
 
-          // Calculate ATR for the requested timeframe (for weights)
-          if (tf == timeframe) {
-            volatility = result.atr;
-            if (!silent) {
-              // ignore: avoid_print
-              print('📈 ATR (volatility): ${(volatility * 100).toStringAsFixed(2)}% (from $tf candles)');
-            }
-          }
+      // Skip if no model found or already loaded
+      if (coinKey == null || loadedModels.contains(coinKey)) {
+        continue;
+      }
 
-          final pred = await _getPredictionWithModel(
-            coinKey,
-            result.features,
-            coin: coin,
-            timeframe: tf,
-            atr: volatility,
-            volumePercentile: volumePercentile,
-            bidAskRatio: bidAskRatio,
-          );
+      loadedModels.add(coinKey);
 
-          // ADAPTIVE MODEL SELECTION: Filter models based on market conditions
-          // High volatility (ATR > 2.0) → skip long timeframes (slow to react)
-          if (volatility > 2.0 && ['1d', '7d', '4h'].contains(tf)) {
-            if (!silent) {
-              // ignore: avoid_print
-              print('   ⚡ [Adaptive Selection] HIGH VOLATILITY (ATR=${(volatility * 100).toStringAsFixed(2)}%) → skipping long tf $coinKey');
-            }
-            continue;
-          }
-          // Low volume (< 30% percentile) → skip short timeframes (noisy signals)
-          if (volumePercentile < 0.30 && !['1h', '4h', '1d', '7d'].contains(tf)) {
-            if (!silent) {
-              // ignore: avoid_print
-              print('   🔇 [Adaptive Selection] LOW VOLUME (percentile=${(volumePercentile * 100).toStringAsFixed(1)}%) → skipping short tf $coinKey');
-            }
-            continue;
-          }
+      try {
+        // Extract actual timeframe from model key (e.g., "btc_1h" → "1h")
+        final actualTf = coinKey.split('_').last;
+
+        // Fetch candles for the ACTUAL model's timeframe (not requested tf)
+        final service = exchangeService ?? _binanceService;
+        final result = await service.getFeaturesWithATRFallback(symbol, interval: actualTf);
+
+        // Calculate ATR for the requested timeframe (for weights)
+        if (actualTf == timeframe) {
+          volatility = result.atr;
           if (!silent) {
             // ignore: avoid_print
-            print('   ✅ [Adaptive Selection] NORMAL CONDITIONS → using $coinKey');
+            print('📈 ATR (volatility): ${(volatility * 100).toStringAsFixed(2)}% (from $actualTf candles)');
           }
+        }
 
-          // PHASE 3 PILOT: Apply Phase 3 weights if enabled for this coin+timeframe
-          final double weight;
-          if (applyPhase3) {
-            // Use Phase 3 enhanced weights (real ATR + volume boost + recency penalty)
-            final trainedDate = _getTrainedDate(coinKey);
-            weight = EnsembleWeightsV2.calculateTimeframeWeight(
-              requestedTf: timeframe,
-              modelTf: tf,
+        final pred = await _getPredictionWithModel(
+          coinKey,
+          result.features,
+          coin: coin,
+          timeframe: actualTf,
+          atr: volatility,
+          volumePercentile: volumePercentile,
+          bidAskRatio: bidAskRatio,
+        );
+
+        // ADAPTIVE MODEL SELECTION: Filter models based on market conditions
+        // High volatility (ATR > 2.0) → skip long timeframes (slow to react)
+        if (volatility > 2.0 && ['1d', '7d', '4h'].contains(actualTf)) {
+          if (!silent) {
+            // ignore: avoid_print
+            print('   ⚡ [Adaptive Selection] HIGH VOLATILITY (ATR=${(volatility * 100).toStringAsFixed(2)}%) → skipping long tf $coinKey');
+          }
+          continue;
+        }
+        // Low volume (< 30% percentile) → skip short timeframes (noisy signals)
+        if (volumePercentile < 0.30 && !['1h', '4h', '1d', '7d'].contains(actualTf)) {
+          if (!silent) {
+            // ignore: avoid_print
+            print('   🔇 [Adaptive Selection] LOW VOLUME (percentile=${(volumePercentile * 100).toStringAsFixed(1)}%) → skipping short tf $coinKey');
+          }
+          continue;
+        }
+        if (!silent) {
+          // ignore: avoid_print
+          print('   ✅ [Adaptive Selection] NORMAL CONDITIONS → using $coinKey');
+        }
+
+        // PHASE 3 PILOT: Apply Phase 3 weights if enabled for this coin+timeframe
+        final double weight;
+        if (applyPhase3) {
+          // Use Phase 3 enhanced weights (real ATR + volume boost + recency penalty)
+          final trainedDate = _getTrainedDate(coinKey);
+          weight = EnsembleWeightsV2.calculateTimeframeWeight(
+            requestedTf: timeframe,
+            modelTf: actualTf,
               coin: coin,
               atr: volatility, // Real ATR from candles
               modelKey: coinKey,
@@ -465,18 +519,17 @@ class CryptoMLService {
               volumePercentile: volumePercentile,
               trainedDate: trainedDate,
             );
-          } else {
-            // Use existing logic (preview mode)
-            weight = _calculateTimeframeWeight(timeframe, tf);
-          }
-          
-          // Apply time-based weight adjustment (Asia/Europe/US sessions)
-          final adjustedWeight = _getTimeBasedWeight(coinKey, weight);
-          weightedPredictions.add(_WeightedPrediction(pred, adjustedWeight, coinKey));
-        } catch (e) {
-          // ignore: avoid_print
-          print('   ❌ Error loading $coinKey: $e');
+        } else {
+          // Use existing logic (preview mode)
+          weight = _calculateTimeframeWeight(timeframe, actualTf);
         }
+
+        // Apply time-based weight adjustment (Asia/Europe/US sessions)
+        final adjustedWeight = _getTimeBasedWeight(coinKey, weight);
+        weightedPredictions.add(_WeightedPrediction(pred, adjustedWeight, coinKey));
+      } catch (e) {
+        // ignore: avoid_print
+        print('   ❌ Error loading $coinKey: $e');
       }
     }
 
@@ -551,6 +604,13 @@ class CryptoMLService {
           print('   ❌ Error loading $generalKey: $e');
         }
       }
+    }
+
+    // Log loaded models with fallback info
+    if (!silent && weightedPredictions.isNotEmpty) {
+      final modelKeys = weightedPredictions.map((wp) => wp.modelKey).toList();
+      // ignore: avoid_print
+      print('🔍 Found ${modelKeys.length} models for ${coin.toUpperCase()}: ${modelKeys.join(", ")}');
     }
 
     // STEP 3: Return neutral if no models available

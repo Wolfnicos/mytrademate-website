@@ -467,15 +467,17 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                   : Colors.grey[300]!),
             ),
             child: DropdownButton<String>(
-              value: _selectedSymbol,
+              value: _buildPairs().contains(_selectedSymbol)
+                  ? _selectedSymbol
+                  : (_buildPairs().isNotEmpty ? _buildPairs().first : 'BTCUSDT'),
               isExpanded: true,
               underline: const SizedBox(),
-              dropdownColor: Theme.of(context).brightness == Brightness.dark 
-                  ? AppTheme.surface 
+              dropdownColor: Theme.of(context).brightness == Brightness.dark
+                  ? AppTheme.surface
                   : Colors.white,
               style: AppTheme.bodyMedium.copyWith(
-                color: Theme.of(context).brightness == Brightness.dark 
-                    ? AppTheme.textPrimary 
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.textPrimary
                     : AppTheme.textPrimaryLight,
               ),
               items: _buildPairs().map((e) => DropdownMenuItem(
@@ -483,8 +485,8 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                 child: Text(
                   e,
                   style: AppTheme.bodyMedium.copyWith(
-                    color: Theme.of(context).brightness == Brightness.dark 
-                        ? AppTheme.textPrimary 
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppTheme.textPrimary
                         : AppTheme.textPrimaryLight,
                   ),
                   overflow: TextOverflow.ellipsis,
