@@ -407,6 +407,13 @@ class CryptoMLService {
       }
     }
 
+    // FIX 3: Fallback Binance când volumul pe Coinbase e mort (≤5%)
+    if (volumePercentile <= 0.05 && exchangeService != null && exchangeService!.exchangeName == 'Coinbase') {
+      // ignore: avoid_print
+      print('⚠️  Coinbase volum mort (${(volumePercentile * 100).toStringAsFixed(1)}%) → fallback Binance pentru $coin');
+      return await getPrediction(coin, timeframe, silent: silent);
+    }
+
     // PHASE 4: Fetch Volume Profile (bid/ask imbalance + whale walls)
     double bidAskRatio = 1.0; // Default to neutral (1.0 = balanced)
     int whaleWallCount = 0;
