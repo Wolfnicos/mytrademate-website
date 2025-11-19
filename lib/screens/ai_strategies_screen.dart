@@ -717,6 +717,11 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     final prediction = _lastPrediction!;
     final action = prediction.action;
 
+    // Apply Market Intelligence boost to confidence (if available)
+    final finalConfidence = _marketIntelligence != null
+        ? _marketIntelligence!.applyBoost(prediction.confidence)
+        : prediction.confidence;
+
     // Convert trading terminology to educational/market sentiment terminology
     final displayAction = action == 'BUY' ? 'BULLISH' : (action == 'SELL' ? 'BEARISH' : 'NEUTRAL');
 
@@ -761,9 +766,23 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                       : const LinearGradient(colors: [Color(0xFFFF9500), Color(0xFFFF7A00)])),
               borderRadius: BorderRadius.circular(AppTheme.radiusSM),
             ),
-            child: Text(
-              'Confidence: ${(prediction.confidence * 100).toStringAsFixed(1)}%',
-              style: AppTheme.headingMedium.copyWith(color: Colors.white),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Confidence: ${(finalConfidence * 100).toStringAsFixed(1)}%',
+                  style: AppTheme.headingMedium.copyWith(color: Colors.white),
+                ),
+                // Show boost indicator if Market Intelligence enhanced the confidence
+                if (_marketIntelligence != null && _marketIntelligence!.confidenceBoost != 0) ...[
+                  const SizedBox(width: AppTheme.spacing8),
+                  Icon(
+                    Icons.auto_awesome,
+                    size: 18,
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                ],
+              ],
             ),
           ),
           const SizedBox(height: AppTheme.spacing16),
