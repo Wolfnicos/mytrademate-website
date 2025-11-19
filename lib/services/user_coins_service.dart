@@ -16,6 +16,12 @@ class UserCoinsService with ChangeNotifier {
   static const String _sourceKey = 'coins_source'; // 'api' or 'default'
 
   // TOP 12 popular cryptocurrencies for 2025 (default when no API connected)
+  // Fiat currencies that should NEVER be treated as tradeable coins
+  static const List<String> fiatCurrencies = [
+    'EUR', 'USD', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD',
+    'USDT', 'USDC', 'BUSD', // Stablecoins are also not tradeable assets
+  ];
+
   static const List<String> defaultCoins = [
     'BTC',   // Bitcoin - #1 by market cap
     'ETH',   // Ethereum - #2 smart contracts
@@ -30,6 +36,21 @@ class UserCoinsService with ChangeNotifier {
     'TRUMP', // Trump Coin - 2025 trending
     'WLFI',  // World Liberty Financial - 2025 trending
   ];
+
+  /// Validate that a coin is not a fiat currency
+  static bool isValidCoin(String coin) {
+    return !fiatCurrencies.contains(coin.toUpperCase());
+  }
+
+  /// Filter out fiat currencies from a list of coins
+  static List<String> filterValidCoins(List<String> coins) {
+    final filtered = coins.where((coin) => isValidCoin(coin)).toList();
+    final removed = coins.where((coin) => !isValidCoin(coin)).toList();
+    if (removed.isNotEmpty) {
+      debugPrint('⚠️  Removed fiat currencies from coins: $removed');
+    }
+    return filtered;
+  }
 
   // Exchange-specific coin exclusions
   // Some exchanges don't support certain coins due to business conflicts or listing policies
@@ -110,9 +131,6 @@ class UserCoinsService with ChangeNotifier {
       }
 
       // Extract unique coins (assets with balance > 0)
-      // Exclude fiat currencies and stablecoins (quote currencies only)
-      final excludedCurrencies = {'EUR', 'USD', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'USDP'};
-
       // Minimum balance threshold to filter out dust (very small amounts)
       // Strategy: Filter by relative balance size
       // Keep only coins that have meaningful balances (not tiny dust amounts)
@@ -121,7 +139,7 @@ class UserCoinsService with ChangeNotifier {
       final coins = balances.entries
           .where((entry) => entry.value > minBalanceThreshold) // Filter out dust balances
           .map((entry) => entry.key) // Get coin symbol
-          .where((coin) => !excludedCurrencies.contains(coin.toUpperCase())) // Exclude fiat & stablecoins
+          .where((coin) => isValidCoin(coin)) // Exclude fiat currencies (EUR, USD, USDT, etc.)
           .toList();
 
       if (coins.isEmpty) {
