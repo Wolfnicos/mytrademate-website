@@ -411,7 +411,7 @@ class CryptoMLService {
     if (volumePercentile <= 0.05 && exchangeService != null && exchangeService!.exchangeName == 'Coinbase') {
       // ignore: avoid_print
       print('⚠️  Coinbase volum mort (${(volumePercentile * 100).toStringAsFixed(1)}%) → fallback Binance pentru $coin');
-      return await getPrediction(coin, timeframe, silent: silent);
+      return await getPrediction(coin: coin, symbol: symbol, timeframe: timeframe, silent: silent);
     }
 
     // PHASE 4: Fetch Volume Profile (bid/ask imbalance + whale walls)
