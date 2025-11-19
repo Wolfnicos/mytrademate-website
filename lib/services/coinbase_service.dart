@@ -666,45 +666,12 @@ class CoinbaseService implements BaseExchangeService {
   // ===================================
 
   /// Convert Binance-style symbol to Coinbase format
-  /// Example: BTCEUR -> BTC-USD (Coinbase Exchange doesn't support EUR)
+  /// Example: BTCEUR -> BTC-USD, POLUSDT -> POL-USDT
   String _convertToCoinbaseSymbol(String symbol) {
-    debugPrint('[Coinbase] Converting symbol: "$symbol"');
-
-    // Coinbase Exchange API doesn't support EUR pairs - replace with USD
-    if (symbol.contains('EUR')) {
-      symbol = symbol.replaceAll('EUR', 'USD');
-      debugPrint('[Coinbase] Replaced EUR with USD: "$symbol"');
-    }
-
-    // If symbol already has hyphen (e.g., BTC-USD), return as-is
-    if (symbol.contains('-')) {
-      debugPrint('[Coinbase] Symbol already formatted: "$symbol"');
-      return symbol;
-    }
-
-    // Common quote currencies
-    final quotes = ['USD', 'USDT', 'USDC', 'BTC', 'ETH'];
-
-    for (final quote in quotes) {
-      if (symbol.endsWith(quote)) {
-        final base = symbol.substring(0, symbol.length - quote.length);
-        final result = '$base-$quote';
-        debugPrint('[Coinbase] Final symbol: "$result"');
-        return result;
-      }
-    }
-
-    // Fallback: assume last 3-4 chars are quote currency
-    if (symbol.length > 6) {
-      final base = symbol.substring(0, symbol.length - 3);
-      final quote = symbol.substring(symbol.length - 3);
-      final result = '$base-$quote';
-      debugPrint('[Coinbase] Fallback symbol: "$result"');
-      return result;
-    }
-
-    debugPrint('[Coinbase] No conversion applied: "$symbol"');
-    return symbol;
+    final topUsd = ['BTC', 'ETH', 'SOL', 'AVAX', 'LINK', 'XRP'];
+    return topUsd.any((c) => symbol.startsWith(c))
+        ? '${symbol.replaceAll('USDT', '').replaceAll('EUR', '').replaceAll('USD', '')}-USD'
+        : '${symbol.replaceAll('USDT', '').replaceAll('EUR', '').replaceAll('USD', '')}-USDT';
   }
 
   /// Convert interval string to Coinbase granularity (seconds)

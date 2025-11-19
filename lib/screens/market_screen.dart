@@ -507,7 +507,7 @@ class _MarketScreenState extends State<MarketScreen> {
 
     Widget buildCard(String base, String key) {
       final t = _tickers[key];
-      final double price = t?['lastPrice'] ?? 0.0;
+      final double price = t?['lastPrice'] ?? (_candles.isNotEmpty ? _candles.last.close : 0.0);
       final double chg = t?['priceChangePercent'] ?? 0.0;
       final bool isGain = chg >= 0;
       final symbol = key;
