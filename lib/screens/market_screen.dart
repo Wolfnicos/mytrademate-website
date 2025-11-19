@@ -515,7 +515,10 @@ class _MarketScreenState extends State<MarketScreen> {
 
       return GestureDetector(
         onTap: () {
-          setState(() => _selectedSymbol = symbol);
+          setState(() {
+            _selectedSymbol = symbol;
+            _candles = []; // Clear old candles to prevent showing stale BTC price
+          });
           _loadChart();
         },
         child: Container(
