@@ -22,6 +22,10 @@ import '../providers/subscription_provider.dart';
 import '../providers/exchange_provider.dart';
 import 'paywall_screen.dart';
 
+// Market Intelligence
+import 'package:mytrademate/models/market_intelligence_boost.dart';
+import 'package:mytrademate/services/market_intelligence_aggregator.dart';
+
 class AiStrategiesScreen extends StatefulWidget {
   const AiStrategiesScreen({super.key});
 
@@ -40,6 +44,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
 
   String _selectedSymbol = 'BTCUSDT';
   String _interval = '4h'; // Default to 4H (free tier)
+
+  // Market Intelligence State
+  MarketIntelligenceBoost? _marketIntelligence;
 
   // Portfolio coins for dynamic dropdown
   List<String> _availableCoins = [];
@@ -251,6 +258,8 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           _lastUpdateTime = DateTime.now();
           _isRunningPrediction = false;
         });
+        // Load market intelligence after prediction completes
+        _loadMarketIntelligence();
       }
     } catch (e) {
       debugPrint('❌ AI inference error: $e');
@@ -341,6 +350,29 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     }
   }
 
+  Future<void> _loadMarketIntelligence() async {
+    if (_lastPrediction == null) return;
+
+    try {
+      final aggregator = MarketIntelligenceAggregator();
+      final boost = await aggregator.getBoost(
+        symbol: _selectedSymbol,
+        mlDirection: _lastPrediction!.action,
+        mlConfidence: _lastPrediction!.confidence,
+        priceChange24h: _lastPrediction!.atr != null ? _lastPrediction!.atr! * 100 : null,
+        volumeChange24h: null,
+      );
+
+      if (mounted) {
+        setState(() {
+          _marketIntelligence = boost;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading market intelligence: $e');
+    }
+  }
+
   List<String> _buildPairs() {
     if (_availableCoins.isEmpty) {
       // Fallback while loading - use TOP 10 from UserCoinsService
@@ -422,6 +454,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
               // Model Contributions / AI Technical Analysis
               if (_lastPrediction != null && _interval != '1w')
                 _buildModelContributions(),
+
+              // Market Intelligence Card
+              _buildMarketIntelligenceCard(),
 
               // Upgrade to Premium CTA (FREE mode only, NOT during trial)
               Consumer<SubscriptionProvider>(
@@ -1481,6 +1516,80 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMarketIntelligenceCard() {
+    if (_marketIntelligence == null) return const SizedBox.shrink();
+
+    final boost = _marketIntelligence!;
+
+    return Card(
+      margin: const EdgeInsets.only(top: 16, bottom: 16),
+      child: ExpansionTile(
+        title: Row(
+          children: [
+            const Text('🌐 Market Intelligence', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(width: 8),
+            if (boost.confidenceBoost != 0)
+              Chip(
+                label: Text('${boost.confidenceBoost > 0 ? '+' : ''}${boost.confidenceBoost}%'),
+                backgroundColor: boost.confidenceBoost > 0
+                  ? Colors.green.withValues(alpha: 0.2)
+                  : Colors.red.withValues(alpha: 0.2),
+              ),
+          ],
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Fear & Greed
+                Text('😱 Fear & Greed: ${boost.fearGreedValue}/100 (${boost.fearGreedLevel})',
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+
+                // News Sentiment
+                Text('📰 News Sentiment: ${boost.newsSentiment}'),
+                const SizedBox(height: 8),
+
+                // Global Market
+                Text('🌍 Global Market: ${boost.globalMarketTrend.toUpperCase()} trend'),
+                Text('   Market Cap: \$${(boost.globalMarketCap / 1e12).toStringAsFixed(2)}T (${boost.globalMarketCapChange24h >= 0 ? '+' : ''}${boost.globalMarketCapChange24h.toStringAsFixed(2)}%)'),
+                const SizedBox(height: 8),
+
+                // Multi-Exchange
+                if (boost.multiExchangePrices.isNotEmpty) ...[
+                  const Text('🏦 Multi-Exchange:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ...boost.multiExchangePrices.entries.map((e) =>
+                    Text('   ${e.key}: \$${e.value.toStringAsFixed(2)}')),
+                  Text('   Spread: ${(boost.priceSpread * 100).toStringAsFixed(3)}%'),
+                  const SizedBox(height: 8),
+                ],
+
+                // Reasons
+                const Divider(),
+                const Text('💡 Analysis:', style: TextStyle(fontWeight: FontWeight.bold)),
+                ...boost.reasonsForBoost.map((reason) =>
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(reason),
+                  )),
+
+                // Enhanced confidence
+                if (_lastPrediction != null && boost.confidenceBoost != 0) ...[
+                  const Divider(),
+                  Text('Original: ${_lastPrediction!.action} (${(_lastPrediction!.confidence * 100).toStringAsFixed(1)}%)'),
+                  Text('Enhanced: ${_lastPrediction!.action} (${(boost.applyBoost(_lastPrediction!.confidence) * 100).toStringAsFixed(1)}%) ⭐',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
