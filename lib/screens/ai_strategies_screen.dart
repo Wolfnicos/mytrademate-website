@@ -205,7 +205,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       // Get coin from symbol (e.g., BTCUSDT -> BTC, BTC-USD -> BTC)
       // Remove Coinbase hyphens first, then extract base currency
       final cleanSymbol = _selectedSymbol.replaceAll('-', '');
-      final coin = cleanSymbol.replaceAll(RegExp(r'(USDT|USDC|EUR|USD)$'), '');
+      final coin = cleanSymbol.replaceAll(RegExp(r'(USDT|USDC|BUSD|USD|EUR|BTC)$'), '');
 
       debugPrint('🚀 AI Strategies: fetching CryptoML prediction for $coin @$_interval');
 
@@ -233,9 +233,8 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         debugPrint('💹 Price change: ${priceChange >= 0 ? '+' : ''}${priceChange.toStringAsFixed(2)} (${priceChangePercent >= 0 ? '+' : ''}${priceChangePercent.toStringAsFixed(3)}%)');
       }
 
-      // Extract quote currency from symbol (e.g., BTCUSDT -> USDT, BTCEUR -> EUR)
-      // Remove the base currency (first 3-4 chars like BTC, ETH) to get quote (EUR, USDT, etc.)
-      final quoteCurrency = _selectedSymbol.replaceFirst(coin, '');
+      // Use configured quote currency (not extracted from symbol to avoid BUSD)
+      final quoteCurrency = AppSettingsService().quoteCurrency;
 
       // Debug-only: print final JSON-like summary for QA (no UI impact)
       // ignore: avoid_print
@@ -264,7 +263,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
             (userFriendlyError.contains('Need at least') && userFriendlyError.contains('candles')) ||
             userFriendlyError.contains('sliding window')) {
           // Extract coin name from symbol
-          final coin = _selectedSymbol.replaceAll(RegExp(r'(USDT|EUR|USDC)$'), '');
+          final coin = _selectedSymbol.replaceAll(RegExp(r'(USDT|USDC|BUSD|USD|EUR|BTC)$'), '');
 
           // Friendly message for new coins with limited history
           if (_interval == '1d') {
@@ -296,7 +295,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       // Get coin from symbol (e.g., BTCUSDT -> BTC, BTC-USD -> BTC)
       // Remove Coinbase hyphens first, then extract base currency
       final cleanSymbol = _selectedSymbol.replaceAll('-', '');
-      final coin = cleanSymbol.replaceAll(RegExp(r'(USDT|USDC|EUR|USD)$'), '');
+      final coin = cleanSymbol.replaceAll(RegExp(r'(USDT|USDC|BUSD|USD|EUR|BTC)$'), '');
 
       debugPrint('🔄 AI Strategies (SILENT): fetching CryptoML prediction for $coin @$_interval');
 
@@ -1042,7 +1041,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     required double sellProb,
     required double buyProb,
   }) {
-    final coinName = coin.replaceAll(RegExp(r'(USDT|EUR|USDC|USD)$'), '');
+    final coinName = coin.replaceAll(RegExp(r'(USDT|USDC|BUSD|USD|EUR|BTC)$'), '');
     final buffer = StringBuffer();
     
     // Market condition

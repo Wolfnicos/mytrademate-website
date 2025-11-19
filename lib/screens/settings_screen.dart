@@ -1081,56 +1081,82 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // Quote Currency
           _buildSectionHeader('Quote Currency', Icons.currency_exchange),
-          GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(AppTheme.spacing16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Select the currency for prices and totals',
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
-                  ),
-                  const SizedBox(height: AppTheme.spacing16),
-                  Wrap(
-                    spacing: AppTheme.spacing8,
-                    runSpacing: AppTheme.spacing8,
-                    children: ['EUR', 'USDT', 'USD'].map((q) {
-                      final isSelected = _quote == q;
-                      return GestureDetector(
-                        onTap: () async {
-                          final svc = AppSettingsService();
-                          await svc.setQuoteCurrency(q);
-                          setState(() => _quote = q);
-                          _showSnackBar('Quote currency set to: $q', isError: false);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppTheme.spacing16,
-                            vertical: AppTheme.spacing12,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: isSelected ? AppTheme.primaryGradient : null,
-                            color: isSelected ? null : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.7),
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                            border: Border.all(
-                              color: isSelected ? Colors.transparent : Theme.of(context).colorScheme.outlineVariant.withOpacity(0.6),
+          Consumer<ExchangeProvider>(
+            builder: (context, exchangeProvider, _) {
+              final exchange = exchangeProvider.selectedExchange;
+
+              // Top 3 currencies for each exchange (based on trading volume and availability)
+              List<String> currencies;
+              switch (exchange) {
+                case 'Binance':
+                  // Binance: USDT (highest volume), EUR
+                  // Note: BUSD was deprecated by Binance in 2024
+                  currencies = ['USDT', 'EUR'];
+                  break;
+                case 'Coinbase':
+                  // Coinbase: USD (primary), EUR, USDC
+                  currencies = ['USD', 'EUR', 'USDC'];
+                  break;
+                case 'Kraken':
+                  // Kraken: USD, EUR (NO USDT support!)
+                  currencies = ['USD', 'EUR'];
+                  break;
+                default:
+                  currencies = ['EUR', 'USD', 'USDT'];
+              }
+
+              return GlassCard(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppTheme.spacing16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Select quote currency for $exchange',
+                        style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
+                      ),
+                      const SizedBox(height: AppTheme.spacing16),
+                      Wrap(
+                        spacing: AppTheme.spacing8,
+                        runSpacing: AppTheme.spacing8,
+                        children: currencies.map((q) {
+                          final isSelected = _quote == q;
+                          return GestureDetector(
+                            onTap: () async {
+                              final svc = AppSettingsService();
+                              await svc.setQuoteCurrency(q);
+                              setState(() => _quote = q);
+                              _showSnackBar('Preferred currency set to: $q', isError: false);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppTheme.spacing16,
+                                vertical: AppTheme.spacing12,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: isSelected ? AppTheme.primaryGradient : null,
+                                color: isSelected ? null : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                                border: Border.all(
+                                  color: isSelected ? Colors.transparent : Theme.of(context).colorScheme.outlineVariant.withOpacity(0.6),
+                                ),
+                              ),
+                              child: Text(
+                                q,
+                                style: AppTheme.bodyMedium.copyWith(
+                                  color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
-                          ),
-                          child: Text(
-                            q,
-                            style: AppTheme.bodyMedium.copyWith(
-                              color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: AppTheme.spacing24),

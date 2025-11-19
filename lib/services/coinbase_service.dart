@@ -13,7 +13,6 @@ import 'package:pointycastle/asn1/primitives/asn1_octet_string.dart';
 import '../models/candle.dart';
 import '../models/features_with_atr.dart';
 import '../services/full_feature_builder.dart';
-import '../utils/symbol_mapper.dart';
 import 'base_exchange_service.dart';
 
 /// Coinbase Exchange API Service
@@ -81,6 +80,53 @@ class CoinbaseService implements BaseExchangeService {
       coinbaseBase = 'POL';  // Coinbase migrated MATIC to POL
     }
     return '$coinbaseBase-$quote';
+  }
+
+  @override
+  String getPreferredQuote(String base, String desiredQuote) {
+    // Normalize to uppercase
+    String baseUpper = base.toUpperCase();
+    final quoteUpper = desiredQuote.toUpperCase();
+
+    // Handle MATIC → POL conversion
+    if (baseUpper == 'MATIC') {
+      baseUpper = 'POL';
+    }
+
+    // Major coins that support USD and sometimes EUR on Coinbase (as of 2025)
+    // Coinbase prefers USD over USDT for most major coins
+    const majorCoinsWithUSD = {
+      'BTC', 'ETH', 'SOL', 'AVAX', 'LINK', 'XRP', 'DOGE', 'ADA', 'DOT',
+      'LTC', 'BCH', 'XLM', 'UNI', 'AAVE', 'SNX', 'COMP', 'YFI', 'MKR', 'POL'
+    };
+
+    // Coins that have EUR pairs on Coinbase (smaller subset)
+    const coinsWithEUR = {
+      'BTC', 'ETH', 'SOL', 'AVAX', 'LINK', 'XRP'
+    };
+
+    // Check if coin supports EUR
+    if (coinsWithEUR.contains(baseUpper) && quoteUpper == 'EUR') {
+      return 'EUR';
+    }
+
+    // Check if coin supports USD
+    if (majorCoinsWithUSD.contains(baseUpper)) {
+      // Coinbase prefers USD over USDT for major coins
+      if (quoteUpper == 'USD' || quoteUpper == 'EUR') {
+        return 'USD'; // Fallback to USD if EUR not supported
+      }
+      if (quoteUpper == 'USDT') return 'USDT';
+      if (quoteUpper == 'USDC') return 'USDC';
+      // Default for major coins: USD
+      return 'USD';
+    } else {
+      // Small/mid-cap coins on Coinbase typically have USDT or USD
+      // Examples: TRUMP, WLFI, ARB, OP
+      // Coinbase often uses USD even for smaller coins
+      if (quoteUpper == 'EUR') return 'USD'; // EUR not supported, fallback to USD
+      return quoteUpper == 'USDT' ? 'USDT' : 'USD';
+    }
   }
 
   /// Get currency symbol from trading pair (EUR → €, USD → $)
@@ -422,9 +468,9 @@ class CoinbaseService implements BaseExchangeService {
     int? endTime,
   }) async {
     try {
-      final originalSymbol = symbol;
-      // Convert symbol format: BTCEUR -> BTC-USD
-      final coinbaseSymbol = _convertToCoinbaseSymbol(symbol);
+      // Symbol is already in correct Coinbase format from buildTradingPair()
+      // e.g., BTC-EUR, BTC-USD, POL-USDT
+      final coinbaseSymbol = symbol;
 
       // Convert interval to granularity (seconds)
       final granularity = _convertIntervalToGranularity(interval);
@@ -445,37 +491,21 @@ class CoinbaseService implements BaseExchangeService {
 
       final List<dynamic> candles = json.decode(response.body) as List<dynamic>;
 
-      // Get EUR/USD rate if we need to convert prices
-      double eurUsdRate = 1.0;
-      if (originalSymbol.contains('EUR') && coinbaseSymbol.contains('USD')) {
-        eurUsdRate = await _getEurUsdRate();
-      }
-
+      // No conversion needed - symbol is already in correct format (BTC-EUR, BTC-USD, etc.)
       final result = candles.take(limit).map((c) {
         final timestamp = c[0] as int; // Unix timestamp in seconds
         final timestampMs = timestamp * 1000; // Convert to milliseconds
 
-        // Convert prices from USD to EUR if needed
-        final low = (c[1] as num).toDouble() / eurUsdRate;
-        final high = (c[2] as num).toDouble() / eurUsdRate;
-        final open = (c[3] as num).toDouble() / eurUsdRate;
-        final close = (c[4] as num).toDouble() / eurUsdRate;
-
         return Candle(
           openTime: DateTime.fromMillisecondsSinceEpoch(timestampMs),
-          low: low,
-          high: high,
-          open: open,
-          close: close,
+          low: (c[1] as num).toDouble(),
+          high: (c[2] as num).toDouble(),
+          open: (c[3] as num).toDouble(),
+          close: (c[4] as num).toDouble(),
           volume: (c[5] as num).toDouble(),
           closeTime: DateTime.fromMillisecondsSinceEpoch(timestampMs + (granularity * 1000)),
         );
       }).toList();
-
-      if (result.isNotEmpty && originalSymbol.contains('EUR') && coinbaseSymbol.contains('USD')) {
-        debugPrint('[Coinbase] 💱 Converted ${result.length} candles from USD to EUR (rate: $eurUsdRate)');
-        debugPrint('[Coinbase] 💱 Sample: USD \$${(result.first.close * eurUsdRate).toStringAsFixed(2)} → EUR €${result.first.close.toStringAsFixed(2)}');
-      }
 
       return result;
     } catch (e) {
@@ -487,8 +517,8 @@ class CoinbaseService implements BaseExchangeService {
   @override
   Future<Map<String, double>> fetchTicker24h(String symbol) async {
     try {
-      final originalSymbol = symbol;
-      final coinbaseSymbol = _convertToCoinbaseSymbol(symbol);
+      // Symbol is already in correct Coinbase format from buildTradingPair()
+      final coinbaseSymbol = symbol;
 
       // Coinbase Exchange API (public, no auth) - /products/{product-id}/ticker
       final path = '/products/$coinbaseSymbol/ticker';
@@ -517,15 +547,7 @@ class CoinbaseService implements BaseExchangeService {
         }
       }
 
-      // If original symbol was EUR but we converted to USD, convert price back to EUR
-      if (originalSymbol.contains('EUR') && coinbaseSymbol.contains('USD')) {
-        final eurUsdRate = await _getEurUsdRate();
-        if (eurUsdRate > 0) {
-          price = price / eurUsdRate; // Convert USD price to EUR
-          debugPrint('[Coinbase] Converted USD price to EUR: \$${price * eurUsdRate} → €$price (rate: $eurUsdRate)');
-        }
-      }
-
+      // No conversion needed - price is already in correct currency
       return {
         'lastPrice': price,
         'priceChangePercent': changePercent,
@@ -619,7 +641,9 @@ class CoinbaseService implements BaseExchangeService {
   }) async {
     for (final symbol in symbols) {
       try {
-        return await fetchKlines(symbol, interval, limit: limit);
+        // Normalize symbol: Coinbase requires hyphen format (BTC-USD not BTCUSD)
+        final coinbaseSymbol = _normalizeCoinbaseSymbol(symbol);
+        return await fetchKlines(coinbaseSymbol, interval, limit: limit);
       } catch (e) {
         debugPrint('[Coinbase] Klines failed for $symbol, trying next...');
         continue;
@@ -632,7 +656,9 @@ class CoinbaseService implements BaseExchangeService {
   Future<Map<String, double>> fetchTicker24hWithFallback(List<String> symbols) async {
     for (final symbol in symbols) {
       try {
-        return await fetchTicker24h(symbol);
+        // Normalize symbol: Coinbase requires hyphen format (BTC-USD not BTCUSD)
+        final coinbaseSymbol = _normalizeCoinbaseSymbol(symbol);
+        return await fetchTicker24h(coinbaseSymbol);
       } catch (e) {
         debugPrint('[Coinbase] Ticker failed for $symbol, trying next...');
         continue;
@@ -641,11 +667,29 @@ class CoinbaseService implements BaseExchangeService {
     throw Exception('[Coinbase] All ticker symbols failed: $symbols');
   }
 
+  /// Normalize symbol to Coinbase format (BTC-USD not BTCUSD)
+  String _normalizeCoinbaseSymbol(String symbol) {
+    // Already in correct format
+    if (symbol.contains('-')) return symbol;
+
+    // Convert BTCUSD → BTC-USD, ETHEUR → ETH-EUR, etc.
+    final match = RegExp(r'^([A-Z]+)(USD|EUR|USDT|USDC|BTC)$').firstMatch(symbol);
+    if (match != null) {
+      final base = match.group(1)!;
+      final quote = match.group(2)!;
+      return buildTradingPair(base, quote);
+    }
+
+    // Fallback: return as-is
+    return symbol;
+  }
+
   @override
   Future<Map<String, dynamic>> getExchangeInfo({String? symbol}) async {
     try {
+      // Symbol is already in correct format
       final path = symbol != null
-          ? '/api/v3/brokerage/products/${_convertToCoinbaseSymbol(symbol)}'
+          ? '/api/v3/brokerage/products/$symbol'
           : '/api/v3/brokerage/products';
 
       final uri = Uri.https(_baseHost, path);
@@ -669,7 +713,20 @@ class CoinbaseService implements BaseExchangeService {
   /// Convert Binance-style symbol to Coinbase format
   /// Example: BTCEUR -> BTC-USD, POLUSDT -> POL-USDT
   String _convertToCoinbaseSymbol(String symbol) {
-    return getUniversalSymbol(symbol, 'Coinbase');
+    // Îndepărtează tot ce nu e literă + uppercase
+    final base = symbol.replaceAll(RegExp(r'[^A-Z]'), '');
+
+    // DOAR astea au pereche -USD pe Coinbase în noiembrie 2025
+    const usdOnly = {
+      'BTC', 'ETH', 'SOL', 'AVAX', 'LINK', 'XRP', 'DOGE', 'ADA', 'DOT', 'MATIC',
+      'LTC', 'BCH', 'XLM', 'UNI', 'AAVE', 'SNX', 'COMP', 'YFI', 'MKR'
+    };
+
+    if (usdOnly.contains(base)) {
+      return '$base-USD';
+    } else {
+      return '$base-USDT';   // POL → POL-USDT, ARB → ARB-USDT, OP → OP-USDT etc.
+    }
   }
 
   /// Convert interval string to Coinbase granularity (seconds)
@@ -693,7 +750,7 @@ class CoinbaseService implements BaseExchangeService {
     try {
       // Coinbase uses BTC-EUR format
       final coinbaseSymbol = symbol.contains('-') ? symbol : buildTradingPair(
-        symbol.replaceAll(RegExp(r'(EUR|USD|USDC|USDT)$'), ''),
+        symbol.replaceAll(RegExp(r'(USDT|USDC|BUSD|USD|EUR|BTC)$'), ''),
         symbol.substring(symbol.length - 3),
       );
 
