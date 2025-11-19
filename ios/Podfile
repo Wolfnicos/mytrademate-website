@@ -49,6 +49,18 @@ post_install do |installer|
       config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'i386'
       # Bump pods with older minimums up to iOS 14 to match project
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+
+      # Fix Metal toolchain search path warning by removing invalid paths
+      config.build_settings['LIBRARY_SEARCH_PATHS'] = config.build_settings['LIBRARY_SEARCH_PATHS'].select { |path|
+        !path.include?('MetalToolchain')
+      } if config.build_settings['LIBRARY_SEARCH_PATHS']
     end
+  end
+
+  # Remove Metal toolchain search paths from project-level settings
+  installer.pods_project.build_configurations.each do |config|
+    config.build_settings['LIBRARY_SEARCH_PATHS'] = config.build_settings['LIBRARY_SEARCH_PATHS'].select { |path|
+      !path.include?('MetalToolchain')
+    } if config.build_settings['LIBRARY_SEARCH_PATHS']
   end
 end

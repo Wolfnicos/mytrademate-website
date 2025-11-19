@@ -15,25 +15,27 @@ class UserCoinsService with ChangeNotifier {
   static const String _coinsKey = 'user_coins';
   static const String _sourceKey = 'coins_source'; // 'api' or 'default'
 
-  // TOP 10 popular cryptocurrencies (default when no API connected)
+  // TOP 12 popular cryptocurrencies for 2025 (default when no API connected)
   static const List<String> defaultCoins = [
-    'BTC',  // Bitcoin
-    'ETH',  // Ethereum
-    'BNB',  // Binance Coin
-    'SOL',  // Solana
-    'ADA',  // Cardano
-    'XRP',  // Ripple
-    'DOGE', // Dogecoin
-    'DOT',  // Polkadot
-    'POL',  // Polygon (formerly MATIC)
-    'LTC',  // Litecoin
+    'BTC',   // Bitcoin - #1 by market cap
+    'ETH',   // Ethereum - #2 smart contracts
+    'SOL',   // Solana - fast L1
+    'BNB',   // Binance Coin - exchange token
+    'XRP',   // Ripple - payments
+    'AVAX',  // Avalanche - DeFi platform
+    'LINK',  // Chainlink - oracle network
+    'POL',   // Polygon - Ethereum L2
+    'ARB',   // Arbitrum - Ethereum L2
+    'OP',    // Optimism - Ethereum L2
+    'TRUMP', // Trump Coin - 2025 trending
+    'WLFI',  // World Liberty Financial - 2025 trending
   ];
 
   // Exchange-specific coin exclusions
   // Some exchanges don't support certain coins due to business conflicts or listing policies
   static const Map<String, List<String>> excludedCoinsPerExchange = {
-    'Coinbase': ['BNB'],  // BNB (Binance Coin) not available on Coinbase
-    'Kraken': ['BNB'],    // BNB (Binance Coin) not available on Kraken
+    'Coinbase': ['BNB', 'TRUMP', 'WLFI'],  // BNB not available; TRUMP/WLFI not listed yet
+    'Kraken': ['BNB', 'TRUMP', 'WLFI'],    // BNB not available; TRUMP/WLFI not listed yet
   };
 
   /// Get default coins filtered for specific exchange

@@ -27,6 +27,10 @@ class KrakenService implements BaseExchangeService {
   String? _apiKey;
   String? _apiSecret;
 
+  // Nonce lock to prevent parallel requests with out-of-order nonces
+  // Kraken rejects requests if nonce is less than the last used nonce
+  final Map<String, Future<dynamic>> _apiLocks = {};
+
   // Time synchronization (Kraken doesn't require strict time sync like Binance)
   int _serverTimeOffset = 0;
   DateTime? _lastTimeSyncTime;
@@ -180,6 +184,34 @@ class KrakenService implements BaseExchangeService {
   }
 
   // ===================================
+  // API Call Serialization (prevents parallel nonce conflicts)
+  // ===================================
+
+  /// Serialize API calls to prevent nonce ordering issues
+  /// Kraken requires strictly increasing nonces, so parallel calls can fail
+  Future<T> _withLock<T>(String lockKey, Future<T> Function() fn) async {
+    // Wait for any existing operation on this lock
+    while (_apiLocks.containsKey(lockKey)) {
+      await _apiLocks[lockKey];
+    }
+
+    // Create new lock
+    final completer = Completer<T>();
+    _apiLocks[lockKey] = completer.future;
+
+    try {
+      final result = await fn();
+      completer.complete(result);
+      return result;
+    } catch (e) {
+      completer.completeError(e);
+      rethrow;
+    } finally {
+      _apiLocks.remove(lockKey);
+    }
+  }
+
+  // ===================================
   // Signature Generation (Kraken uses HMAC-SHA512)
   // ===================================
 
@@ -200,9 +232,8 @@ class KrakenService implements BaseExchangeService {
   }
 
   Map<String, String> _buildHeaders(String path, String postData) {
-    // Use microseconds for nonce - Kraken requires strictly increasing nonce
-    // Microseconds provide 1000x more precision than milliseconds
-    final nonce = DateTime.now().microsecondsSinceEpoch.toString();
+    // Extract nonce from postData (format: "nonce=123456789" or "nonce=123&other=value")
+    final nonce = postData.split('&').firstWhere((p) => p.startsWith('nonce=')).split('=')[1];
     final signature = _generateSignature(path, nonce, postData);
 
     return {
@@ -218,54 +249,57 @@ class KrakenService implements BaseExchangeService {
 
   @override
   Future<Map<String, double>> getAccountBalances() async {
-    if (!hasCredentials) {
-      throw Exception('[Kraken] No API credentials configured');
-    }
-
-    try {
-      final path = '/0/private/Balance';
-      // Use microseconds for nonce - Kraken requires strictly increasing nonce
-      final nonce = DateTime.now().microsecondsSinceEpoch.toString();
-      final postData = 'nonce=$nonce';
-
-      final uri = Uri.https(_baseHost, path);
-      final headers = _buildHeaders(path, postData);
-
-      final response = await http.post(
-        uri,
-        headers: headers,
-        body: postData,
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode != 200) {
-        throw Exception('[Kraken] Failed to fetch balances: ${response.statusCode}');
+    // Use lock to serialize all Balance API calls (prevents nonce ordering issues)
+    return _withLock('balance', () async {
+      if (!hasCredentials) {
+        throw Exception('[Kraken] No API credentials configured');
       }
 
-      final data = json.decode(response.body) as Map<String, dynamic>;
-      final errors = data['error'] as List<dynamic>;
+      try {
+        final path = '/0/private/Balance';
+        // Use microseconds for nonce - Kraken requires strictly increasing nonce
+        final nonce = DateTime.now().microsecondsSinceEpoch.toString();
+        final postData = 'nonce=$nonce';
 
-      if (errors.isNotEmpty) {
-        throw Exception('[Kraken] API error: ${errors.join(", ")}');
-      }
+        final uri = Uri.https(_baseHost, path);
+        final headers = _buildHeaders(path, postData);
 
-      final result = data['result'] as Map<String, dynamic>;
-      final Map<String, double> balances = {};
+        final response = await http.post(
+          uri,
+          headers: headers,
+          body: postData,
+        ).timeout(const Duration(seconds: 10));
 
-      result.forEach((key, value) {
-        final balance = double.tryParse(value.toString()) ?? 0.0;
-        if (balance > 0) {
-          // Remove 'X' prefix if present (XXBT -> BTC, ZEUR -> EUR)
-          final asset = key.startsWith('X') || key.startsWith('Z') ? key.substring(1) : key;
-          balances[asset] = balance;
+        if (response.statusCode != 200) {
+          throw Exception('[Kraken] Failed to fetch balances: ${response.statusCode}');
         }
-      });
 
-      debugPrint('[Kraken] Fetched ${balances.length} balances');
-      return balances;
-    } catch (e) {
-      debugPrint('[Kraken] Error fetching balances: $e');
-      rethrow;
-    }
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final errors = data['error'] as List<dynamic>;
+
+        if (errors.isNotEmpty) {
+          throw Exception('[Kraken] API error: ${errors.join(", ")}');
+        }
+
+        final result = data['result'] as Map<String, dynamic>;
+        final Map<String, double> balances = {};
+
+        result.forEach((key, value) {
+          final balance = double.tryParse(value.toString()) ?? 0.0;
+          if (balance > 0) {
+            // Remove 'X' prefix if present (XXBT -> BTC, ZEUR -> EUR)
+            final asset = key.startsWith('X') || key.startsWith('Z') ? key.substring(1) : key;
+            balances[asset] = balance;
+          }
+        });
+
+        debugPrint('[Kraken] Fetched ${balances.length} balances');
+        return balances;
+      } catch (e) {
+        debugPrint('[Kraken] Error fetching balances: $e');
+        rethrow;
+      }
+    });
   }
 
   // ===================================

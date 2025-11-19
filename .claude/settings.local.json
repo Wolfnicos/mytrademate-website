@@ -31,7 +31,10 @@
       "Bash(timeout 30 flutter analyze:*)",
       "Bash(pgrep:*)",
       "Bash(curl:*)",
-      "Bash(timeout 30 flutter logs:*)"
+      "Bash(timeout 30 flutter logs:*)",
+      "Bash(pod install:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

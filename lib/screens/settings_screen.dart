@@ -753,41 +753,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ],
                                     ),
                                   ),
-
-                                  // Test Notification Button
-                                  const SizedBox(height: AppTheme.spacing12),
-                                  ListTile(
-                                    dense: true,
-                                    leading: Icon(Icons.bug_report, color: AppTheme.secondary),
-                                    title: Text('Test Notification', style: AppTheme.bodyMedium),
-                                    subtitle: Text(
-                                      'Send a test alert to verify notifications work',
-                                      style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
-                                    ),
-                                    trailing: ElevatedButton.icon(
-                                      onPressed: () async {
-                                        try {
-                                          // Send test notification
-                                          await LocalNotificationService.showOpportunityAlert(
-                                            coin: 'BTC',
-                                            confidence: 0.85,
-                                            action: 'BUY',
-                                            timeframe: '15m',
-                                          );
-                                          _showSnackBar('Test notification sent! Check your notification panel.', isError: false);
-                                        } catch (e) {
-                                          _showSnackBar('Error sending test notification: $e', isError: true);
-                                        }
-                                      },
-                                      icon: const Icon(Icons.send, size: 16),
-                                      label: const Text('Send Test'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppTheme.secondary,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                      ),
-                                    ),
-                                  ),
                                 ],
                               ),
                             ),
