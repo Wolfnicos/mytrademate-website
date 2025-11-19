@@ -12,6 +12,11 @@ String getUniversalSymbol(String baseSymbol, String exchange) {
       return usdOnly.contains(base) ? '$base-USD' : '$base-USDT';
 
     case 'Kraken':
+      // If already in Kraken format (starts with X or ends with USD/EUR), return as-is
+      if (baseSymbol.startsWith('X') && (baseSymbol.contains('USD') || baseSymbol.contains('EUR'))) {
+        return baseSymbol;
+      }
+
       // Kraken uses LONG format with XX/Z prefixes: XXBTZUSD
       // Verified from API: XBTUSD doesn't exist, only XXBTZUSD
       if (base == 'BTC') return 'XXBTZUSD';     // BTC → XXBTZUSD
