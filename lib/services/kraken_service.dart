@@ -341,8 +341,10 @@ class KrakenService implements BaseExchangeService {
       }
 
       final uri = Uri.https(_baseHost, '/0/public/OHLC', queryParams);
+      debugPrint('[Kraken] 📡 OHLC Request: $uri');
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
+      debugPrint('[Kraken] 📥 OHLC Response: ${response.statusCode}');
       if (response.statusCode != 200) {
         throw Exception('[Kraken] Failed to fetch candles: ${response.statusCode}');
       }
