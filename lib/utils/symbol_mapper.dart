@@ -12,11 +12,12 @@ String getUniversalSymbol(String baseSymbol, String exchange) {
       return usdOnly.contains(base) ? '$base-USD' : '$base-USDT';
 
     case 'Kraken':
-      // Kraken uses XXBTZEUR format (X prefix for crypto, Z for fiat)
-      if (base == 'BTC') return 'XXBTZEUR';   // BTC → XXBTZEUR
-      if (base == 'ETH') return 'XETHZEUR';   // ETH → XETHZEUR
-      if (base == 'SOL') return 'SOLEUR';     // SOL → SOLEUR (no prefix)
-      if (base == 'USDT') return 'USDTZEUR';  // USDT → USDTZEUR
+      // Kraken OHLC API uses SHORT format (e.g., XBTEUR for BTC/EUR)
+      // Response includes LONG format (XXBTZEUR) but request must be SHORT
+      if (base == 'BTC') return 'XBTEUR';     // BTC → XBTEUR (not XXBTZEUR!)
+      if (base == 'ETH') return 'ETHEUR';     // ETH → ETHEUR
+      if (base == 'SOL') return 'SOLEUR';     // SOL → SOLEUR
+      if (base == 'USDT') return 'USDTEUR';   // USDT → USDTEUR
       // Most other coins use simple format: COINEUR
       return '${base}EUR';
 
