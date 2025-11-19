@@ -668,18 +668,12 @@ class CoinbaseService implements BaseExchangeService {
   /// Convert Binance-style symbol to Coinbase format
   /// Example: BTCEUR -> BTC-USD, POLUSDT -> POL-USDT
   String _convertToCoinbaseSymbol(String symbol) {
-    // Lista cu monedele care au pereche -USD pe Coinbase (restul doar -USDT)
-    final List<String> hasUsdPair = [
-      'BTC', 'ETH', 'SOL', 'AVAX', 'LINK', 'XRP', 'DOGE', 'ADA', 'MATIC', 'DOT'
-    ];
+    final base = symbol.replaceAll('USDT', '').replaceAll('USD', '').replaceAll('-', '').toUpperCase();
 
-    final base = symbol.replaceAll('USDT', '').replaceAll('USD', '').replaceAll('-', '');
+    // Doar astea au pereche USD pe Coinbase (toate celelalte sunt USDT)
+    final usdPairs = ['BTC', 'ETH', 'SOL', 'AVAX', 'LINK', 'XRP', 'DOGE', 'ADA', 'DOT', 'MATIC'];
 
-    if (hasUsdPair.contains(base)) {
-      return '$base-USD';        // ex: BTCUSDT → BTC-USD
-    } else {
-      return '$base-USDT';       // ex: ARBUSDT → ARB-USDT, POLUSDT → POL-USDT
-    }
+    return usdPairs.contains(base) ? '$base-USD' : '$base-USDT';
   }
 
   /// Convert interval string to Coinbase granularity (seconds)
