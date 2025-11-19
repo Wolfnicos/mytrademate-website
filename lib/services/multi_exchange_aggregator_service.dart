@@ -34,9 +34,13 @@ class MultiExchangeAggregatorService {
       if (coinbaseSymbol != null) {
         final coinbaseTicker = await _coinbase.fetchTicker24h(coinbaseSymbol);
         prices['Coinbase'] = coinbaseTicker['lastPrice'] ?? 0.0;
+        debugPrint('[MultiExchange] ✅ Coinbase: \$${prices['Coinbase']!.toStringAsFixed(2)}');
+      } else {
+        debugPrint('[MultiExchange] ⏭️  Coinbase: Skipped (symbol not supported)');
       }
     } catch (e) {
-      debugPrint('[MultiExchange] Coinbase error: $e');
+      // Only log errors for pairs we expected to work
+      debugPrint('[MultiExchange] ❌ Coinbase error: $e');
     }
 
     // Fetch from Kraken (uses format: XBTUSD)
@@ -66,20 +70,40 @@ class MultiExchangeAggregatorService {
     if (symbol.contains('-')) return symbol;
 
     // Parse symbol to extract base and quote
-    // Supported quotes on Coinbase: USD, EUR, USDC, USDT
+    // Supported quotes on Coinbase: USD, EUR, USDC (mainly USD, limited EUR/USDC)
     final match = RegExp(r'^([A-Z]+)(USD|EUR|USDC|USDT)$').firstMatch(symbol);
-    if (match == null) return null;
+    if (match == null) {
+      debugPrint('[MultiExchange] ⚠️  Coinbase: Cannot parse symbol: $symbol');
+      return null;
+    }
 
     final base = match.group(1)!;
     final quote = match.group(2)!;
 
+    // Coinbase is primarily a crypto exchange, not forex
+    // Skip forex pairs like EUR/USD, GBP/USD
+    const fiatBases = {'EUR', 'USD', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD'};
+    if (fiatBases.contains(base)) {
+      debugPrint('[MultiExchange] ⚠️  Coinbase: Skipping forex pair: $symbol (Coinbase doesn\'t support forex)');
+      return null;
+    }
+
+    // Coinbase has limited EUR support (mostly major coins like BTC, ETH)
+    if (quote == 'EUR') {
+      const coinsWithEUR = {'BTC', 'ETH', 'SOL', 'AVAX', 'LINK', 'XRP'};
+      if (!coinsWithEUR.contains(base)) {
+        debugPrint('[MultiExchange] ⚠️  Coinbase: $base-EUR not supported (use USD instead)');
+        return null;
+      }
+    }
+
     // Coinbase doesn't support USDT for all coins (prefer USD)
-    // Check if this pair is likely supported
     if (quote == 'USDT') {
       // Only major coins have USDT on Coinbase
       const majorCoins = {'BTC', 'ETH', 'SOL', 'AVAX', 'LINK'};
       if (!majorCoins.contains(base)) {
-        return null; // Coinbase likely doesn't have this USDT pair
+        debugPrint('[MultiExchange] ⚠️  Coinbase: $base-USDT not supported');
+        return null;
       }
     }
 
