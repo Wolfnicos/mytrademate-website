@@ -13,6 +13,7 @@ import 'package:pointycastle/asn1/primitives/asn1_octet_string.dart';
 import '../models/candle.dart';
 import '../models/features_with_atr.dart';
 import '../services/full_feature_builder.dart';
+import '../utils/symbol_mapper.dart';
 import 'base_exchange_service.dart';
 
 /// Coinbase Exchange API Service
@@ -668,20 +669,7 @@ class CoinbaseService implements BaseExchangeService {
   /// Convert Binance-style symbol to Coinbase format
   /// Example: BTCEUR -> BTC-USD, POLUSDT -> POL-USDT
   String _convertToCoinbaseSymbol(String symbol) {
-    // Îndepărtează tot ce nu e literă + uppercase
-    final base = symbol.replaceAll(RegExp(r'[^A-Z]'), '');
-
-    // DOAR astea au pereche -USD pe Coinbase în noiembrie 2025
-    const usdOnly = {
-      'BTC', 'ETH', 'SOL', 'AVAX', 'LINK', 'XRP', 'DOGE', 'ADA', 'DOT', 'MATIC',
-      'LTC', 'BCH', 'XLM', 'UNI', 'AAVE', 'SNX', 'COMP', 'YFI', 'MKR'
-    };
-
-    if (usdOnly.contains(base)) {
-      return '$base-USD';
-    } else {
-      return '$base-USDT';   // POL → POL-USDT, ARB → ARB-USDT, OP → OP-USDT etc.
-    }
+    return getUniversalSymbol(symbol, 'Coinbase');
   }
 
   /// Convert interval string to Coinbase granularity (seconds)

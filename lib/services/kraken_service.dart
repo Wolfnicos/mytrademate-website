@@ -8,6 +8,7 @@ import 'package:crypto/crypto.dart';
 import '../models/candle.dart';
 import '../models/features_with_atr.dart';
 import '../services/full_feature_builder.dart';
+import '../utils/symbol_mapper.dart';
 import 'base_exchange_service.dart';
 
 /// Kraken Exchange API Service
@@ -538,21 +539,7 @@ class KrakenService implements BaseExchangeService {
   /// Convert standard symbol to Kraken format
   /// Example: BTCEUR -> XBTEUR, ETHEUR -> ETHEUR
   String _convertToKrakenSymbol(String symbol) {
-    // Kraken uses XBT instead of BTC
-    if (symbol.startsWith('BTC')) {
-      return 'XBT' + symbol.substring(3);
-    }
-
-    // Add X prefix for crypto, Z for fiat (Kraken convention)
-    final quotes = ['EUR', 'USD', 'USDT', 'USDC'];
-    for (final quote in quotes) {
-      if (symbol.endsWith(quote)) {
-        final base = symbol.substring(0, symbol.length - quote.length);
-        return base + quote;
-      }
-    }
-
-    return symbol;
+    return getUniversalSymbol(symbol, 'Kraken');
   }
 
   /// Convert interval string to Kraken interval (minutes)

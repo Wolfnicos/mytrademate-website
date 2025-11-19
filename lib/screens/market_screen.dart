@@ -344,27 +344,38 @@ class _MarketScreenState extends State<MarketScreen> {
                                 style: AppTheme.headingLarge,
                               ),
                               const SizedBox(height: AppTheme.spacing4),
-                              if (_candles.length >= 2)
-                                Builder(
-                                  builder: (context) {
-                                    // ALWAYS use the second-to-last candle (penultimate) which is guaranteed to be closed
-                                    // This ensures each timeframe shows its own unique closed price
-                                    final displayCandle = _candles[_candles.length - 2];
+                              Builder(
+                                builder: (context) {
+                                  // Get price from candles if available, otherwise from ticker
+                                  final double price = _candles.length >= 2
+                                      ? _candles[_candles.length - 2].close
+                                      : (_tickers[_selectedSymbol]?['lastPrice'] ?? 0.0);
 
-                                    final priceText = prefix + (displayCandle.close >= 100
-                                        ? displayCandle.close.toStringAsFixed(0)
-                                        : displayCandle.close.toStringAsFixed(4));
-                                    debugPrint('💰 [Market] Displaying price: $priceText from CLOSED candle (index ${_candles.length - 2})');
+                                  if (price == 0.0) {
                                     return Text(
-                                      priceText,
-                                      style: AppTheme.monoLarge.copyWith(
-                                        color: displayCandle.close > displayCandle.open
-                                            ? AppTheme.buyGreen
-                                            : AppTheme.sellRed,
-                                      ),
+                                      '${prefix}—.——',
+                                      style: AppTheme.monoLarge.copyWith(color: AppTheme.textSecondary),
                                     );
-                                  },
-                                ),
+                                  }
+
+                                  final priceText = prefix + (price >= 100
+                                      ? price.toStringAsFixed(0)
+                                      : price.toStringAsFixed(4));
+                                  debugPrint('💰 [Market] Displaying price: $priceText for $_selectedSymbol');
+
+                                  // Determine color from candles if available, otherwise neutral
+                                  final color = _candles.length >= 2
+                                      ? (_candles[_candles.length - 2].close > _candles[_candles.length - 2].open
+                                          ? AppTheme.buyGreen
+                                          : AppTheme.sellRed)
+                                      : AppTheme.textPrimary;
+
+                                  return Text(
+                                    priceText,
+                                    style: AppTheme.monoLarge.copyWith(color: color),
+                                  );
+                                },
+                              ),
                             ],
                           ),
                           Container(
