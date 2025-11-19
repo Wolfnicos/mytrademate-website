@@ -338,6 +338,10 @@ class KrakenService implements BaseExchangeService {
         final totalMinutes = limit * intervalMinutes;
         final sinceTime = now - (totalMinutes * 60);
         queryParams['since'] = sinceTime.toString();
+
+        debugPrint('[Kraken] ⏰ Time calc: now=$now, interval=$intervalMinutes min, limit=$limit candles');
+        debugPrint('[Kraken] ⏰ Going back ${totalMinutes} minutes = ${totalMinutes/60} hours = ${totalMinutes/1440} days');
+        debugPrint('[Kraken] ⏰ Since timestamp: $sinceTime (${DateTime.fromMillisecondsSinceEpoch(sinceTime * 1000)})');
       }
 
       final uri = Uri.https(_baseHost, '/0/public/OHLC', queryParams);
