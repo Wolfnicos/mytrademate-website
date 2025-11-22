@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_core/core.dart';
-import 'package:syncfusion_flutter_core/theme.dart';
 import 'dart:ui';
 import 'ml/tflite_predictor.dart';
 import 'ml/ml_service.dart';
@@ -12,6 +11,7 @@ import 'ml/ensemble_predictor.dart';
 import 'ml/crypto_ml_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/subscription_provider.dart';
+import 'providers/exchange_provider.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/market_screen.dart';
 import 'screens/ai_strategies_screen.dart';
@@ -27,7 +27,6 @@ import 'theme/app_theme.dart';
 import 'providers/navigation_provider.dart';
 import 'services/achievement_service.dart';
 import 'services/ml_loading_state.dart';
-import 'widgets/risk_disclaimer_dialog.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,12 +57,17 @@ Future<void> main() async {
   final subscriptionProvider = SubscriptionProvider();
   // await subscriptionProvider.checkSubscriptionStatus();
 
+  // Initialize exchange provider
+  final exchangeProvider = ExchangeProvider();
+  await exchangeProvider.initialize();
+
   // Start the app immediately
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider.value(value: subscriptionProvider),
+        ChangeNotifierProvider.value(value: exchangeProvider),
         ChangeNotifierProvider.value(value: AppSettingsService()),
         ChangeNotifierProvider.value(value: AuthService()),
         ChangeNotifierProvider.value(value: AchievementService()),
@@ -173,13 +177,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  static const List<Widget> _widgetOptions = <Widget>[
-    DashboardScreen(),
-    MarketScreen(),
-    AiStrategiesScreen(),
-    PortfolioScreen(),
-  ];
-
   static const List<_NavItem> _navItems = [
     _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'Dashboard'),
     _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: 'Market'),
@@ -189,6 +186,13 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Create widget list in build() so they can respond to Provider changes
+    final widgetOptions = <Widget>[
+      const DashboardScreen(),
+      const MarketScreen(),
+      const AiStrategiesScreen(),
+      const PortfolioScreen(),
+    ];
 
     final nav = Provider.of<NavigationProvider>(context);
     return Scaffold(
@@ -196,7 +200,7 @@ class _HomePageState extends State<HomePage> {
       appBar: _PremiumAppBar(),
       body: IndexedStack(
         index: nav.index,
-        children: _widgetOptions,
+        children: widgetOptions,
       ),
       bottomNavigationBar: _PremiumBottomNav(
         currentIndex: nav.index,

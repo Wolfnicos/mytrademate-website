@@ -1,14 +1,16 @@
 import 'dart:convert';
 import 'dart:async';
-import 'dart:io';
+// import 'dart:io'; // Unused - commented out
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:crypto/crypto.dart';
 
 import '../models/candle.dart';
+import '../models/features_with_atr.dart';
 // import '../services/technical_indicator_calculator.dart';
 import '../services/full_feature_builder.dart';
+import 'base_exchange_service.dart';
 
 /// Result wrapper for feature extraction
 class FeatureResult {
@@ -35,20 +37,7 @@ class FeatureResult {
   }
 }
 
-/// Result wrapper for features + ATR + current price (for Phase 3 volatility-based weights)
-class FeaturesWithATR {
-  final List<List<double>> features;
-  final double atr;
-  final double currentPrice; // Latest candle close price
-
-  const FeaturesWithATR({
-    required this.features,
-    required this.atr,
-    required this.currentPrice,
-  });
-}
-
-class BinanceService {
+class BinanceService implements BaseExchangeService {
   static const String _baseHost = 'api.binance.com'; // Only LIVE mode
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
@@ -65,12 +54,27 @@ class BinanceService {
   DateTime? _lastTimeSyncTime;
   static const Duration _timeSyncInterval = Duration(minutes: 30);
 
+  @override
+  String get exchangeName => 'Binance';
+
+  @override
   String? get apiKey => _apiKey;
+
+  @override
   String? get apiSecret => _apiSecret;
+
+  @override
   bool get hasCredentials => (_apiKey != null && _apiKey!.isNotEmpty && _apiSecret != null && _apiSecret!.isNotEmpty);
+
+  @override
+  String buildTradingPair(String base, String quote) {
+    // Binance format: BTCEUR, ETHUSDT (simple concatenation)
+    return '$base$quote';
+  }
 
   /// Synchronize local time with Binance server time
   /// This prevents "Timestamp out of recvWindow" errors due to clock skew
+  @override
   Future<void> syncServerTime() async {
     try {
       final uri = Uri.https(_baseHost, '/api/v3/time');
@@ -101,6 +105,7 @@ class BinanceService {
 
   /// Get current timestamp synchronized with Binance server
   /// Automatically syncs if needed (first call or >30 mins since last sync)
+  @override
   Future<int> getSynchronizedTimestamp() async {
     // Sync time on first call or if >30 mins since last sync
     if (_lastTimeSyncTime == null ||
@@ -112,6 +117,7 @@ class BinanceService {
   }
 
   /// Load API credentials from secure storage
+  @override
   Future<void> loadCredentials() async {
     try {
       _apiKey = await _secureStorage.read(key: 'binance_api_key');
@@ -127,14 +133,21 @@ class BinanceService {
   }
 
   /// Save API credentials to secure storage
+  @override
   Future<void> saveCredentials(String apiKey, String apiSecret) async {
-    await _secureStorage.write(key: 'binance_api_key', value: apiKey);
-    await _secureStorage.write(key: 'binance_api_secret', value: apiSecret);
-    _apiKey = apiKey;
-    _apiSecret = apiSecret;
+    // Remove ALL whitespace from credentials (common copy-paste issue)
+    final cleanApiKey = apiKey.replaceAll(RegExp(r'\s+'), '');
+    final cleanApiSecret = apiSecret.replaceAll(RegExp(r'\s+'), '');
+
+    await _secureStorage.write(key: 'binance_api_key', value: cleanApiKey);
+    await _secureStorage.write(key: 'binance_api_secret', value: cleanApiSecret);
+    _apiKey = cleanApiKey;
+    _apiSecret = cleanApiSecret;
   }
 
   /// Retry HTTP requests with exponential backoff
+  /// Unused - kept for potential future use
+  /*
   Future<http.Response> _requestWithRetry(
     Future<http.Response> Function() request, {
     int maxRetries = 3,
@@ -197,8 +210,10 @@ class BinanceService {
       }
     }
   }
+  */
 
   /// Clear stored credentials
+  @override
   Future<void> clearCredentials() async {
     await _secureStorage.delete(key: 'binance_api_key');
     await _secureStorage.delete(key: 'binance_api_secret');
@@ -207,6 +222,7 @@ class BinanceService {
   }
 
   /// Test API connection
+  @override
   Future<bool> testConnection() async {
     if (_apiKey == null || _apiSecret == null) {
       throw Exception('API credentials not set');
@@ -236,6 +252,7 @@ class BinanceService {
 
   /// Get account balances
   /// Returns Map<String, double> with asset symbol as key and free balance as value
+  @override
   Future<Map<String, double>> getAccountBalances() async {
     if (_apiKey == null || _apiSecret == null) {
       throw Exception('API credentials not set');
@@ -289,6 +306,15 @@ class BinanceService {
     return digest.toString();
   }
 
+  /// Get currency symbol from trading pair (EUR → €, USD → $)
+  String _getCurrencySymbol(String symbol) {
+    if (symbol.contains('EUR')) return '€';
+    if (symbol.contains('USD')) return '\$';
+    if (symbol.contains('GBP')) return '£';
+    if (symbol.contains('JPY')) return '¥';
+    return '\$'; // Default to $
+  }
+
   // Cache for exchange info to avoid repeated API calls
   Map<String, dynamic>? _exchangeInfoCache;
   DateTime? _exchangeInfoCacheTime;
@@ -296,6 +322,7 @@ class BinanceService {
 
   /// Fetch exchange information for symbols (LOT_SIZE, PRICE_FILTER, etc.)
   /// Cached for 1 hour to avoid excessive API calls
+  @override
   Future<Map<String, dynamic>> getExchangeInfo({String? symbol}) async {
     // Return cached data if still valid
     if (_exchangeInfoCache != null &&
@@ -305,8 +332,22 @@ class BinanceService {
     }
 
     try {
-      final uri = symbol != null
-          ? Uri.https(_baseHost, '/api/v3/exchangeInfo', {'symbol': symbol})
+      // Convert symbol format for Binance API if provided
+      String? binanceSymbol;
+      if (symbol != null) {
+        final upperSymbol = symbol.toUpperCase();
+        if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+          // Convert USD to USDT (Binance doesn't have raw USD pairs)
+          final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+          binanceSymbol = '${base}USDT';
+          debugPrint('[BinanceService] getExchangeInfo: Converting $symbol → $binanceSymbol');
+        } else {
+          binanceSymbol = upperSymbol;
+        }
+      }
+
+      final uri = binanceSymbol != null
+          ? Uri.https(_baseHost, '/api/v3/exchangeInfo', {'symbol': binanceSymbol})
           : Uri.https(_baseHost, '/api/v3/exchangeInfo');
 
       final response = await http.get(uri);
@@ -442,10 +483,23 @@ class BinanceService {
       throw Exception('Provide quantity (base) or quoteOrderQty (>0)');
     }
 
+    // Convert symbol format for Binance API
+    // Binance.com doesn't have USD pairs, only USDT
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      // Convert USD to USDT (Binance doesn't have raw USD pairs)
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] placeMarketOrder: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
     // Validate and round quantity to comply with LOT_SIZE filter
     if (quantity != null && quantity > 0) {
       try {
-        quantity = await validateQuantity(symbol, quantity);
+        quantity = await validateQuantity(binanceSymbol, quantity);
         debugPrint('✅ Validated quantity for $symbol: $quantity');
       } catch (e) {
         debugPrint('⚠️ Quantity validation failed: $e');
@@ -455,7 +509,7 @@ class BinanceService {
 
     final int timestamp = await getSynchronizedTimestamp();
     final Map<String, String> params = <String, String>{
-      'symbol': symbol,
+      'symbol': binanceSymbol,
       'side': side.toUpperCase(),
       'type': 'MARKET',
       'newOrderRespType': 'RESULT',
@@ -508,9 +562,22 @@ class BinanceService {
       throw Exception('Price must be > 0');
     }
 
+    // Convert symbol format for Binance API
+    // Binance.com doesn't have USD pairs, only USDT
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      // Convert USD to USDT (Binance doesn't have raw USD pairs)
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] placeLimitOrder: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
     final int timestamp = await getSynchronizedTimestamp();
     final Map<String, String> params = <String, String>{
-      'symbol': symbol,
+      'symbol': binanceSymbol,
       'side': side.toUpperCase(),
       'type': 'LIMIT',
       'timeInForce': timeInForce,
@@ -558,9 +625,20 @@ class BinanceService {
       throw Exception('Quantity, price, and stopPrice must be > 0');
     }
 
+    // Convert symbol format for Binance API
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] placeStopLimitOrder: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
     final int timestamp = await getSynchronizedTimestamp();
     final Map<String, String> params = <String, String>{
-      'symbol': symbol,
+      'symbol': binanceSymbol,
       'side': side.toUpperCase(),
       'type': 'STOP_LOSS_LIMIT',
       'timeInForce': timeInForce,
@@ -607,9 +685,20 @@ class BinanceService {
       throw Exception('Quantity and stopPrice must be > 0');
     }
 
+    // Convert symbol format for Binance API
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] placeStopMarketOrder: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
     final int timestamp = await getSynchronizedTimestamp();
     final Map<String, String> params = <String, String>{
-      'symbol': symbol,
+      'symbol': binanceSymbol,
       'side': side.toUpperCase(),
       'type': 'STOP_LOSS',
       'quantity': quantity.toString(),
@@ -643,12 +732,26 @@ class BinanceService {
     if (_apiKey == null || _apiSecret == null) {
       throw Exception('API credentials not set');
     }
+
+    // Convert symbol format for Binance API if provided
+    String? binanceSymbol;
+    if (symbol != null && symbol.isNotEmpty) {
+      final upperSymbol = symbol.toUpperCase();
+      if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+        final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+        binanceSymbol = '${base}USDT';
+        debugPrint('[BinanceService] fetchOpenOrders: Converting $symbol → $binanceSymbol');
+      } else {
+        binanceSymbol = upperSymbol;
+      }
+    }
+
     final int timestamp = await getSynchronizedTimestamp();
     final Map<String, String> params = <String, String>{
       'timestamp': timestamp.toString(),
       'recvWindow': recvWindowMs.toString(),
     };
-    if (symbol != null && symbol.isNotEmpty) params['symbol'] = symbol;
+    if (binanceSymbol != null) params['symbol'] = binanceSymbol;
 
     final String queryString = params.entries.map((e) => '${e.key}=${e.value}').join('&');
     final String signature = _generateSignature(queryString);
@@ -679,9 +782,21 @@ class BinanceService {
     if (orderId == null && (origClientOrderId == null || origClientOrderId.isEmpty)) {
       throw Exception('Provide orderId or origClientOrderId');
     }
+
+    // Convert symbol format for Binance API
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] cancelOrder: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
     final int timestamp = await getSynchronizedTimestamp();
     final Map<String, String> params = <String, String>{
-      'symbol': symbol,
+      'symbol': binanceSymbol,
       'recvWindow': recvWindowMs.toString(),
       'timestamp': timestamp.toString(),
     };
@@ -717,9 +832,21 @@ class BinanceService {
     if (_apiKey == null || _apiSecret == null) {
       throw Exception('API credentials not set');
     }
+
+    // Convert symbol format for Binance API
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] placeOcoOrder: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
     final int timestamp = await getSynchronizedTimestamp();
     final Map<String, String> params = <String, String>{
-      'symbol': symbol,
+      'symbol': binanceSymbol,
       'side': side.toUpperCase(),
       'quantity': quantity.toString(),
       'price': price.toString(),
@@ -753,20 +880,32 @@ class BinanceService {
 
   /// Fetches klines (OHLCV) for a spot symbol with configurable interval
   /// Returns up to [limit] candles between [start] and [end].
+  @override
   Future<List<Candle>> fetchKlines(
-    String symbol, {
-    String interval = '1h',
-    DateTime? start,
-    DateTime? end,
-    int limit = 1000,
+    String symbol,
+    String interval, {
+    int limit = 500,
+    int? endTime,
   }) async {
+    // Convert symbol format for Binance API
+    // Binance.com doesn't have USD pairs, only USDT
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      // Convert USD to USDT (Binance doesn't have raw USD pairs)
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] fetchKlines: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
     final Map<String, String> query = {
-      'symbol': symbol,
+      'symbol': binanceSymbol,
       'interval': interval,
       'limit': limit.toString(),
     };
-    if (start != null) query['startTime'] = start.millisecondsSinceEpoch.toString();
-    if (end != null) query['endTime'] = end.millisecondsSinceEpoch.toString();
+    if (endTime != null) query['endTime'] = endTime.toString();
 
     final uri = Uri.https(_baseHost, '/api/v3/klines', query);
     final http.Response res = await http.get(uri);
@@ -780,26 +919,24 @@ class BinanceService {
   /// Fetches daily klines (OHLCV) for a spot symbol like 'BTCUSDT'.
   Future<List<Candle>> fetchDailyKlines(
     String symbol, {
-    DateTime? start,
-    DateTime? end,
+    int? endTime,
     int limit = 1000,
   }) async {
-    return fetchKlines(symbol, interval: '1d', start: start, end: end, limit: limit);
+    return fetchKlines(symbol, '1d', endTime: endTime, limit: limit);
   }
 
   /// Fetches hourly klines (OHLCV) for a spot symbol like 'BTCUSDT'.
   Future<List<Candle>> fetchHourlyKlines(
     String symbol, {
-    DateTime? start,
-    DateTime? end,
+    int? endTime,
     int limit = 60,
   }) async {
-    return fetchKlines(symbol, interval: '1h', start: start, end: end, limit: limit);
+    return fetchKlines(symbol, '1h', endTime: endTime, limit: limit);
   }
 
   /// Generic klines fetch for a custom interval like '15m', '1h', '4h'
   Future<List<Candle>> fetchCustomKlines(String symbol, String interval, {int limit = 60}) async {
-    return fetchKlines(symbol, interval: interval, limit: limit);
+    return fetchKlines(symbol, interval, limit: limit);
   }
 
   /// Fetch tradable spot pairs (symbol, base, quote) from exchangeInfo
@@ -827,8 +964,22 @@ class BinanceService {
   }
 
   /// Fetch 24h ticker data for a symbol. Returns lastPrice and priceChangePercent.
+  @override
   Future<Map<String, double>> fetchTicker24h(String symbol) async {
-    final uri = Uri.https(_baseHost, '/api/v3/ticker/24hr', {'symbol': symbol});
+    // Convert symbol format for Binance API
+    // Binance.com doesn't have USD pairs, only USDT
+    final upperSymbol = symbol.toUpperCase();
+    String binanceSymbol;
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      // Convert USD to USDT (Binance doesn't have raw USD pairs)
+      final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+      binanceSymbol = '${base}USDT';
+      debugPrint('[BinanceService] fetchTicker24h: Converting $symbol → $binanceSymbol');
+    } else {
+      binanceSymbol = upperSymbol;
+    }
+
+    final uri = Uri.https(_baseHost, '/api/v3/ticker/24hr', {'symbol': binanceSymbol});
     final http.Response res = await http.get(uri);
     if (res.statusCode != 200) {
       throw Exception('Binance 24hr ticker error ${res.statusCode}: ${res.body}');
@@ -846,7 +997,20 @@ class BinanceService {
   /// High-volume coins (> median) get +5% confidence boost for general models.
   Future<double> get24hVolume(String symbol) async {
     try {
-      final uri = Uri.https(_baseHost, '/api/v3/ticker/24hr', {'symbol': symbol});
+      // Convert symbol format for Binance API
+      // Binance.com doesn't have USD pairs, only USDT
+      final upperSymbol = symbol.toUpperCase();
+      String binanceSymbol;
+      if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+        // Convert USD to USDT (Binance doesn't have raw USD pairs)
+        final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
+        binanceSymbol = '${base}USDT';
+        debugPrint('[BinanceService] 24h volume: Converting $symbol → $binanceSymbol');
+      } else {
+        binanceSymbol = upperSymbol;
+      }
+
+      final uri = Uri.https(_baseHost, '/api/v3/ticker/24hr', {'symbol': binanceSymbol});
       final http.Response res = await http.get(uri);
       if (res.statusCode != 200) {
         throw Exception('Binance 24hr volume error ${res.statusCode}: ${res.body}');
@@ -870,20 +1034,14 @@ class BinanceService {
   /// Used by Phase 3: High-volume symbols (percentile > 0.5) get +5% confidence boost
   Future<double> getVolumePercentile(String targetSymbol, {List<String>? comparisonSymbols}) async {
     try {
-      // Default comparison set: major EUR pairs
-      final symbols = comparisonSymbols ?? [
-        'BTCEUR',
-        'ETHEUR',
-        'XRPEUR',
-        'ADAEUR',
-        'DOGEEUR',
-        'MATICEUR',
-        'DOTEUR',
-        'LINKEUR',
-        'UNIEUR',
-        'TRUMPEUR',
-        'WLFIEUR',
-      ];
+      // Extract quote currency from targetSymbol (e.g., BTCUSDT → USDT)
+      final RegExp quoteRegex = RegExp(r'(USDT|USDC|EUR|USD)$');
+      final match = quoteRegex.firstMatch(targetSymbol);
+      final quote = match?.group(1) ?? 'EUR'; // Fallback to EUR if no match
+
+      // Build dynamic comparison list with same quote currency
+      final baseAssets = ['BTC', 'ETH', 'XRP', 'ADA', 'DOGE', 'POL', 'DOT', 'LINK', 'UNI', 'TRUMP', 'WLFI'];
+      final symbols = comparisonSymbols ?? baseAssets.map((base) => '$base$quote').toList();
 
       // Fetch volumes for all symbols in parallel
       final volumeFutures = symbols.map((s) => get24hVolume(s));
@@ -899,7 +1057,7 @@ class BinanceService {
       }
 
       final percentile = lowerCount / volumes.length;
-      debugPrint('📊 Volume percentile for $targetSymbol: ${(percentile * 100).toStringAsFixed(1)}% (volume: ${targetVolume.toStringAsFixed(0)} EUR)');
+      debugPrint('📊 Volume percentile for $targetSymbol: ${(percentile * 100).toStringAsFixed(1)}% (volume: ${targetVolume.toStringAsFixed(0)} $quote)');
 
       return percentile;
     } catch (e) {
@@ -910,6 +1068,8 @@ class BinanceService {
   }
 
   /// Try multiple symbols until one works (useful for tokens with alt tickers like 1000TRUMPUSDT)
+  @override
+  @override
   Future<Map<String, double>> fetchTicker24hWithFallback(List<String> symbols) async {
     for (final String s in symbols) {
       try {
@@ -920,10 +1080,11 @@ class BinanceService {
   }
 
   /// Try multiple symbols until one works for klines/candles (useful for handling USD/USDT/EUR pairs)
+  @override
   Future<List<Candle>> fetchKlinesWithFallback(List<String> symbols, String interval, {int limit = 60}) async {
     for (final String s in symbols) {
       try {
-        return await fetchKlines(s, interval: interval, limit: limit);
+        return await fetchKlines(s, interval, limit: limit);
       } catch (_) {
         // Try next symbol in list
       }
@@ -960,7 +1121,7 @@ class BinanceService {
     for (final s in candidates) {
       try {
         // Probe minimal klines request to verify symbol validity
-        await fetchKlines(s, interval: interval, limit: 1);
+        await fetchKlines(s, interval, limit: 1);
         resolved = s;
         break;
       } catch (_) {
@@ -987,15 +1148,16 @@ class BinanceService {
         limit = 1000;
     }
 
-    final candles = await fetchKlines(resolved, interval: interval, limit: limit);
+    final candles = await fetchKlines(resolved, interval, limit: limit);
 
     // IMPORTANT: Log latest candle timestamp to prove data is FRESH
     if (candles.isNotEmpty) {
       final latestCandle = candles.last;
       final now = DateTime.now();
       final candleAge = now.difference(latestCandle.closeTime);
+      final currencySymbol = _getCurrencySymbol(resolved);
       debugPrint('📅 Latest candle: ${latestCandle.closeTime} (${candleAge.inMinutes}min ago) - DATA IS FRESH!');
-      debugPrint('   Close: \$${latestCandle.close.toStringAsFixed(2)}, Volume: ${latestCandle.volume.toStringAsFixed(2)}');
+      debugPrint('   Close: $currencySymbol${latestCandle.close.toStringAsFixed(2)}, Volume: ${latestCandle.volume.toStringAsFixed(2)}');
     }
 
     // Calculate ATR from raw candles
@@ -1073,9 +1235,9 @@ class BinanceService {
 
   /// Convenience method to fetch last 1 year of daily candles.
   Future<List<Candle>> fetchLastYearDaily(String symbol) async {
-    final DateTime end = DateTime.now().toUtc();
-    final DateTime start = DateTime(end.year - 1, end.month, end.day).toUtc();
-    return fetchDailyKlines(symbol, start: start, end: end, limit: 1000);
+    // final DateTime end = DateTime.now().toUtc(); // Unused - commented out
+    // final DateTime start = DateTime(end.year - 1, end.month, end.day).toUtc(); // Unused - commented out
+    return fetchDailyKlines(symbol, limit: 1000);
   }
 
   /// Fetch ML features in the exact Python MTF order (base interval + aligned timeframes + one-hot symbol)

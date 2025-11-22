@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../services/app_settings_service.dart';
+// import '../services/app_settings_service.dart'; // Unused - commented out
 
 /// Dialog shown to new users offering 48-hour free trial
 /// Shows on first app launch after onboarding
@@ -159,7 +159,7 @@ class TrialActivationDialog extends StatelessWidget {
                     const SizedBox(height: AppTheme.spacing8),
                     Text(
                       '• FREE tier: 4H timeframe only\n'
-                      '• PRO: €5.99/month - unlock all features',
+                      '• PRO: €6.99/month - unlock all features',
                       style: AppTheme.bodySmall.copyWith(
                         color: AppTheme.textSecondary,
                         height: 1.5,

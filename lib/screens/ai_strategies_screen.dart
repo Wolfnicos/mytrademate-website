@@ -14,13 +14,17 @@ import '../ml/crypto_ml_service.dart';
 // Theme & Widgets
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/risk_disclaimer.dart';
 import '../widgets/upgrade_banner.dart';
 import '../utils/responsive.dart';
 
 // Providers
 import '../providers/subscription_provider.dart';
+import '../providers/exchange_provider.dart';
 import 'paywall_screen.dart';
+
+// Market Intelligence
+import 'package:mytrademate/models/market_intelligence_boost.dart';
+import 'package:mytrademate/services/market_intelligence_aggregator.dart';
 
 class AiStrategiesScreen extends StatefulWidget {
   const AiStrategiesScreen({super.key});
@@ -40,6 +44,9 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
 
   String _selectedSymbol = 'BTCUSDT';
   String _interval = '4h'; // Default to 4H (free tier)
+
+  // Market Intelligence State
+  MarketIntelligenceBoost? _marketIntelligence;
 
   // Portfolio coins for dynamic dropdown
   List<String> _availableCoins = [];
@@ -102,8 +109,8 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     final quote = AppSettingsService().quoteCurrency.toUpperCase();
     debugPrint('AI Strategies: Quote currency changed to $quote, updating pairs...');
 
-    // Extract base asset from current pair (e.g., BTCUSDT -> BTC)
-    String baseAsset = _selectedSymbol;
+    // Extract base asset from current pair (e.g., BTCUSDT -> BTC, BTC-USD -> BTC)
+    String baseAsset = _selectedSymbol.replaceAll('-', ''); // Remove Coinbase hyphens
     for (final q in ['USDT', 'USDC', 'EUR', 'USD']) {
       baseAsset = baseAsset.replaceAll(q, '');
     }
@@ -130,9 +137,11 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
 
   Future<void> _loadAvailableCoins() async {
     try {
-      final binance = BinanceService();
-      await binance.loadCredentials();
-      final balances = await binance.getAccountBalances();
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
+
+      await exchange.loadCredentials();
+      final balances = await exchange.getAccountBalances();
       final quote = AppSettingsService().quoteCurrency.toUpperCase();
 
       // Extract coins from portfolio (excluding quote currency and coins below $5)
@@ -142,7 +151,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         if (upperAsset != quote && balances[asset]! > 0.0) {
           // Calculate value to filter out coins below $5
           try {
-            final ticker = await binance.fetchTicker24hWithFallback([
+            final ticker = await exchange.fetchTicker24hWithFallback([
               '$upperAsset$quote',
               '${upperAsset}USDT',
               '${upperAsset}EUR',
@@ -200,17 +209,21 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     });
 
     try {
-      // Get coin from symbol (e.g., BTCUSDT -> BTC)
-      final coin = _selectedSymbol.replaceAll(RegExp(r'(USDT|EUR|USDC)$'), '');
+      // Get coin from symbol (e.g., BTCUSDT -> BTC, BTC-USD -> BTC)
+      // Remove Coinbase hyphens first, then extract base currency
+      final cleanSymbol = _selectedSymbol.replaceAll('-', '');
+      final coin = cleanSymbol.replaceAll(RegExp(r'(USDT|USDC|BUSD|USD|EUR|BTC)$'), '');
 
       debugPrint('🚀 AI Strategies: fetching CryptoML prediction for $coin @$_interval');
 
       // NEW: CryptoMLService now fetches candles for EACH model's timeframe!
       // We just pass the symbol and let the service handle multi-timeframe fetching
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
       final prediction = await CryptoMLService().getPrediction(
         coin: coin,
         symbol: _selectedSymbol,
         timeframe: _interval,
+        exchangeService: exchangeProvider.currentExchange,
       );
 
       // Get current price for price change tracking
@@ -227,9 +240,12 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         debugPrint('💹 Price change: ${priceChange >= 0 ? '+' : ''}${priceChange.toStringAsFixed(2)} (${priceChangePercent >= 0 ? '+' : ''}${priceChangePercent.toStringAsFixed(3)}%)');
       }
 
+      // Use configured quote currency (not extracted from symbol to avoid BUSD)
+      final quoteCurrency = AppSettingsService().quoteCurrency;
+
       // Debug-only: print final JSON-like summary for QA (no UI impact)
       // ignore: avoid_print
-      print('JSON_AI_STRATEGIES: {"coin":"$coin","timeframe":"$_interval","action":"${prediction.action}","confidence":${prediction.confidence.toStringAsFixed(4)},"atr":${(currentPriceResult.atr * 100).toStringAsFixed(2)}}');
+      print('JSON_AI_STRATEGIES: {"coin":"$coin","timeframe":"$_interval","action":"${prediction.action}","confidence":${prediction.confidence.toStringAsFixed(4)},"atr":${(currentPriceResult.atr * 100).toStringAsFixed(2)},"quote_currency":"$quoteCurrency"}');
 
       debugPrint('🚀 CryptoML: ${prediction.action} (${(prediction.confidence * 100).toStringAsFixed(1)}%)');
 
@@ -242,6 +258,8 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           _lastUpdateTime = DateTime.now();
           _isRunningPrediction = false;
         });
+        // Load market intelligence after prediction completes
+        _loadMarketIntelligence();
       }
     } catch (e) {
       debugPrint('❌ AI inference error: $e');
@@ -254,7 +272,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
             (userFriendlyError.contains('Need at least') && userFriendlyError.contains('candles')) ||
             userFriendlyError.contains('sliding window')) {
           // Extract coin name from symbol
-          final coin = _selectedSymbol.replaceAll(RegExp(r'(USDT|EUR|USDC)$'), '');
+          final coin = _selectedSymbol.replaceAll(RegExp(r'(USDT|USDC|BUSD|USD|EUR|BTC)$'), '');
 
           // Friendly message for new coins with limited history
           if (_interval == '1d') {
@@ -283,8 +301,10 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     // DO NOT set _isRunningPrediction = true (no UI spinner/text)
 
     try {
-      // Get coin from symbol (e.g., BTCUSDT -> BTC)
-      final coin = _selectedSymbol.replaceAll(RegExp(r'(USDT|EUR|USDC)$'), '');
+      // Get coin from symbol (e.g., BTCUSDT -> BTC, BTC-USD -> BTC)
+      // Remove Coinbase hyphens first, then extract base currency
+      final cleanSymbol = _selectedSymbol.replaceAll('-', '');
+      final coin = cleanSymbol.replaceAll(RegExp(r'(USDT|USDC|BUSD|USD|EUR|BTC)$'), '');
 
       debugPrint('🔄 AI Strategies (SILENT): fetching CryptoML prediction for $coin @$_interval');
 
@@ -327,6 +347,29 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       debugPrint('❌ AI inference error (SILENT): $e');
       // Don't update UI with error on silent refresh (user didn't initiate it)
       // Just log the error and keep previous prediction
+    }
+  }
+
+  Future<void> _loadMarketIntelligence() async {
+    if (_lastPrediction == null) return;
+
+    try {
+      final aggregator = MarketIntelligenceAggregator();
+      final boost = await aggregator.getBoost(
+        symbol: _selectedSymbol,
+        mlDirection: _lastPrediction!.action,
+        mlConfidence: _lastPrediction!.confidence,
+        priceChange24h: _lastPrediction!.atr != null ? _lastPrediction!.atr! * 100 : null,
+        volumeChange24h: null,
+      );
+
+      if (mounted) {
+        setState(() {
+          _marketIntelligence = boost;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading market intelligence: $e');
     }
   }
 
@@ -398,16 +441,6 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           padding: const EdgeInsets.all(AppTheme.spacing20),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              // Risk Disclaimer
-              Container(
-                decoration: BoxDecoration(
-                  color: colors.surfaceContainerHighest.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-                  border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.5)),
-                ),
-                child: const RiskDisclaimer(),
-              ),
-              const SizedBox(height: AppTheme.spacing16),
 
               // Symbol & Interval Selector
               _buildSymbolSelector(),
@@ -417,14 +450,13 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
               _buildPredictionCard(),
               const SizedBox(height: AppTheme.spacing16),
 
-              // What does this mean? - User-friendly explanation
-              if (_lastPrediction != null)
-                _buildWhatDoesThisMean(),
-              const SizedBox(height: AppTheme.spacing16),
 
-              // Model Contributions / AI Technical Analysis (only for short-term trading signals, not long-term trends)
-              if (_lastPrediction != null && _interval != '1d' && _interval != '1w')
+              // Model Contributions / AI Technical Analysis
+              if (_lastPrediction != null && _interval != '1w')
                 _buildModelContributions(),
+
+              // Market Intelligence Card
+              _buildMarketIntelligenceCard(),
 
               // Upgrade to Premium CTA (FREE mode only, NOT during trial)
               Consumer<SubscriptionProvider>(
@@ -469,15 +501,17 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                   : Colors.grey[300]!),
             ),
             child: DropdownButton<String>(
-              value: _selectedSymbol,
+              value: _buildPairs().contains(_selectedSymbol)
+                  ? _selectedSymbol
+                  : (_buildPairs().isNotEmpty ? _buildPairs().first : 'BTCUSDT'),
               isExpanded: true,
               underline: const SizedBox(),
-              dropdownColor: Theme.of(context).brightness == Brightness.dark 
-                  ? AppTheme.surface 
+              dropdownColor: Theme.of(context).brightness == Brightness.dark
+                  ? AppTheme.surface
                   : Colors.white,
               style: AppTheme.bodyMedium.copyWith(
-                color: Theme.of(context).brightness == Brightness.dark 
-                    ? AppTheme.textPrimary 
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.textPrimary
                     : AppTheme.textPrimaryLight,
               ),
               items: _buildPairs().map((e) => DropdownMenuItem(
@@ -485,8 +519,8 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                 child: Text(
                   e,
                   style: AppTheme.bodyMedium.copyWith(
-                    color: Theme.of(context).brightness == Brightness.dark 
-                        ? AppTheme.textPrimary 
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppTheme.textPrimary
                         : AppTheme.textPrimaryLight,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -683,6 +717,11 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     final prediction = _lastPrediction!;
     final action = prediction.action;
 
+    // Apply Market Intelligence boost to confidence (if available)
+    final finalConfidence = _marketIntelligence != null
+        ? _marketIntelligence!.applyBoost(prediction.confidence)
+        : prediction.confidence;
+
     // Convert trading terminology to educational/market sentiment terminology
     final displayAction = action == 'BUY' ? 'BULLISH' : (action == 'SELL' ? 'BEARISH' : 'NEUTRAL');
 
@@ -727,9 +766,23 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                       : const LinearGradient(colors: [Color(0xFFFF9500), Color(0xFFFF7A00)])),
               borderRadius: BorderRadius.circular(AppTheme.radiusSM),
             ),
-            child: Text(
-              'Confidence: ${(prediction.confidence * 100).toStringAsFixed(1)}%',
-              style: AppTheme.headingMedium.copyWith(color: Colors.white),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Confidence: ${(finalConfidence * 100).toStringAsFixed(1)}%',
+                  style: AppTheme.headingMedium.copyWith(color: Colors.white),
+                ),
+                // Show boost indicator if Market Intelligence enhanced the confidence
+                if (_marketIntelligence != null && _marketIntelligence!.confidenceBoost != 0) ...[
+                  const SizedBox(width: AppTheme.spacing8),
+                  Icon(
+                    Icons.auto_awesome,
+                    size: 18,
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                ],
+              ],
             ),
           ),
           const SizedBox(height: AppTheme.spacing16),
@@ -838,17 +891,6 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
               ),
             ),
           ],
-
-          const SizedBox(height: AppTheme.spacing16),
-          ElevatedButton.icon(
-            onPressed: _runInference,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Refresh Prediction'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              foregroundColor: Colors.white,
-            ),
-          ),
         ],
       ),
     );
@@ -941,41 +983,49 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           const SizedBox(width: AppTheme.spacing8),
           Icon(Icons.schedule, size: 14, color: AppTheme.textTertiary),
           const SizedBox(width: AppTheme.spacing4),
-          Text(
-            'Updated $timeAgo',
-            style: AppTheme.bodySmall.copyWith(
-              color: AppTheme.textTertiary,
-              fontSize: 12,
+          Flexible(
+            child: Text(
+              'Updated $timeAgo',
+              style: AppTheme.bodySmall.copyWith(
+                color: AppTheme.textTertiary,
+                fontSize: 12,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
 
           // ATR trend indicator (if significant change)
           if (atrTrend.isNotEmpty) ...[
-            const SizedBox(width: AppTheme.spacing8),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppTheme.spacing8,
-                vertical: AppTheme.spacing4,
-              ),
-              decoration: BoxDecoration(
-                color: atrTrendColor!.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                border: Border.all(color: atrTrendColor.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(atrTrendIcon, size: 12, color: atrTrendColor),
-                  const SizedBox(width: AppTheme.spacing4),
-                  Text(
-                    'Vol $atrTrend',
-                    style: AppTheme.bodySmall.copyWith(
-                      color: atrTrendColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+            const SizedBox(width: AppTheme.spacing4),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacing8,
+                  vertical: AppTheme.spacing4,
+                ),
+                decoration: BoxDecoration(
+                  color: atrTrendColor!.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                  border: Border.all(color: atrTrendColor.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(atrTrendIcon, size: 12, color: atrTrendColor),
+                    const SizedBox(width: AppTheme.spacing4),
+                    Flexible(
+                      child: Text(
+                        'Vol $atrTrend',
+                        style: AppTheme.bodySmall.copyWith(
+                          color: atrTrendColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -1045,7 +1095,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
     required double sellProb,
     required double buyProb,
   }) {
-    final coinName = coin.replaceAll(RegExp(r'(USDT|EUR|USDC|USD)$'), '');
+    final coinName = coin.replaceAll(RegExp(r'(USDT|USDC|BUSD|USD|EUR|BTC)$'), '');
     final buffer = StringBuffer();
     
     // Market condition
@@ -1171,15 +1221,21 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           children: [
             Icon(icon, color: color, size: 16),
             const SizedBox(width: AppTheme.spacing4),
-            Text(
-              '$label: ',
-              style: AppTheme.bodySmall.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+            Flexible(
+              child: Text(
+                '$label: ',
+                style: AppTheme.bodySmall.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            Text(
-              displayLabel,
-              style: AppTheme.bodySmall.copyWith(
-                color: color,
-                fontWeight: FontWeight.bold,
+            Flexible(
+              child: Text(
+                displayLabel,
+                style: AppTheme.bodySmall.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -1240,17 +1296,65 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.insights, color: AppTheme.primary, size: 20),
+              Icon(Icons.psychology_outlined, color: AppTheme.primary, size: 20),
               const SizedBox(width: AppTheme.spacing8),
               Expanded(
-                child: Text('AI Technical Analysis', style: AppTheme.headingMedium),
+                child: Text('🤖 Ensemble AI Engine', style: AppTheme.headingMedium),
               ),
             ],
           ),
-          const SizedBox(height: AppTheme.spacing8),
-          Text(
-            'Advanced deep learning model analyzes 76 technical indicators across multiple timeframes',
-            style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
+          const SizedBox(height: AppTheme.spacing12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.auto_awesome, color: AppTheme.primary.withValues(alpha: 0.8), size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Multi-timeframe deep learning analysis across 76+ technical features',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTheme.spacing8),
+              Row(
+                children: [
+                  Icon(Icons.flash_on, color: AppTheme.primary.withValues(alpha: 0.8), size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Real-time pattern detection: candlesticks, momentum, and volume analysis',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTheme.spacing8),
+              Row(
+                children: [
+                  Icon(Icons.hub_outlined, color: AppTheme.primary.withValues(alpha: 0.8), size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Smart decision fusion: combines 5 specialized models with dynamic weighting',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           const SizedBox(height: AppTheme.spacing20),
 
@@ -1308,19 +1412,26 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(icon, color: color, size: 20),
-                  const SizedBox(width: AppTheme.spacing8),
-                  Text(
-                    label,
-                    style: AppTheme.bodyLarge.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.bold,
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, color: color, size: 20),
+                    const SizedBox(width: AppTheme.spacing8),
+                    Flexible(
+                      child: Text(
+                        label,
+                        style: AppTheme.bodyLarge.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: AppTheme.spacing8),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppTheme.spacing12,
@@ -1358,73 +1469,6 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
             style: AppTheme.bodySmall.copyWith(
               color: AppTheme.getTextSecondary(context),
               height: 1.4,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  /// Build "What does this mean?" section
-  Widget _buildWhatDoesThisMean() {
-    final prediction = _lastPrediction!;
-    final action = prediction.action;
-    final isBullish = action == 'BUY';
-    final isBearish = action == 'SELL';
-    final signalColor = isBullish ? AppTheme.buyGreen : (isBearish ? AppTheme.sellRed : const Color(0xFFFF9500));
-    
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.lightbulb_outline, color: signalColor, size: 20),
-              const SizedBox(width: AppTheme.spacing8),
-              Flexible(
-                child: Text(
-                  'What does this mean?',
-                  style: AppTheme.headingMedium.copyWith(
-                    color: signalColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppTheme.spacing12),
-          Text(
-            _getActionExplanation(action, _selectedSymbol, _interval),
-            style: AppTheme.bodyMedium.copyWith(
-              color: AppTheme.getTextSecondary(context),
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: AppTheme.spacing12),
-
-          // Educational reminder - Portfolio Tracker Lite (No Trading)
-          Container(
-            padding: const EdgeInsets.all(AppTheme.spacing12),
-            decoration: BoxDecoration(
-              color: signalColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-              border: Border.all(color: signalColor.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, color: signalColor, size: 18),
-                const SizedBox(width: AppTheme.spacing8),
-                Expanded(
-                  child: Text(
-                    '📚 This is an educational analysis. Use this information to learn about market patterns and technical indicators.',
-                    style: AppTheme.bodySmall.copyWith(
-                      color: signalColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
         ],
@@ -1494,62 +1538,326 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       ),
     );
   }
-  
-  /// Generate user-friendly explanation of AI recommendation
-  String _getActionExplanation(String action, String symbol, String timeframe) {
-    final coin = symbol.replaceAll(RegExp(r'(USDT|EUR|USDC|USD)'), '');
-    final tfDisplay = timeframe == '5m' ? '5-minute' :
-                      timeframe == '15m' ? '15-minute' :
-                      timeframe == '1h' ? '1-hour' :
-                      timeframe == '4h' ? '4-hour' :
-                      timeframe == '1d' ? 'daily' : timeframe;
-    
-    switch (action) {
-      case 'BUY':
-        return 'Market analysis indicates $coin shows bullish momentum on the $tfDisplay timeframe. '
-               'Technical indicators suggest potential upward price movement in the coming ${_getTimeHorizon(timeframe)}. '
-               'This is an educational observation based on historical patterns.\n\n'
-               '⚠️ Not financial advice. Always do your own research. Cryptocurrency markets are highly volatile.';
 
-      case 'SELL':
-        return 'Market analysis indicates $coin shows bearish momentum on the $tfDisplay timeframe. '
-               'Technical indicators suggest potential downward price pressure in the coming ${_getTimeHorizon(timeframe)}. '
-               'This is an educational observation based on historical patterns.\n\n'
-               '⚠️ Not financial advice. Always do your own research. Cryptocurrency markets are highly volatile.';
+  Widget _buildMarketIntelligenceCard() {
+    if (_marketIntelligence == null) return const SizedBox.shrink();
 
-      case 'HOLD':
-        return 'Market analysis indicates $coin is in a consolidation phase on the $tfDisplay timeframe. '
-               'Price movement appears range-bound without clear directional bias. '
-               'Educational observation: monitor for potential breakout confirmation.\n\n'
-               '📊 WHY PREDICTIONS STAY STABLE:\n'
-               '• Data refreshes every time you click "Refresh Prediction" (check logs)\n'
-               '• Small price changes (<1%) are too minor to change AI predictions\n'
-               '• During consolidation, market features (RSI, MACD, volume) stay similar\n'
-               '• This is CORRECT behavior - AI needs significant movement (>1-2%) to change signals\n\n'
-               '💡 Check the debug logs to see:\n'
-               '• Fresh candle timestamps updating\n'
-               '• Price changes (e.g., +\$6 on BTC = +0.006%)\n'
-               '• The system IS working - predictions will update when market breaks out!';
-      
-      default:
-        return 'AI is analyzing market conditions for $coin. Check back soon for updated signals.';
-    }
+    final boost = _marketIntelligence!;
+
+    // Determine boost color
+    final boostColor = boost.confidenceBoost > 0
+        ? AppTheme.buyGreen
+        : boost.confidenceBoost < 0
+            ? AppTheme.sellRed
+            : AppTheme.textSecondary;
+
+    // Fear & Greed color
+    final fearGreedColor = boost.fearGreedValue < 25
+        ? AppTheme.sellRed
+        : boost.fearGreedValue > 75
+            ? AppTheme.buyGreen
+            : AppTheme.holdYellow;
+
+    return GlassCard(
+      padding: const EdgeInsets.all(AppTheme.spacing20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with boost badge
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(AppTheme.spacing8),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                    ),
+                    child: const Icon(
+                      Icons.insights,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: AppTheme.spacing12),
+                  Text(
+                    'Market Intelligence',
+                    style: AppTheme.headingSmall.copyWith(
+                      color: AppTheme.getTextPrimary(context),
+                    ),
+                  ),
+                ],
+              ),
+              if (boost.confidenceBoost != 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacing12,
+                    vertical: AppTheme.spacing4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: boostColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                    border: Border.all(
+                      color: boostColor.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    '${boost.confidenceBoost > 0 ? '+' : ''}${boost.confidenceBoost}%',
+                    style: AppTheme.labelMedium.copyWith(
+                      color: boostColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+
+          const SizedBox(height: AppTheme.spacing20),
+
+          // Metrics Grid
+          _buildMetricRow(
+            context,
+            icon: Icons.psychology,
+            iconColor: fearGreedColor,
+            label: 'Fear & Greed Index',
+            value: '${boost.fearGreedValue}/100',
+            subtitle: boost.fearGreedLevel,
+          ),
+
+          const SizedBox(height: AppTheme.spacing16),
+
+          _buildMetricRow(
+            context,
+            icon: Icons.article_outlined,
+            iconColor: boost.newsSentiment == 'Bullish'
+                ? AppTheme.buyGreen
+                : boost.newsSentiment == 'Bearish'
+                    ? AppTheme.sellRed
+                    : AppTheme.textSecondary,
+            label: 'News Sentiment',
+            value: boost.newsSentiment,
+            subtitle: '${(boost.newsSentimentScore * 100).toStringAsFixed(1)}% score',
+          ),
+
+          const SizedBox(height: AppTheme.spacing16),
+
+          _buildMetricRow(
+            context,
+            icon: Icons.public,
+            iconColor: boost.globalMarketTrend == 'bullish'
+                ? AppTheme.buyGreen
+                : boost.globalMarketTrend == 'bearish'
+                    ? AppTheme.sellRed
+                    : AppTheme.textSecondary,
+            label: 'Global Market',
+            value: '\$${(boost.globalMarketCap / 1e12).toStringAsFixed(2)}T',
+            subtitle: '${boost.globalMarketCapChange24h >= 0 ? '+' : ''}${boost.globalMarketCapChange24h.toStringAsFixed(2)}% (${boost.globalMarketTrend})',
+          ),
+
+          // Multi-Exchange Section
+          if (boost.multiExchangePrices.isNotEmpty) ...[
+            const SizedBox(height: AppTheme.spacing16),
+            _buildMetricRow(
+              context,
+              icon: Icons.compare_arrows,
+              iconColor: AppTheme.info,
+              label: 'Price Spread',
+              value: '${(boost.priceSpread * 100).toStringAsFixed(3)}%',
+              subtitle: '${boost.multiExchangePrices.length} exchanges',
+            ),
+          ],
+
+          // Analysis Section
+          if (boost.reasonsForBoost.isNotEmpty) ...[
+            const SizedBox(height: AppTheme.spacing20),
+            const Divider(height: 1),
+            const SizedBox(height: AppTheme.spacing16),
+
+            Row(
+              children: [
+                Icon(
+                  Icons.lightbulb_outline,
+                  size: 16,
+                  color: AppTheme.getTextSecondary(context),
+                ),
+                const SizedBox(width: AppTheme.spacing8),
+                Text(
+                  'Analysis',
+                  style: AppTheme.labelLarge.copyWith(
+                    color: AppTheme.getTextPrimary(context),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppTheme.spacing12),
+            ...boost.reasonsForBoost.map((reason) => Padding(
+              padding: const EdgeInsets.only(bottom: AppTheme.spacing8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '• ',
+                    style: AppTheme.bodySmall.copyWith(
+                      color: AppTheme.getTextSecondary(context),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      reason,
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.getTextSecondary(context),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+          ],
+
+          // Enhanced Confidence Section
+          if (_lastPrediction != null && boost.confidenceBoost != 0) ...[
+            const SizedBox(height: AppTheme.spacing16),
+            const Divider(height: 1),
+            const SizedBox(height: AppTheme.spacing16),
+
+            Container(
+              padding: const EdgeInsets.all(AppTheme.spacing12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    boostColor.withValues(alpha: 0.1),
+                    boostColor.withValues(alpha: 0.05),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                border: Border.all(
+                  color: boostColor.withValues(alpha: 0.2),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Original Confidence',
+                        style: AppTheme.labelSmall.copyWith(
+                          color: AppTheme.getTextTertiary(context),
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacing4),
+                      Text(
+                        '${(_lastPrediction!.confidence * 100).toStringAsFixed(1)}%',
+                        style: AppTheme.labelLarge.copyWith(
+                          color: AppTheme.getTextPrimary(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Icon(
+                    Icons.arrow_forward,
+                    size: 20,
+                    color: AppTheme.getTextTertiary(context),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Enhanced',
+                            style: AppTheme.labelSmall.copyWith(
+                              color: AppTheme.getTextTertiary(context),
+                            ),
+                          ),
+                          const SizedBox(width: AppTheme.spacing4),
+                          Icon(
+                            Icons.auto_awesome,
+                            size: 12,
+                            color: boostColor,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppTheme.spacing4),
+                      Text(
+                        '${(boost.applyBoost(_lastPrediction!.confidence) * 100).toStringAsFixed(1)}%',
+                        style: AppTheme.labelLarge.copyWith(
+                          color: boostColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
-  
-  /// Get time horizon description based on timeframe
-  String _getTimeHorizon(String timeframe) {
-    switch (timeframe) {
-      case '5m':
-      case '15m':
-        return 'minutes to hours';
-      case '1h':
-        return 'hours';
-      case '4h':
-        return 'hours to days';
-      case '1d':
-        return 'days to weeks';
-      default:
-        return 'period';
-    }
+
+  Widget _buildMetricRow(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    String? subtitle,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(AppTheme.spacing8),
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: iconColor,
+          ),
+        ),
+        const SizedBox(width: AppTheme.spacing12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTheme.labelSmall.copyWith(
+                  color: AppTheme.getTextTertiary(context),
+                ),
+              ),
+              const SizedBox(height: AppTheme.spacing4),
+              Text(
+                value,
+                style: AppTheme.bodyMedium.copyWith(
+                  color: AppTheme.getTextPrimary(context),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: AppTheme.spacing4),
+                Text(
+                  subtitle,
+                  style: AppTheme.bodySmall.copyWith(
+                    color: AppTheme.getTextSecondary(context),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }

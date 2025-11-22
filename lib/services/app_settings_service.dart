@@ -11,12 +11,16 @@ class AppSettingsService extends ChangeNotifier {
   // When true, all users have unlimited premium access for testing
   static const bool IS_BETA_BUILD = true;
 
+  // Allowed quote currencies (BUSD excluded - deprecated by Binance 2024)
+  static const List<String> allowedQuoteCurrencies = ['USDT', 'EUR', 'USD', 'USDC'];
+  static const String defaultQuoteCurrency = 'USDT';
+
   static const String _kQuoteKey = 'quote_currency';
   static const String _kPermissionKey = 'api_permission_level';
   static const String _kTrialStartKey = 'trial_start_timestamp';
   static const String _kTrialDeclinedKey = 'trial_declined';
 
-  String _quote = 'USDT';
+  String _quote = defaultQuoteCurrency;
   String _permissionLevel = 'read'; // 'read' | 'trading'
   DateTime? _trialStartTime;
   bool _trialDeclined = false;
@@ -90,7 +94,21 @@ class AppSettingsService extends ChangeNotifier {
   Future<void> load() async {
     if (_loaded) return;
     final prefs = await SharedPreferences.getInstance();
-    _quote = prefs.getString(_kQuoteKey) ?? 'USDT';
+    final savedQuote = prefs.getString(_kQuoteKey) ?? defaultQuoteCurrency;
+
+    // Validate and migrate quote currency
+    if (!allowedQuoteCurrencies.contains(savedQuote.toUpperCase())) {
+      // Invalid quote (BUSD, BUSC, typos, etc.) - migrate to default
+      debugPrint('🔄 AUTO-MIGRATION: Invalid quote "$savedQuote" → $defaultQuoteCurrency');
+      if (savedQuote.toUpperCase() == 'BUSD') {
+        debugPrint('   (BUSD was deprecated by Binance in 2024)');
+      }
+      _quote = defaultQuoteCurrency;
+      await prefs.setString(_kQuoteKey, defaultQuoteCurrency);
+    } else {
+      _quote = savedQuote.toUpperCase();
+    }
+
     _permissionLevel = prefs.getString(_kPermissionKey) ?? 'read';
 
     // Load trial state
@@ -115,7 +133,16 @@ class AppSettingsService extends ChangeNotifier {
   }
 
   Future<void> setQuoteCurrency(String quote) async {
-    _quote = quote.toUpperCase();
+    final normalized = quote.toUpperCase();
+
+    // Validate quote currency
+    if (!allowedQuoteCurrencies.contains(normalized)) {
+      debugPrint('⚠️ Invalid quote currency "$quote" - using $defaultQuoteCurrency');
+      _quote = defaultQuoteCurrency;
+    } else {
+      _quote = normalized;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kQuoteKey, _quote);
     notifyListeners();

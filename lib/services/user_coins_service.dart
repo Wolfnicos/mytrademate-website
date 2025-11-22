@@ -1,11 +1,11 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
-import 'package:mytrademate/services/binance_service.dart';
+import 'base_exchange_service.dart';
 
 /// User Coins Service - Manages user's cryptocurrency list
 ///
 /// Logic:
-/// - If user has Binance API connected → use coins from portfolio
+/// - If user has Exchange API connected → use coins from portfolio
 /// - If user has NO API → use TOP 10 popular coins (default)
 class UserCoinsService with ChangeNotifier {
   static final UserCoinsService _instance = UserCoinsService._internal();
@@ -15,22 +15,60 @@ class UserCoinsService with ChangeNotifier {
   static const String _coinsKey = 'user_coins';
   static const String _sourceKey = 'coins_source'; // 'api' or 'default'
 
-  // TOP 10 popular cryptocurrencies (default when no API connected)
-  static const List<String> defaultCoins = [
-    'BTC',  // Bitcoin
-    'ETH',  // Ethereum
-    'BNB',  // Binance Coin
-    'SOL',  // Solana
-    'ADA',  // Cardano
-    'XRP',  // Ripple
-    'DOGE', // Dogecoin
-    'DOT',  // Polkadot
-    'MATIC',// Polygon
-    'LTC',  // Litecoin
+  // TOP 12 popular cryptocurrencies for 2025 (default when no API connected)
+  // Fiat currencies that should NEVER be treated as tradeable coins
+  static const List<String> fiatCurrencies = [
+    'EUR', 'USD', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD',
+    'USDT', 'USDC', 'BUSD', // Stablecoins are also not tradeable assets
   ];
+
+  static const List<String> defaultCoins = [
+    'BTC',   // Bitcoin - #1 by market cap
+    'ETH',   // Ethereum - #2 smart contracts
+    'SOL',   // Solana - fast L1
+    'BNB',   // Binance Coin - exchange token
+    'XRP',   // Ripple - payments
+    'AVAX',  // Avalanche - DeFi platform
+    'LINK',  // Chainlink - oracle network
+    'POL',   // Polygon - Ethereum L2
+    'ARB',   // Arbitrum - Ethereum L2
+    'OP',    // Optimism - Ethereum L2
+    'TRUMP', // Trump Coin - 2025 trending
+    'WLFI',  // World Liberty Financial - 2025 trending
+  ];
+
+  /// Validate that a coin is not a fiat currency
+  static bool isValidCoin(String coin) {
+    return !fiatCurrencies.contains(coin.toUpperCase());
+  }
+
+  /// Filter out fiat currencies from a list of coins
+  static List<String> filterValidCoins(List<String> coins) {
+    final filtered = coins.where((coin) => isValidCoin(coin)).toList();
+    final removed = coins.where((coin) => !isValidCoin(coin)).toList();
+    if (removed.isNotEmpty) {
+      debugPrint('⚠️  Removed fiat currencies from coins: $removed');
+    }
+    return filtered;
+  }
+
+  // Exchange-specific coin exclusions
+  // Some exchanges don't support certain coins due to business conflicts or listing policies
+  static const Map<String, List<String>> excludedCoinsPerExchange = {
+    'Coinbase': ['BNB', 'TRUMP', 'WLFI'],  // BNB not available; TRUMP/WLFI not listed yet
+    'Kraken': ['BNB', 'TRUMP', 'WLFI'],    // BNB not available; TRUMP/WLFI not listed yet
+  };
+
+  /// Get default coins filtered for specific exchange
+  /// Excludes coins that are not available on the given exchange
+  static List<String> getDefaultCoinsForExchange(String exchangeName) {
+    final excluded = excludedCoinsPerExchange[exchangeName] ?? [];
+    return defaultCoins.where((coin) => !excluded.contains(coin)).toList();
+  }
 
   List<String> _cachedCoins = [];
   String _cachedSource = 'default';
+  String? _cachedExchangeName; // Remember last exchange for filtering defaults
 
   /// Get user's coin list
   /// Returns coins from API if connected, otherwise TOP 10 default
@@ -54,53 +92,59 @@ class UserCoinsService with ChangeNotifier {
     }
 
     // No saved coins → return default
-    _cachedCoins = List.from(defaultCoins);
+    _cachedCoins = List<String>.from(defaultCoins);
     _cachedSource = 'default';
     await _saveCoins(_cachedCoins, 'default');
     debugPrint('✅ Using default TOP 10 coins');
     return _cachedCoins;
   }
 
-  /// Update coins from Binance portfolio
+  /// Update coins from Exchange portfolio (Binance, Coinbase, Kraken)
   /// Extracts unique coins from user's portfolio balances
-  Future<void> updateCoinsFromBinance() async {
-    debugPrint('🔄 UserCoinsService: updateCoinsFromBinance() called');
+  Future<void> updateCoinsFromExchange(BaseExchangeService exchange) async {
+    debugPrint('🔄 UserCoinsService: updateCoinsFromExchange(${exchange.exchangeName}) called');
+
+    // Remember exchange name for future default coin filtering
+    _cachedExchangeName = exchange.exchangeName;
+
     try {
-      final binanceService = BinanceService();
-
       // Check if API is connected
-      final hasCredentials = binanceService.apiKey != null &&
-                            binanceService.apiKey!.isNotEmpty;
+      final hasCredentials = exchange.hasCredentials;
 
-      debugPrint('🔍 API credentials check: hasCredentials=$hasCredentials');
+      debugPrint('🔍 API credentials check for ${exchange.exchangeName}: hasCredentials=$hasCredentials');
 
       if (!hasCredentials) {
-        debugPrint('⚠️  No Binance API connected - using default coins');
-        await setDefaultCoins();
+        debugPrint('⚠️  No ${exchange.exchangeName} API connected - using default coins');
+        await setDefaultCoins(exchangeName: exchange.exchangeName);
         return;
       }
 
-      debugPrint('🔄 Fetching account balances from Binance...');
+      debugPrint('🔄 Fetching account balances from ${exchange.exchangeName}...');
       // Fetch account balances
-      final balances = await binanceService.getAccountBalances();
-      debugPrint('✅ Fetched ${balances.length} balances from Binance');
+      final balances = await exchange.getAccountBalances();
+      debugPrint('✅ Fetched ${balances.length} balances from ${exchange.exchangeName}');
 
       if (balances.isEmpty) {
         debugPrint('⚠️  Empty balances - using default coins');
-        await setDefaultCoins();
+        await setDefaultCoins(exchangeName: exchange.exchangeName);
         return;
       }
 
       // Extract unique coins (assets with balance > 0)
+      // Minimum balance threshold to filter out dust (very small amounts)
+      // Strategy: Filter by relative balance size
+      // Keep only coins that have meaningful balances (not tiny dust amounts)
+      const minBalanceThreshold = 0.001; // Ignore balances < 0.001 (increased from 0.00001)
+
       final coins = balances.entries
-          .where((entry) => entry.value > 0) // Only coins with positive balance
+          .where((entry) => entry.value > minBalanceThreshold) // Filter out dust balances
           .map((entry) => entry.key) // Get coin symbol
-          .where((coin) => coin != 'EUR' && coin != 'USDT' && coin != 'USDC' && coin != 'BUSD') // Exclude quote currencies
+          .where((coin) => isValidCoin(coin)) // Exclude fiat currencies (EUR, USD, USDT, etc.)
           .toList();
 
       if (coins.isEmpty) {
         debugPrint('⚠️  No valid coins in portfolio - using default coins');
-        await setDefaultCoins();
+        await setDefaultCoins(exchangeName: exchange.exchangeName);
         return;
       }
 
@@ -109,24 +153,55 @@ class UserCoinsService with ChangeNotifier {
       _cachedCoins = coins;
       _cachedSource = 'api';
 
-      debugPrint('✅ Updated coins from Binance API: ${coins.length} coins');
+      debugPrint('✅ Updated coins from ${exchange.exchangeName} API: ${coins.length} coins');
       debugPrint('   Coins: ${coins.join(", ")}');
+
+      // Debug: Show balances for each detected coin
+      for (final coin in coins) {
+        final balance = balances[coin] ?? 0.0;
+        debugPrint('   - $coin: $balance');
+      }
 
       // Notify listeners that coins changed
       notifyListeners();
     } catch (e) {
-      debugPrint('❌ Error updating coins from Binance: $e');
+      debugPrint('❌ Error updating coins from ${exchange.exchangeName}: $e');
       // Fallback to default on error
-      await setDefaultCoins();
+      await setDefaultCoins(exchangeName: exchange.exchangeName);
     }
   }
 
-  /// Set default TOP 10 coins
-  Future<void> setDefaultCoins() async {
-    await _saveCoins(List.from(defaultCoins), 'default');
-    _cachedCoins = List.from(defaultCoins);
+  /// Update coins from Binance portfolio (deprecated - use updateCoinsFromExchange)
+  @Deprecated('Use updateCoinsFromExchange(exchange) instead')
+  Future<void> updateCoinsFromBinance() async {
+    // This method is kept for backward compatibility
+    // It will be removed in a future version
+    debugPrint('⚠️  updateCoinsFromBinance is deprecated, please use updateCoinsFromExchange');
+  }
+
+  /// Set default coins (filtered by exchange compatibility)
+  ///
+  /// If [exchangeName] is provided, returns coins filtered for that exchange
+  /// (e.g., excludes BNB for Coinbase). If no exchange is provided but one was
+  /// previously cached, uses the cached exchange. Otherwise returns all default coins.
+  Future<void> setDefaultCoins({String? exchangeName}) async {
+    // Use provided exchange, or fall back to cached exchange, or use all defaults
+    final effectiveExchange = exchangeName ?? _cachedExchangeName;
+
+    final coinsToUse = effectiveExchange != null
+        ? getDefaultCoinsForExchange(effectiveExchange)
+        : List<String>.from(defaultCoins);
+
+    await _saveCoins(coinsToUse, 'default');
+    _cachedCoins = coinsToUse;
     _cachedSource = 'default';
-    debugPrint('✅ Reset to default TOP 10 coins');
+
+    if (effectiveExchange != null) {
+      debugPrint('✅ Reset to default coins for $effectiveExchange (${coinsToUse.length} coins)');
+      debugPrint('   Coins: ${coinsToUse.join(", ")}');
+    } else {
+      debugPrint('✅ Reset to default TOP 10 coins');
+    }
 
     // Notify listeners that coins changed
     notifyListeners();
@@ -211,6 +286,7 @@ class UserCoinsService with ChangeNotifier {
   void clearCache() {
     _cachedCoins = [];
     _cachedSource = '';
+    _cachedExchangeName = null;
     debugPrint('🗑️  Coins cache cleared');
   }
 

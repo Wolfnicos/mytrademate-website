@@ -3,6 +3,8 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'dart:convert';
 import 'dart:math' show exp, log, sqrt;
 import 'package:mytrademate/services/binance_service.dart';
+import 'package:mytrademate/services/base_exchange_service.dart';
+import 'package:mytrademate/services/volume_profile_service.dart';
 import 'package:mytrademate/ml/ensemble_weights_v2.dart';
 
 /// Service pentru predicții ML crypto
@@ -24,6 +26,9 @@ class CryptoMLService {
   // PHASE 3: Binance service for volume percentile
   final BinanceService _binanceService = BinanceService();
 
+  // PHASE 4: Volume Profile service for order book analysis
+  final VolumeProfileService _volumeProfileService = VolumeProfileService();
+
   // PHASE 3: Model registry with trained_date
   Map<String, dynamic>? _modelRegistry;
 
@@ -40,9 +45,56 @@ class CryptoMLService {
            _phase3EnabledTimeframes.contains(timeframe);
   }
 
+  /// Get best available model for a coin+timeframe with fallback logic
+  /// If exact model doesn't exist (e.g., btc_4h), falls back to closest smaller timeframe
+  ///
+  /// Fallback hierarchy:
+  /// - 4h → 1h → 15m → 5m
+  /// - 1d → 4h → 1h → 15m → 5m
+  /// - 1h → 15m → 5m
+  /// - 15m → 5m
+  /// - 5m → (no fallback)
+  ///
+  /// Returns: model key (e.g., "btc_1h") or null if no model found
+  String? _getBestModelKey(String coin, String requestedTf) {
+    final normalizedCoin = coin.toLowerCase().replaceAll(RegExp(r'(usd|eur|usdt|usdc)$'), '');
+
+    // Define fallback chain for each timeframe
+    final Map<String, List<String>> fallbackChain = {
+      '1d': ['1d', '4h', '1h', '15m', '5m'],
+      '4h': ['4h', '1h', '15m', '5m'],
+      '1h': ['1h', '15m', '5m'],
+      '15m': ['15m', '5m'],
+      '5m': ['5m'],
+    };
+
+    final chain = fallbackChain[requestedTf] ?? ['1h', '15m', '5m'];
+
+    // Try each timeframe in the fallback chain
+    for (final tf in chain) {
+      final modelKey = '${normalizedCoin}_$tf';
+      if (_interpreters.containsKey(modelKey)) {
+        if (tf != requestedTf) {
+          // ignore: avoid_print
+          print('   🔄 Fallback: $normalizedCoin@$requestedTf not found, using $modelKey');
+        }
+        return modelKey;
+      }
+    }
+
+    return null; // No model found in fallback chain
+  }
+
   // PHASE 3 PILOT: Volume percentile cache (5 min TTL)
   static final Map<String, (double, DateTime)> _volumeCache = {};
   static const Duration _volumeCacheTTL = Duration(minutes: 5);
+
+  /// Clear volume percentile cache (useful when switching exchanges)
+  static void clearVolumeCache() {
+    _volumeCache.clear();
+    // ignore: avoid_print
+    print('🧹 Cleared volume percentile cache');
+  }
 
   /// Inițializează serviciul și încarcă modelele
   Future<void> initialize() async {
@@ -292,9 +344,10 @@ class CryptoMLService {
   /// NOW fetches candles for EACH model's timeframe!
   Future<CryptoPrediction> getPrediction({
     required String coin,
-    required String symbol, // NEW: Binance symbol (e.g., BTCEUR)
+    required String symbol, // NEW: Exchange symbol (e.g., BTCEUR, BTCUSDT)
     String timeframe = '5m',
     bool silent = false,
+    BaseExchangeService? exchangeService, // NEW: Pass exchange service for volume calculation
   }) async {
     // ignore: avoid_print
     print('');
@@ -321,98 +374,151 @@ class CryptoMLService {
 
     // PHASE 3: Fetch volume percentile with caching (5 min TTL) - only if pilot active
     double volumePercentile = 0.5; // Default to median
-    String? resolvedSymbol;
     if (applyPhase3) {
       try {
-        final String upper = coin.toUpperCase();
-        final List<String> candidates = <String>[
-          '${upper}EUR',
-          '${upper}USDT',
-          '${upper}USDC',
-          '${upper}USD',
-        ];
-        
-        // Try to resolve symbol
-        for (final s in candidates) {
-          // Check cache first
-          final cached = _volumeCache[s];
-          if (cached != null && DateTime.now().difference(cached.$2) < _volumeCacheTTL) {
-            volumePercentile = cached.$1;
-            resolvedSymbol = s;
-            if (!silent) {
-              // ignore: avoid_print
-              print('📊 Phase 3: Volume percentile for $s: ${(volumePercentile * 100).toStringAsFixed(1)}% (cached)');
-            }
-            break;
+        // Use the symbol parameter directly (e.g., BTCEUR, BTCUSDT, BTCUSD, BTCUSDC)
+        // Check cache first (with exchange-specific key to avoid mixing data between exchanges)
+        final service = exchangeService ?? _binanceService;
+        final cacheKey = '${service.exchangeName}_$symbol';
+        final cached = _volumeCache[cacheKey];
+        if (cached != null && DateTime.now().difference(cached.$2) < _volumeCacheTTL) {
+          volumePercentile = cached.$1;
+          if (!silent) {
+            // ignore: avoid_print
+            print('📊 Phase 3: Volume percentile for $symbol on ${service.exchangeName}: ${(volumePercentile * 100).toStringAsFixed(1)}% (cached)');
           }
-          
-          // Not cached, try to fetch from API
-          try {
-            volumePercentile = await _binanceService.getVolumePercentile(s);
-            resolvedSymbol = s;
-            
-            // Cache for 5 minutes
-            _volumeCache[s] = (volumePercentile, DateTime.now());
-            
-            if (!silent) {
-              // ignore: avoid_print
-              print('📊 Phase 3: Volume percentile for $s: ${(volumePercentile * 100).toStringAsFixed(1)}%');
-            }
-            break;
-          } catch (_) {
-            // Try next candidate
+        } else {
+          // Not cached, fetch from API
+          volumePercentile = await service.getVolumePercentile(symbol);
+
+          // Cache for 5 minutes (include exchange name in cache key to avoid mixing data)
+          _volumeCache[cacheKey] = (volumePercentile, DateTime.now());
+
+          if (!silent) {
+            // ignore: avoid_print
+            print('📊 Phase 3: Volume percentile for $symbol on ${service.exchangeName}: ${(volumePercentile * 100).toStringAsFixed(1)}%');
           }
-        }
-        
-        if (resolvedSymbol == null && !silent) {
-          // ignore: avoid_print
-          print('⚠️  Phase 3: Could not resolve volume symbol for $upper, using default 0.5');
         }
       } catch (e) {
         if (!silent) {
           // ignore: avoid_print
-          print('⚠️  Phase 3: Failed to fetch volume percentile, using default 0.5: $e');
+          print('⚠️  Phase 3: Failed to fetch volume percentile for $symbol, using default 0.5: $e');
         }
       }
     }
 
-    // STEP 1: Load ALL coin-specific models across ALL timeframes
+    // FIX 3: Fallback Binance când volumul pe Coinbase e mort (≤5%)
+    if (volumePercentile <= 0.05 && exchangeService != null && exchangeService!.exchangeName == 'Coinbase') {
+      // ignore: avoid_print
+      print('⚠️  Coinbase volum mort (${(volumePercentile * 100).toStringAsFixed(1)}%) → fallback Binance pentru $coin');
+      return await getPrediction(coin: coin, symbol: symbol, timeframe: timeframe, silent: silent);
+    }
+
+    // PHASE 4: Fetch Volume Profile (bid/ask imbalance + whale walls)
+    double bidAskRatio = 1.0; // Default to neutral (1.0 = balanced)
+    int whaleWallCount = 0;
+    if (applyPhase3) {
+      try {
+        final service = exchangeService ?? _binanceService;
+        final volumeProfile = await _volumeProfileService.analyzeVolume(
+          symbol: symbol,
+          exchange: service.exchangeName.toLowerCase(),
+          depth: 100,
+        );
+
+        bidAskRatio = volumeProfile.bidAskRatio;
+        whaleWallCount = volumeProfile.whaleWalls.length;
+
+        if (!silent) {
+          // ignore: avoid_print
+          print('📊 Phase 4: Order book for $symbol → bidAskRatio=${bidAskRatio.toStringAsFixed(2)}, whaleWalls=$whaleWallCount, signal=${volumeProfile.getSignal()}');
+        }
+      } catch (e) {
+        if (!silent) {
+          // ignore: avoid_print
+          print('⚠️  Phase 4: Failed to fetch order book for $symbol, using defaults: $e');
+        }
+      }
+    }
+
+    // STEP 1: Load ALL coin-specific models across ALL timeframes with FALLBACK
     // NEW: Fetch candles for EACH model's timeframe!
     final allTimeframes = ['5m', '15m', '1h', '4h', '1d'];
 
+    // Normalize coin symbol: "BTCUSD" → "btc", "BTCEUR" → "btc", "BTC" → "btc"
+    final normalizedCoin = coin.toLowerCase().replaceAll(RegExp(r'(usd|eur|usdt|usdc)$'), '');
+
+    // Track which models we've already loaded to avoid duplicates
+    final Set<String> loadedModels = {};
+
     for (final tf in allTimeframes) {
-      final coinKey = '${coin.toLowerCase()}_$tf';
-      if (_interpreters.containsKey(coinKey)) {
-        try {
-          // Fetch candles for THIS model's timeframe
-          final result = await _binanceService.getFeaturesWithATRFallback(symbol, interval: tf);
+      // Get best available model for this timeframe (with fallback)
+      final coinKey = _getBestModelKey(normalizedCoin, tf);
 
-          // Calculate ATR for the requested timeframe (for weights)
-          if (tf == timeframe) {
-            volatility = result.atr;
-            if (!silent) {
-              // ignore: avoid_print
-              print('📈 ATR (volatility): ${(volatility * 100).toStringAsFixed(2)}% (from $tf candles)');
-            }
+      // Skip if no model found or already loaded
+      if (coinKey == null || loadedModels.contains(coinKey)) {
+        continue;
+      }
+
+      loadedModels.add(coinKey);
+
+      try {
+        // Extract actual timeframe from model key (e.g., "btc_1h" → "1h")
+        final actualTf = coinKey.split('_').last;
+
+        // Fetch candles for the ACTUAL model's timeframe (not requested tf)
+        final service = exchangeService ?? _binanceService;
+        final result = await service.getFeaturesWithATRFallback(symbol, interval: actualTf);
+
+        // Calculate ATR for the requested timeframe (for weights)
+        if (actualTf == timeframe) {
+          volatility = result.atr;
+          if (!silent) {
+            // ignore: avoid_print
+            print('📈 ATR (volatility): ${(volatility * 100).toStringAsFixed(2)}% (from $actualTf candles)');
           }
+        }
 
-          final pred = await _getPredictionWithModel(
-            coinKey,
-            result.features,
-            coin: coin,
-            timeframe: tf,
-            atr: volatility,
-            volumePercentile: volumePercentile,
-          );
-          
-          // PHASE 3 PILOT: Apply Phase 3 weights if enabled for this coin+timeframe
-          final double weight;
-          if (applyPhase3) {
-            // Use Phase 3 enhanced weights (real ATR + volume boost + recency penalty)
-            final trainedDate = _getTrainedDate(coinKey);
-            weight = EnsembleWeightsV2.calculateTimeframeWeight(
-              requestedTf: timeframe,
-              modelTf: tf,
+        final pred = await _getPredictionWithModel(
+          coinKey,
+          result.features,
+          coin: coin,
+          timeframe: actualTf,
+          atr: volatility,
+          volumePercentile: volumePercentile,
+          bidAskRatio: bidAskRatio,
+        );
+
+        // ADAPTIVE MODEL SELECTION: Filter models based on market conditions
+        // High volatility (ATR > 2.0) → skip long timeframes (slow to react)
+        if (volatility > 2.0 && ['1d', '7d', '4h'].contains(actualTf)) {
+          if (!silent) {
+            // ignore: avoid_print
+            print('   ⚡ [Adaptive Selection] HIGH VOLATILITY (ATR=${(volatility * 100).toStringAsFixed(2)}%) → skipping long tf $coinKey');
+          }
+          continue;
+        }
+        // Low volume (< 30% percentile) → skip short timeframes (noisy signals)
+        if (volumePercentile < 0.30 && !['1h', '4h', '1d', '7d'].contains(actualTf)) {
+          if (!silent) {
+            // ignore: avoid_print
+            print('   🔇 [Adaptive Selection] LOW VOLUME (percentile=${(volumePercentile * 100).toStringAsFixed(1)}%) → skipping short tf $coinKey');
+          }
+          continue;
+        }
+        if (!silent) {
+          // ignore: avoid_print
+          print('   ✅ [Adaptive Selection] NORMAL CONDITIONS → using $coinKey');
+        }
+
+        // PHASE 3 PILOT: Apply Phase 3 weights if enabled for this coin+timeframe
+        final double weight;
+        if (applyPhase3) {
+          // Use Phase 3 enhanced weights (real ATR + volume boost + recency penalty)
+          final trainedDate = _getTrainedDate(coinKey);
+          weight = EnsembleWeightsV2.calculateTimeframeWeight(
+            requestedTf: timeframe,
+            modelTf: actualTf,
               coin: coin,
               atr: volatility, // Real ATR from candles
               modelKey: coinKey,
@@ -420,16 +526,17 @@ class CryptoMLService {
               volumePercentile: volumePercentile,
               trainedDate: trainedDate,
             );
-          } else {
-            // Use existing logic (preview mode)
-            weight = _calculateTimeframeWeight(timeframe, tf);
-          }
-          
-          weightedPredictions.add(_WeightedPrediction(pred, weight, coinKey));
-        } catch (e) {
-          // ignore: avoid_print
-          print('   ❌ Error loading $coinKey: $e');
+        } else {
+          // Use existing logic (preview mode)
+          weight = _calculateTimeframeWeight(timeframe, actualTf);
         }
+
+        // Apply time-based weight adjustment (Asia/Europe/US sessions)
+        final adjustedWeight = _getTimeBasedWeight(coinKey, weight);
+        weightedPredictions.add(_WeightedPrediction(pred, adjustedWeight, coinKey));
+      } catch (e) {
+        // ignore: avoid_print
+        print('   ❌ Error loading $coinKey: $e');
       }
     }
 
@@ -440,8 +547,9 @@ class CryptoMLService {
       final generalKey = 'general_$tf';
       if (_interpreters.containsKey(generalKey)) {
         try {
-          // Fetch candles for THIS general model's timeframe
-          final result = await _binanceService.getFeaturesWithATRFallback(symbol, interval: tf);
+          // Fetch candles for THIS general model's timeframe (using exchange-specific service)
+          final service = exchangeService ?? _binanceService;
+          final result = await service.getFeaturesWithATRFallback(symbol, interval: tf);
 
           final pred = await _getPredictionWithModel(
             generalKey,
@@ -450,8 +558,31 @@ class CryptoMLService {
             timeframe: timeframe, // Use requested timeframe for confidence
             atr: result.atr,
             volumePercentile: volumePercentile,
+            bidAskRatio: bidAskRatio,
           );
-          
+
+          // ADAPTIVE MODEL SELECTION: Filter general models based on market conditions
+          // High volatility (ATR > 2.0) → skip long timeframes (slow to react)
+          if (volatility > 2.0 && ['1d', '7d', '4h'].contains(tf)) {
+            if (!silent) {
+              // ignore: avoid_print
+              print('   ⚡ [Adaptive Selection] HIGH VOLATILITY (ATR=${(volatility * 100).toStringAsFixed(2)}%) → skipping long tf $generalKey');
+            }
+            continue;
+          }
+          // Low volume (< 30% percentile) → skip short timeframes (noisy signals)
+          if (volumePercentile < 0.30 && !['1h', '4h', '1d', '7d'].contains(tf)) {
+            if (!silent) {
+              // ignore: avoid_print
+              print('   🔇 [Adaptive Selection] LOW VOLUME (percentile=${(volumePercentile * 100).toStringAsFixed(1)}%) → skipping short tf $generalKey');
+            }
+            continue;
+          }
+          if (!silent) {
+            // ignore: avoid_print
+            print('   ✅ [Adaptive Selection] NORMAL CONDITIONS → using $generalKey');
+          }
+
           // PHASE 3 PILOT: Apply Phase 3 weights if enabled for this coin+timeframe
           final double weight;
           if (applyPhase3) {
@@ -472,12 +603,21 @@ class CryptoMLService {
             weight = _calculateTimeframeWeight(timeframe, tf) * 0.6;
           }
           
-          weightedPredictions.add(_WeightedPrediction(pred, weight, generalKey));
+          // Apply time-based weight adjustment (Asia/Europe/US sessions)
+          final adjustedWeight = _getTimeBasedWeight(generalKey, weight);
+          weightedPredictions.add(_WeightedPrediction(pred, adjustedWeight, generalKey));
         } catch (e) {
           // ignore: avoid_print
           print('   ❌ Error loading $generalKey: $e');
         }
       }
+    }
+
+    // Log loaded models with fallback info
+    if (!silent && weightedPredictions.isNotEmpty) {
+      final modelKeys = weightedPredictions.map((wp) => wp.modelKey).toList();
+      // ignore: avoid_print
+      print('🔍 Found ${modelKeys.length} models for ${coin.toUpperCase()}: ${modelKeys.join(", ")}');
     }
 
     // STEP 3: Return neutral if no models available
@@ -613,6 +753,27 @@ class CryptoMLService {
       print('');
     }
 
+    // LOW VOLUME OVERRIDE: Force HOLD for extreme low volume on short timeframes
+    // This runs AFTER ensemble display, so we always see the ensemble result in logs
+    if (volumePercentile < 0.05 && (timeframe == '5m' || timeframe == '15m')) {
+      if (!silent) {
+        // ignore: avoid_print
+        print('⚠️  [Low Volume Override] Extreme low volume (${(volumePercentile * 100).toStringAsFixed(1)}%) - forcing HOLD');
+      }
+      return CryptoPrediction(
+        action: 'HOLD',
+        confidence: 0.40,
+        probabilities: ensemble.probabilities,
+        signalStrength: 0.0,
+        modelAccuracy: ensemble.modelAccuracy,
+        timestamp: DateTime.now(),
+        isEnsemble: true,
+        atr: volatility,
+        volumePercentile: volumePercentile,
+        decisionReason: 'Extreme low volume override (<5%) on last candle',
+      );
+    }
+
     // PHASE 4: Return prediction with market context (ATR + volume + decision reason)
     return CryptoPrediction(
       action: ensemble.action,
@@ -654,6 +815,7 @@ class CryptoMLService {
       String? timeframe,
       double? atr,
       double? volumePercentile,
+      double? bidAskRatio = 1.0,
     }
   ) async {
     final interpreter = _interpreters[modelKey]!;
@@ -740,14 +902,19 @@ class CryptoMLService {
     // Fewer active features → higher T (model less reliable)
     var probabilities = output[0];
 
-    // Calculate dynamic temperature: T = 1.0 + 14.0 * (1 - signalStrength)
-    // Examples:
-    //   - 100% features active → T = 1.0 (no scaling)
-    //   - 50% features active → T = 8.0 (moderate scaling)
-    //   - 10% features active → T = 13.6 (aggressive scaling)
-    const double minT = 1.0;
-    const double maxT = 15.0;
-    final temperature = minT + maxT * (1.0 - signalStrength);
+    // Calculate dynamic temperature with nuanced scaling
+    // RELAXED temperature thresholds to preserve model conviction:
+    //   - signal < 20% → T = 10.0 (very low signal → dampening)
+    //   - signal < 30% → T = 6.0 (low signal → moderate dampening)
+    //   - signal < 40% → T = 4.0 (medium signal → light dampening)
+    //   - signal < 50% → T = 3.0 (good signal → minimal dampening)
+    //   - signal >= 50% → T = 2.0 (strong signal → preserve confidence)
+    final signalPercent = signalStrength * 100;
+    final double temperature = signalPercent < 20 ? 10.0
+                              : signalPercent < 30 ? 6.0
+                              : signalPercent < 40 ? 4.0
+                              : signalPercent < 50 ? 3.0
+                              : 2.0;
 
     final maxProb = probabilities.reduce((a, b) => a > b ? a : b);
 
@@ -768,16 +935,47 @@ class CryptoMLService {
       }
     }
 
-    // STEP 1: Apply bullish bias on individual model predictions
-    // (before combining in ensemble)
+    // STEP 1: Apply bullish/bearish bias on individual model predictions
+    // (before combining in ensemble) - based on volume, volatility, AND order book
     final atrPercent = (atr ?? 0.02) * 100;
     final volPercent = (volumePercentile ?? 0.5) * 100;
 
-    if (volPercent > 90.0 && atrPercent < 50.0) {
-      // Get current BUY and SELL probabilities
-      final currentBuy = probabilities.length == 3 ? probabilities[2] : (probabilities.length == 2 ? probabilities[1] : 0.0);
-      final currentSell = probabilities[0];
+    // Get current BUY and SELL probabilities
+    final currentBuy = probabilities.length == 3 ? probabilities[2] : (probabilities.length == 2 ? probabilities[1] : 0.0);
+    final currentSell = probabilities[0];
 
+    // PHASE 4: Bid/Ask imbalance bias (order book pressure)
+    final ratio = bidAskRatio ?? 1.0; // Default to neutral if null
+    if (ratio > 1.2) {
+      // Strong buying pressure (more bids than asks)
+      if (currentBuy > currentSell) {
+        // Apply +5% bullish bias to BUY probability
+        if (probabilities.length == 3) {
+          probabilities[2] = (probabilities[2] + 0.05).clamp(0.0, 1.0);
+        } else if (probabilities.length == 2) {
+          probabilities[1] = (probabilities[1] + 0.05).clamp(0.0, 1.0);
+        }
+
+        if (!silent) {
+          // ignore: avoid_print
+          print('📈 ORDER BOOK BULLISH BIAS in $modelKey: +5% to BUY (bidAskRatio=${ratio.toStringAsFixed(2)})');
+        }
+      }
+    } else if (ratio < 0.8) {
+      // Strong selling pressure (more asks than bids)
+      if (currentSell > currentBuy) {
+        // Apply +5% bearish bias to SELL probability
+        probabilities[0] = (probabilities[0] + 0.05).clamp(0.0, 1.0);
+
+        if (!silent) {
+          // ignore: avoid_print
+          print('📉 ORDER BOOK BEARISH BIAS in $modelKey: +5% to SELL (bidAskRatio=${ratio.toStringAsFixed(2)})');
+        }
+      }
+    }
+
+    // PHASE 3: Volume percentile bias (existing logic)
+    if (volPercent > 90.0 && atrPercent < 50.0) {
       if (currentBuy > currentSell) {
         // Apply +10% bullish bias to BUY probability
         if (probabilities.length == 3) {
@@ -788,7 +986,7 @@ class CryptoMLService {
 
         if (!silent) {
           // ignore: avoid_print
-          print('📈 BULLISH BIAS APPLIED in $modelKey: +10% to BUY (vol=${volPercent.toStringAsFixed(0)}%, ATR=${atrPercent.toStringAsFixed(2)}%)');
+          print('📈 VOLUME BULLISH BIAS in $modelKey: +10% to BUY (vol=${volPercent.toStringAsFixed(0)}%, ATR=${atrPercent.toStringAsFixed(2)}%)');
         }
       }
     }
@@ -863,12 +1061,20 @@ class CryptoMLService {
 
       final row = <double>[];
       for (int f = 0; f < data[0].length; f++) {
-        final col = window.map((r) => r[f]).toList();
-        final mean = col.reduce((a, b) => a + b) / col.length;
-        final variance = col.map((x) => (x - mean) * (x - mean)).reduce((a, b) => a + b) / col.length;
-        final std = variance > 0 ? sqrt(variance) : 0.0;
-        final value = std > 1e-8 ? (data[t][f] - mean) / std : 0.0;
-        row.add(double.parse(value.toStringAsFixed(6)));
+        // CRITICAL FIX: Pattern features (indices 0-5) are binary (0.0 or 1.0)
+        // DO NOT normalize binary features - models were trained on 0/1 values
+        if (f < 6) {
+          // Keep pattern features as-is (0.0 or 1.0)
+          row.add(data[t][f]);
+        } else {
+          // Normalize continuous features (indices 6-75)
+          final col = window.map((r) => r[f]).toList();
+          final mean = col.reduce((a, b) => a + b) / col.length;
+          final variance = col.map((x) => (x - mean) * (x - mean)).reduce((a, b) => a + b) / col.length;
+          final std = variance > 0 ? sqrt(variance) : 0.0;
+          final value = std > 1e-8 ? (data[t][f] - mean) / std : 0.0;
+          row.add(double.parse(value.toStringAsFixed(6)));
+        }
       }
       normalized.add(row);
     }
@@ -912,7 +1118,8 @@ class CryptoMLService {
     return expValues.map((e) => e / sumExp).toList();
   }
 
-  /// Calculează puterea semnalului (0-100)
+  /// Calculează puterea semnalului (0.0-1.0)
+  /// Returns the difference between top 2 probabilities (conviction metric)
   double _calculateSignalStrength(List<double> probabilities) {
     if (probabilities.length < 2) return 0.0;
 
@@ -920,7 +1127,7 @@ class CryptoMLService {
     final maxVal = sorted.last;
     final secondMax = sorted[sorted.length - 2];
     final diff = maxVal - secondMax;
-    return (diff * 100).clamp(0, 100);
+    return diff.clamp(0.0, 1.0); // Returns 0.0-1.0 (NOT 0-100)
   }
 
   /// Calculate calibrated confidence - varies by timeframe, coin, and model accuracy
@@ -1101,12 +1308,98 @@ class CryptoMLService {
       finalConfidence = hold;
     }
 
+    // CONSENSUS BOOST: If 3+ models agree on the same action, boost confidence
+    // This helps escape the "HOLD 35%" trap when multiple models weakly agree
+    int strongAgreementCount = 0;
+    for (final wp in weightedPredictions) {
+      // Count models that agree with final action with >35% confidence
+      final modelAction = wp.prediction.action;
+      final modelConfidence = wp.prediction.confidence;
+      if (modelAction == finalAction && modelConfidence > 0.35) {
+        strongAgreementCount++;
+      }
+    }
+
+    // Apply consensus multiplier
+    double consensusMultiplier = 1.0;
+    if (strongAgreementCount >= 3 && strongAgreementCount < 4) {
+      consensusMultiplier = 1.10; // +10% boost for 3 models
+      // ignore: avoid_print
+      print('🤝 CONSENSUS BOOST: $strongAgreementCount models agree on $finalAction → +10% confidence');
+    } else if (strongAgreementCount >= 4) {
+      consensusMultiplier = 1.15; // +15% boost for 4+ models
+      // ignore: avoid_print
+      print('🤝 CONSENSUS BOOST: $strongAgreementCount models agree on $finalAction → +15% confidence');
+    }
+
+    // Apply volume confirmation multiplier if available
+    double volumeMultiplier = 1.0;
+    if (volumePercentile != null) {
+      if (volumePercentile > 0.90) {
+        volumeMultiplier = 1.15; // +15% for very high volume
+        // ignore: avoid_print
+        print('📊 VOLUME CONFIRMATION: ${(volumePercentile * 100).toStringAsFixed(0)}% percentile → +15% confidence');
+      } else if (volumePercentile > 0.80) {
+        volumeMultiplier = 1.10; // +10% for high volume
+        // ignore: avoid_print
+        print('📊 VOLUME CONFIRMATION: ${(volumePercentile * 100).toStringAsFixed(0)}% percentile → +10% confidence');
+      }
+    }
+
+    // Apply both multipliers and clamp to max 75% confidence
+    finalConfidence = (finalConfidence * consensusMultiplier * volumeMultiplier).clamp(0.30, 0.75);
+
     // Weighted average signal strength
     var avgSignalStrength = 0.0;
     for (var i = 0; i < weightedPredictions.length; i++) {
       final wp = weightedPredictions[i];
       final weight = normalizedWeights[i];
       avgSignalStrength += wp.prediction.signalStrength * weight;
+    }
+
+    // PATTERN CONFLICT DETECTION: Check if bullish and bearish patterns coexist
+    // This indicates market indecision/consolidation → reduce confidence
+    int bullishPatterns = 0;
+    int bearishPatterns = 0;
+
+    // Count bullish and bearish patterns from weighted predictions
+    // We check the last timestep (t=59) features for pattern detection
+    // Bullish: Bullish Engulfing (11), Piercing Line (13), Bullish Harami (15), Tweezer Bottom (17), Morning Star (19), Three White Soldiers (21), Rising Three (23)
+    // Bearish: Bearish Engulfing (12), Dark Cloud Cover (14), Bearish Harami (16), Tweezer Top (18), Evening Star (20), Three Black Crows (22), Falling Three (24)
+
+    for (final wp in weightedPredictions) {
+      // Access raw features from prediction metadata if available
+      // Since we don't have direct access to features here, we'll use a simplified approach
+      // based on the action probabilities and model behavior
+      final probMap = wp.prediction.probabilities;
+      if (probMap['BUY']! > 0.40) bullishPatterns++;
+      if (probMap['SELL']! > 0.40) bearishPatterns++;
+    }
+
+    // Calculate conflict score (0.0 = no conflict, 1.0 = maximum conflict)
+    final totalPatterns = bullishPatterns + bearishPatterns;
+    final conflictScore = totalPatterns > 0
+        ? (bullishPatterns - bearishPatterns).abs() / totalPatterns
+        : 0.0;
+
+    // Apply conflict penalty: if both bullish and bearish patterns exist, reduce confidence by 20%
+    if (bullishPatterns > 0 && bearishPatterns > 0) {
+      finalConfidence *= 0.80; // 20% penalty for conflicting patterns
+      // ignore: avoid_print
+      print('⚠️  PATTERN CONFLICT: $bullishPatterns bullish vs $bearishPatterns bearish → -20% confidence');
+      // ignore: avoid_print
+      print('   Conflict Score: ${(conflictScore * 100).toStringAsFixed(1)}% (0%=clear, 100%=balanced conflict)');
+    }
+
+    // SIGNAL STRENGTH THRESHOLD: Force HOLD if signal strength < 3%
+    // Low signal strength indicates weak/noisy data → not confident enough for BUY/SELL
+    // Reduced from 5% to 3% to allow more trading signals in normal market conditions
+    const double minSignalStrength = 0.03; // 3% minimum
+    if (avgSignalStrength < minSignalStrength && (finalAction == 'BUY' || finalAction == 'SELL')) {
+      // ignore: avoid_print
+      print('⚠️  SIGNAL TOO WEAK: ${(avgSignalStrength * 100).toStringAsFixed(1)}% < ${(minSignalStrength * 100).toStringAsFixed(1)}% → Forcing HOLD');
+      finalAction = 'HOLD';
+      finalConfidence = 0.50; // Neutral confidence for forced HOLD
     }
 
     return CryptoPrediction(
@@ -1205,7 +1498,7 @@ class CryptoPrediction {
   final String action; // SELL, HOLD, BUY
   final double confidence; // 0.0 - 1.0
   final Map<String, double> probabilities;
-  final double signalStrength; // 0-100
+  final double signalStrength; // 0.0 - 1.0 (conviction: diff between top 2 probs)
   final double modelAccuracy;
   final DateTime timestamp;
   final bool isEnsemble;
@@ -1263,6 +1556,54 @@ class _WeightedPrediction {
   final String modelKey;
 
   _WeightedPrediction(this.prediction, this.weight, this.modelKey);
+}
+
+/// Helper method: Adjust model weight based on trading session (Asia/Europe/US)
+double _getTimeBasedWeight(String modelId, double baseWeight) {
+  try {
+    final now = DateTime.now().toUtc();
+    final hour = now.hour;
+    double multiplier = 1.0;
+
+    // ASIA SESSION (1-8 UTC) - Favor longer timeframes (1h/4h), penalize short (5m/15m)
+    if (hour >= 1 && hour < 8) {
+      if (modelId.contains('1h') || modelId.contains('4h')) {
+        multiplier = 1.4;
+      } else if (modelId.contains('5m') || modelId.contains('15m')) {
+        multiplier = 0.7;
+      }
+      // ignore: avoid_print
+      print('🌏 [Asia Session] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} → ${(baseWeight * multiplier).toStringAsFixed(2)}');
+    }
+    // EUROPE SESSION (8-14 UTC) - No adjustment (balanced trading)
+    else if (hour >= 8 && hour < 14) {
+      multiplier = 1.0;
+      // ignore: avoid_print
+      print('🇪🇺 [Europe Session] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} (unchanged)');
+    }
+    // US SESSION (14-22 UTC) - Favor short timeframes (5m/15m), penalize long (1d/4h)
+    else if (hour >= 14 && hour < 22) {
+      if (modelId.contains('5m') || modelId.contains('15m')) {
+        multiplier = 1.5;
+      } else if (modelId.contains('1d') || modelId.contains('4h')) {
+        multiplier = 0.5;
+      }
+      // ignore: avoid_print
+      print('🇺🇸 [US Session] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} → ${(baseWeight * multiplier).toStringAsFixed(2)}');
+    }
+    // OFF-HOURS (22-1 UTC) - No adjustment
+    else {
+      multiplier = 1.0;
+      // ignore: avoid_print
+      print('🌙 [Off-Hours] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} (unchanged)');
+    }
+
+    return baseWeight * multiplier;
+  } catch (e) {
+    // ignore: avoid_print
+    print('⚠️  [Time-Based Weights] Error: $e - using base weight');
+    return baseWeight; // Safe fallback
+  }
 }
 
 /// Exemplu de utilizare (doar pentru test rapid)

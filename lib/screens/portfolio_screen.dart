@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/crypto_avatar.dart';
-import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
+import '../providers/exchange_provider.dart';
 import '../utils/responsive.dart';
 
 class PortfolioScreen extends StatefulWidget {
@@ -14,7 +15,6 @@ class PortfolioScreen extends StatefulWidget {
 }
 
 class _PortfolioScreenState extends State<PortfolioScreen> {
-  final BinanceService _binance = BinanceService();
   bool _isLoading = true;
   Map<String, double> _balances = {};
   Map<String, double> _prices = {};
@@ -24,14 +24,31 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   @override
   void initState() {
     super.initState();
+    debugPrint('[Portfolio] 🚀 initState called');
     _loadPortfolio();
     // Listen to quote currency changes and reload portfolio
     AppSettingsService().addListener(_onSettingsChanged);
+
+    // Listen to exchange changes and reload portfolio
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        debugPrint('[Portfolio] 📡 Registering ExchangeProvider listener');
+        Provider.of<ExchangeProvider>(context, listen: false).addListener(_onExchangeChanged);
+        debugPrint('[Portfolio] ✅ Listener registered successfully');
+      } else {
+        debugPrint('[Portfolio] ⚠️  Widget not mounted, cannot register listener');
+      }
+    });
   }
 
   @override
   void dispose() {
     AppSettingsService().removeListener(_onSettingsChanged);
+    try {
+      Provider.of<ExchangeProvider>(context, listen: false).removeListener(_onExchangeChanged);
+    } catch (e) {
+      // Ignore if provider not available
+    }
     super.dispose();
   }
 
@@ -41,15 +58,43 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     _loadPortfolio();
   }
 
+  void _onExchangeChanged() {
+    // Reload portfolio when exchange changes
+    debugPrint('[Portfolio] 📢 Exchange changed listener triggered');
+    debugPrint('[Portfolio] 🔄 Clearing old data and reloading...');
+    // Clear old data immediately to avoid showing stale data from previous exchange
+    if (mounted) {
+      setState(() {
+        _balances = {};
+        _prices = {};
+        _totalValue = 0.0;
+        _isLoading = true;
+        _error = null;
+      });
+      _loadPortfolio();
+    } else {
+      debugPrint('[Portfolio] ⚠️  Widget not mounted, skipping reload');
+    }
+  }
+
   Future<void> _loadPortfolio() async {
+    debugPrint('[Portfolio] 🔄 _loadPortfolio() called');
+    if (!mounted) {
+      debugPrint('[Portfolio] ⚠️  Widget not mounted, aborting load');
+      return;
+    }
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      await _binance.loadCredentials();
-      final balances = await _binance.getAccountBalances();
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
+      debugPrint('[Portfolio] 💼 Loading portfolio for ${exchangeProvider.selectedExchange}');
+
+      await exchange.loadCredentials();
+      final balances = await exchange.getAccountBalances();
       final quote = AppSettingsService().quoteCurrency.toUpperCase();
 
       double total = 0.0;
@@ -68,7 +113,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
 
         try {
           // Try to get price for this asset in quote currency
-          final ticker = await _binance.fetchTicker24hWithFallback([
+          final ticker = await exchange.fetchTicker24hWithFallback([
             '$asset$quote',
             '${asset}USDT',
             '${asset}EUR',
@@ -90,9 +135,10 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
           _totalValue = total;
           _isLoading = false;
         });
+        debugPrint('[Portfolio] ✅ Portfolio loaded successfully: ${balances.length} assets, total value: ${total.toStringAsFixed(2)}');
       }
     } catch (e) {
-      debugPrint('Portfolio: Error loading portfolio: $e');
+      debugPrint('[Portfolio] ❌ Error loading portfolio: $e');
       if (mounted) {
         setState(() {
           _error = 'Failed to load portfolio';
@@ -256,32 +302,34 @@ class _PortfolioValueCard extends StatelessWidget {
 
           const SizedBox(height: AppTheme.spacing12),
 
-          Container(
-            padding: const EdgeInsets.all(AppTheme.spacing12),
-            decoration: BoxDecoration(
-              color: AppTheme.glassWhite,
-              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-              border: Border.all(
-                color: AppTheme.glassBorder,
-                width: 1,
+          Consumer<ExchangeProvider>(
+            builder: (context, exchangeProvider, _) => Container(
+              padding: const EdgeInsets.all(AppTheme.spacing12),
+              decoration: BoxDecoration(
+                color: AppTheme.glassWhite,
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                border: Border.all(
+                  color: AppTheme.glassBorder,
+                  width: 1,
+                ),
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  color: AppTheme.getTextTertiary(context),
-                  size: 16,
-                ),
-                const SizedBox(width: AppTheme.spacing8),
-                Text(
-                  'Live portfolio value from Binance',
-                  style: AppTheme.bodySmall.copyWith(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.info_outline,
                     color: AppTheme.getTextTertiary(context),
+                    size: 16,
                   ),
-                ),
-              ],
+                  const SizedBox(width: AppTheme.spacing8),
+                  Text(
+                    'Live portfolio value from ${exchangeProvider.selectedExchange}',
+                    style: AppTheme.bodySmall.copyWith(
+                      color: AppTheme.getTextTertiary(context),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -410,6 +458,8 @@ class _HoldingCard extends StatelessWidget {
     required this.value,
   });
 
+  // Unused - replaced by CryptoAvatar widget
+  /*
   IconData _getIcon(String asset) {
     switch (asset.toUpperCase()) {
       case 'BTC':
@@ -433,6 +483,7 @@ class _HoldingCard extends StatelessWidget {
         return Icons.monetization_on;
     }
   }
+  */
 
   String _getDisplayName(String asset) {
     switch (asset.toUpperCase()) {
@@ -459,8 +510,22 @@ class _HoldingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final quote = AppSettingsService().quoteCurrency;
+    final quote = AppSettingsService().quoteCurrency.toUpperCase();
     final prefix = AppSettingsService.currencyPrefix(quote);
+
+    // Determine if this asset IS the quote currency (e.g., EUR when quote is EUR)
+    final isQuoteCurrency = asset.toUpperCase() == quote;
+
+    // Format amount display
+    String amountDisplay;
+    if (isQuoteCurrency) {
+      // If holding IS the quote currency, show in quote format
+      // E.g., if holding EUR and quote is USD → show as "$10.86"
+      amountDisplay = '$prefix${value.toStringAsFixed(2)}';
+    } else {
+      // If holding is crypto, show amount + symbol
+      amountDisplay = '${amount.toStringAsFixed(4)} $asset';
+    }
 
     return GlassCard(
       child: Row(
@@ -482,7 +547,7 @@ class _HoldingCard extends StatelessWidget {
                 ),
                 const SizedBox(height: AppTheme.spacing4),
                 Text(
-                  '$amount $asset',
+                  amountDisplay,
                   style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
                 ),
               ],

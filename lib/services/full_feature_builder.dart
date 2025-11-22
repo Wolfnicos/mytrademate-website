@@ -12,6 +12,9 @@ import 'candle_pattern_detector.dart';
 class FullFeatureBuilder {
   final _patternDetector = CandlePatternDetector();
 
+  /// Debug mode flag - set to true to enable detailed pattern logging
+  static const bool debugMode = false;
+
   /// Build complete 76-feature vector for 60 timesteps using SLIDING WINDOW
   /// Returns List<List<double>> of shape (60, 76)
   ///
@@ -50,13 +53,20 @@ class FullFeatureBuilder {
       throw ArgumentError('Need at least $timesteps candles, got $n');
     }
 
+    // DEBUG: Check allFeatures[997] BEFORE extraction (only in debug mode)
+    if (debugMode && n >= 998) {
+      final row997 = allFeatures[997];
+      final patterns997_11_13 = row997.sublist(11, 14).map((f) => f.toStringAsFixed(1)).join(', ');
+      debugPrint('🔍 DEBUG BEFORE EXTRACTION: allFeatures[997] Features[11:13] = [$patterns997_11_13]');
+    }
+
     final output = <List<double>>[];
     for (int i = startIdx; i < n; i++) {
       output.add(allFeatures[i]);
     }
 
-    // DEBUG: Log first and last timestep
-    if (output.isNotEmpty) {
+    // DEBUG: Log timestep features (only in debug mode)
+    if (debugMode && output.isNotEmpty) {
       final firstRow = output.first;
       final lastRow = output.last;
 
@@ -64,20 +74,69 @@ class FullFeatureBuilder {
       debugPrint('🔬 FEATURE DEBUG | First timestep (t=0, candle index=$startIdx)');
       final priceAction0 = firstRow.sublist(25, 30).map((f) => f.toStringAsFixed(4)).join(', ');
       debugPrint('   Features[25:30] (price action): [$priceAction0]');
-      final patterns0 = firstRow.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
-      debugPrint('   Features[0:6] (patterns): [$patterns0]');
+      final patterns0_6 = firstRow.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
+      debugPrint('   Features[0:6] (single-candle patterns): [$patterns0_6]');
+      final patterns11_13 = firstRow.sublist(11, 14).map((f) => f.toStringAsFixed(1)).join(', ');
+      debugPrint('   Features[11:13] (multi-candle patterns: bullish_eng, bearish_eng, piercing): [$patterns11_13]');
+
+      // Check timestep 55 (where Bearish Engulfing should be) and timestep 57
+      if (output.length >= 56) {
+        final row55 = output[55];
+        final patterns55_0_6 = row55.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
+        final patterns55_11_13 = row55.sublist(11, 14).map((f) => f.toStringAsFixed(1)).join(', ');
+        debugPrint('');
+        debugPrint('🔬 FEATURE DEBUG | Timestep 55 (candle index=${startIdx + 55})');
+        debugPrint('   Features[0:6] (single-candle patterns): [$patterns55_0_6]');
+        debugPrint('   Features[11:13] (multi-candle patterns: bullish_eng, bearish_eng, piercing): [$patterns55_11_13]');
+      }
+
+      if (output.length >= 58) {
+        final row57 = output[57];
+        final patterns57_0_6 = row57.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
+        final patterns57_11_13 = row57.sublist(11, 14).map((f) => f.toStringAsFixed(1)).join(', ');
+        debugPrint('');
+        debugPrint('🔬 FEATURE DEBUG | Timestep 57 (candle index=${startIdx + 57})');
+        debugPrint('   Features[0:6] (single-candle patterns): [$patterns57_0_6]');
+        debugPrint('   Features[11:13] (multi-candle patterns: bullish_eng, bearish_eng, piercing): [$patterns57_11_13]');
+      }
 
       debugPrint('');
       debugPrint('🔬 FEATURE DEBUG | Last timestep (t=59, candle index=${n-1})');
       final priceAction59 = lastRow.sublist(25, 30).map((f) => f.toStringAsFixed(4)).join(', ');
       debugPrint('   Features[25:30] (price action): [$priceAction59]');
-      final patterns59 = lastRow.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
-      debugPrint('   Features[0:6] (patterns): [$patterns59]');
+      final patterns59_6 = lastRow.sublist(0, 6).map((f) => f.toStringAsFixed(1)).join(', ');
+      debugPrint('   Features[0:6] (single-candle patterns): [$patterns59_6]');
+      final patterns59_11_13 = lastRow.sublist(11, 14).map((f) => f.toStringAsFixed(1)).join(', ');
+      debugPrint('   Features[11:13] (multi-candle patterns: bullish_eng, bearish_eng, piercing): [$patterns59_11_13]');
+
+      // Detailed pattern breakdown for last timestep (only in debug mode)
+      if (debugMode) {
+        debugPrint('');
+        debugPrint('📋 DETAILED PATTERN MAPPING for Last Timestep (t=59):');
+        final patternIndices = [0, 1, 2, 3, 4, 5, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]; // All patterns
+        final patternNames = ['doji', 'dragonfly_doji', 'gravestone_doji', 'long_legged_doji',
+                              'hammer', 'inverted_hammer', 'bullish_engulfing', 'bearish_engulfing',
+                              'piercing_line', 'dark_cloud_cover', 'bullish_harami', 'bearish_harami',
+                              'tweezer_bottom', 'tweezer_top', 'morning_star', 'evening_star',
+                              'three_white_soldiers', 'three_black_crows', 'rising_three', 'falling_three'];
+        for (int i = 0; i < patternIndices.length; i++) {
+          final idx = patternIndices[i];
+          final name = patternNames[i];
+          final value = lastRow[idx];
+          if (value > 0.0) {
+            debugPrint('   ✅ features[$idx] = $value → $name DETECTED');
+          }
+        }
+      }
     }
 
     debugPrint('🔍 FullFeatureBuilder: Generated ${output.length} timesteps × ${output.first.length} features');
 
-    return output;
+    // === PASS 3: Apply feature amplification to enhance weak signals ===
+    final amplifiedOutput = FeatureAmplifier.amplifyFeatures(output);
+    debugPrint('🔊 FeatureAmplifier: Applied signal enhancement to ${output.length} timesteps');
+
+    return amplifiedOutput;
   }
 
   /// Pre-calculate ALL features for ALL candles (PASS 1)
@@ -109,6 +168,14 @@ class FullFeatureBuilder {
       lows: lows,
       closes: closes,
       volumes: volumes,
+    );
+
+    // === PATTERN DETECTION LOGGING ===
+    _logPatternDetection(
+      candles: candles,
+      patterns: patterns,
+      patternOrder: patternOrder,
+      startIdx: n >= 60 ? n - 60 : 0,  // Log last 60 candles
     );
 
     final returns = _calculateReturns(closes);
@@ -308,6 +375,155 @@ class FullFeatureBuilder {
     }
 
     return output; // [n, 76]
+  }
+
+  /// Log pattern detection for debugging
+  /// Shows detected patterns for the last 60 candles
+  /// Detailed OHLC data only shown in debugMode
+  void _logPatternDetection({
+    required List<Candle> candles,
+    required Map<String, List<double>> patterns,
+    required List<String> patternOrder,
+    required int startIdx,
+  }) {
+    final n = candles.length;
+    int patternsDetected = 0;
+    final detectedPatterns = <String, List<int>>{};
+
+    // First pass: count total patterns detected and collect indices
+    for (final patternName in patternOrder.take(6)) {  // Only first 6 patterns (indices 0-5)
+      final patternValues = patterns[patternName]!;
+      final detectedIndices = <int>[];
+
+      for (int i = startIdx; i < n; i++) {
+        if (patternValues[i] > 0.0) {
+          patternsDetected++;
+          detectedIndices.add(i);
+        }
+      }
+
+      if (detectedIndices.isNotEmpty) {
+        detectedPatterns[patternName] = detectedIndices;
+      }
+    }
+
+    // Only show detailed pattern analysis in debug mode
+    if (debugMode) {
+      debugPrint('');
+      debugPrint('🔬 ════════════════════════════════════════════════════════════════');
+      debugPrint('🔬 PATTERN DETECTION ANALYSIS (Last 60 candles)');
+      debugPrint('🔬 ════════════════════════════════════════════════════════════════');
+      debugPrint('📊 Total patterns detected: $patternsDetected');
+      debugPrint('');
+    }
+
+    if (patternsDetected == 0 && debugMode) {
+      debugPrint('⚠️  NO PATTERNS DETECTED in last 60 candles');
+      debugPrint('   This is NORMAL for:');
+      debugPrint('   • Low volatility periods');
+      debugPrint('   • Short timeframes (5m, 15m)');
+      debugPrint('   • Stable/ranging markets');
+      debugPrint('');
+
+      // Show sample candles to verify data quality
+      if (n > 0) {
+        final lastCandle = candles[n - 1];
+        final body = (lastCandle.close - lastCandle.open).abs();
+        final range = lastCandle.high - lastCandle.low;
+        final bodyPct = range > 0 ? (body / range * 100) : 0;
+
+        debugPrint('📍 Last candle analysis:');
+        debugPrint('   Open:  \$${lastCandle.open.toStringAsFixed(2)}');
+        debugPrint('   High:  \$${lastCandle.high.toStringAsFixed(2)}');
+        debugPrint('   Low:   \$${lastCandle.low.toStringAsFixed(2)}');
+        debugPrint('   Close: \$${lastCandle.close.toStringAsFixed(2)}');
+        debugPrint('   Body:  ${bodyPct.toStringAsFixed(1)}% of range');
+        debugPrint('   Direction: ${lastCandle.close > lastCandle.open ? "BULLISH ▲" : "BEARISH ▼"}');
+      }
+    } else if (debugMode) {
+      // Show detailed info for each detected pattern
+      for (final entry in detectedPatterns.entries) {
+        final patternName = entry.key;
+        final indices = entry.value;
+
+        debugPrint('✅ Pattern: ${patternName.toUpperCase().replaceAll('_', ' ')}');
+        debugPrint('   Detected at ${indices.length} timestep(s): ${indices.map((i) => i - startIdx).join(', ')}');
+
+        // Show OHLC for first detection
+        if (indices.isNotEmpty) {
+          final idx = indices.first;
+          final candle = candles[idx];
+          final body = (candle.close - candle.open).abs();
+          final range = candle.high - candle.low;
+          final upperShadow = candle.high - math.max(candle.open, candle.close);
+          final lowerShadow = math.min(candle.open, candle.close) - candle.low;
+
+          debugPrint('   📊 Candle @ timestep ${idx - startIdx}:');
+          debugPrint('      Open:  \$${candle.open.toStringAsFixed(2)}');
+          debugPrint('      High:  \$${candle.high.toStringAsFixed(2)}');
+          debugPrint('      Low:   \$${candle.low.toStringAsFixed(2)}');
+          debugPrint('      Close: \$${candle.close.toStringAsFixed(2)}');
+          debugPrint('      Body: \$${body.toStringAsFixed(2)} (${(body/range*100).toStringAsFixed(1)}%)');
+          debugPrint('      Upper shadow: \$${upperShadow.toStringAsFixed(2)} (${(upperShadow/range*100).toStringAsFixed(1)}%)');
+          debugPrint('      Lower shadow: \$${lowerShadow.toStringAsFixed(2)} (${(lowerShadow/range*100).toStringAsFixed(1)}%)');
+          debugPrint('');
+        }
+      }
+    }
+
+    if (debugMode) {
+      debugPrint('🔬 ════════════════════════════════════════════════════════════════');
+      debugPrint('');
+    }
+
+    // === MINIMAL LOGGING: Check critical patterns in LAST 5 candles ===
+    // Log ALL multi-candle patterns for comprehensive trading signal analysis
+    // These patterns are always logged (even with debugMode=false) as they're critical for trading decisions
+
+    // Check multi-candle patterns with their feature indices
+    final multiCandlePatterns = [
+      'bullish_engulfing', 'bearish_engulfing', 'piercing_line', 'dark_cloud_cover',
+      'bullish_harami', 'bearish_harami', 'tweezer_bottom', 'tweezer_top',
+      'morning_star', 'evening_star', 'three_white_soldiers', 'three_black_crows',
+      'rising_three', 'falling_three'
+    ];
+    final multiCandleIndices = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]; // Feature indices for these patterns
+
+    for (int idx = 0; idx < multiCandlePatterns.length; idx++) {
+      final patternName = multiCandlePatterns[idx];
+      final featureIdx = multiCandleIndices[idx];
+      final patternValues = patterns[patternName]!;
+      final lastFivePatterns = <int>[];
+
+      for (int i = n - 5; i < n; i++) {
+        if (patternValues[i] > 0.0) {
+          lastFivePatterns.add(i);
+        }
+      }
+
+      if (lastFivePatterns.isNotEmpty) {
+        // Always log critical pattern detection
+        final timesteps = lastFivePatterns.map((idx) => idx - startIdx).toList();
+        debugPrint('🔥 ${patternName.toUpperCase().replaceAll('_', ' ')}: detected at timesteps ${timesteps.join(", ")}');
+
+        // Only show detailed OHLC in debug mode
+        if (debugMode) {
+          debugPrint('   → Detected at candle indices: ${lastFivePatterns.join(", ")}');
+          debugPrint('   → Should appear in features[$featureIdx] at timesteps ${timesteps.join(", ")}');
+
+          // Show pattern values and OHLC for debugging
+          for (final candleIdx in lastFivePatterns) {
+            if (candleIdx > 0 && candleIdx < candles.length) {
+              final prevCandle = candles[candleIdx - 1];
+              final currCandle = candles[candleIdx];
+              debugPrint('   → Candle[${candleIdx-1}]: O=${prevCandle.open.toStringAsFixed(2)} C=${prevCandle.close.toStringAsFixed(2)} (${prevCandle.close > prevCandle.open ? "BULL" : "BEAR"})');
+              debugPrint('   → Candle[$candleIdx]: O=${currCandle.open.toStringAsFixed(2)} C=${currCandle.close.toStringAsFixed(2)} (${currCandle.close > currCandle.open ? "BULL" : "BEAR"})');
+            }
+          }
+        }
+      }
+    }
+
   }
 
   /// Deterministic training signature (features order + scalers + lookbacks)
@@ -579,5 +795,133 @@ class FullFeatureBuilder {
     }
 
     return obv;
+  }
+}
+
+/// Feature Amplifier - enhances weak signals before model input
+/// Addresses the "zero patterns everywhere" problem by:
+/// 1. Pattern Enhancement - amplifies subtle candlestick patterns
+/// 2. Momentum Amplification - boosts directional momentum signals
+/// 3. Cross-Feature Correlation Enhancement - amplifies related features together
+class FeatureAmplifier {
+  /// Amplify weak signals before model input
+  /// Input: [60, 76] feature array (60 timesteps × 76 features)
+  /// Output: [60, 76] amplified feature array
+  static List<List<double>> amplifyFeatures(List<List<double>> features) {
+    if (features.isEmpty || features.first.length != 76) {
+      return features; // Safety: return unchanged if invalid
+    }
+
+    final amplified = <List<double>>[];
+
+    for (int t = 0; t < features.length; t++) {
+      final row = features[t];
+      final newRow = List<double>.from(row); // Copy original
+
+      // 1. PATTERN ENHANCEMENT (indices 0-24)
+      // Amplify subtle patterns that might be drowned out by noise
+      for (int i = 0; i < 25; i++) {
+        if (newRow[i] > 0.0 && newRow[i] < 0.5) {
+          // Weak pattern detected → amplify it
+          newRow[i] = newRow[i] * 2.0; // 2x amplification
+        }
+      }
+
+      // Detect and amplify multi-candle patterns (look back 3 timesteps)
+      if (t >= 2) {
+        final patternStrength = _detectSubtlePattern(
+          features[t - 2],
+          features[t - 1],
+          features[t],
+        );
+        if (patternStrength > 0.0) {
+          // Boost all pattern features when a multi-candle pattern is detected
+          for (int i = 0; i < 25; i++) {
+            if (newRow[i] > 0.0) {
+              newRow[i] = math.min(1.0, newRow[i] + patternStrength * 0.3);
+            }
+          }
+        }
+      }
+
+      // 2. MOMENTUM AMPLIFICATION
+      // Amplify directional momentum when multiple indicators align
+      // RSI (index 48), MACD histogram (index 52), Returns (index 25)
+      final rsi = row.length > 48 ? row[48] : 0.0;
+      final macdHist = row.length > 52 ? row[52] : 0.0;
+      final returns = row.length > 25 ? row[25] : 0.0;
+
+      // Check if momentum indicators align (bullish or bearish)
+      final bullishAlignment = (rsi > 0.5 && macdHist > 0.0 && returns > 0.0);
+      final bearishAlignment = (rsi < -0.5 && macdHist < 0.0 && returns < 0.0);
+
+      if (bullishAlignment || bearishAlignment) {
+        final amplificationFactor = 1.5;
+        if (row.length > 48) newRow[48] = rsi * amplificationFactor; // RSI
+        if (row.length > 52) newRow[52] = macdHist * amplificationFactor; // MACD
+        if (row.length > 25) newRow[25] = returns * amplificationFactor; // Returns
+      }
+
+      // 3. CROSS-FEATURE CORRELATION ENHANCEMENT
+      // When related features are weak but aligned, amplify them together
+      // Volume + Price action correlation
+      if (row.length > 30 && row.length > 40) {
+        final volumeFeature = row[30]; // Approximate volume feature
+        final priceAction = row[25]; // Returns
+
+        if ((volumeFeature > 0.0 && priceAction > 0.0) ||
+            (volumeFeature < 0.0 && priceAction < 0.0)) {
+          // Volume confirms price action → amplify both
+          if (volumeFeature.abs() < 0.5 && priceAction.abs() < 0.5) {
+            newRow[30] = volumeFeature * 1.3;
+            newRow[25] = priceAction * 1.3;
+          }
+        }
+      }
+
+      amplified.add(newRow);
+    }
+
+    return amplified;
+  }
+
+  /// Detect subtle multi-candle patterns (Hammer, Engulfing, Star patterns)
+  /// Returns strength of pattern (0.0 to 1.0)
+  static double _detectSubtlePattern(
+    List<double> t0,
+    List<double> t1,
+    List<double> t2,
+  ) {
+    if (t0.length < 25 || t1.length < 25 || t2.length < 25) {
+      return 0.0;
+    }
+
+    double strength = 0.0;
+
+    // Hammer pattern (index 4): small body, long lower wick
+    final hammer = (t2[4] > 0.0) ? t2[4] : 0.0;
+    if (hammer > 0.2) strength += 0.3;
+
+    // Shooting star pattern (index 6): small body, long upper wick
+    final shootingStar = (t2[6] > 0.0) ? t2[6] : 0.0;
+    if (shootingStar > 0.2) strength += 0.3;
+
+    // Bullish engulfing (index 11): t2 engulfs t1
+    final bullishEngulfing = (t2[11] > 0.0) ? t2[11] : 0.0;
+    if (bullishEngulfing > 0.3) strength += 0.4;
+
+    // Bearish engulfing (index 12): t2 engulfs t1
+    final bearishEngulfing = (t2[12] > 0.0) ? t2[12] : 0.0;
+    if (bearishEngulfing > 0.3) strength += 0.4;
+
+    // Morning star (index 19): 3-candle bullish reversal
+    final morningStar = (t2[19] > 0.0) ? t2[19] : 0.0;
+    if (morningStar > 0.2 && t1[4] > 0.1) strength += 0.5;
+
+    // Evening star (index 20): 3-candle bearish reversal
+    final eveningStar = (t2[20] > 0.0) ? t2[20] : 0.0;
+    if (eveningStar > 0.2 && t1[6] > 0.1) strength += 0.5;
+
+    return math.min(1.0, strength);
   }
 }

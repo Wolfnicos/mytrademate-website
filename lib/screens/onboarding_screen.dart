@@ -358,29 +358,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         children: [
           const SizedBox(height: 20),
 
-          // Logo with glow
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFC837), Color(0xFFFF8008)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFFC837).withOpacity(0.5),
-                  blurRadius: 40,
-                  spreadRadius: 10,
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.auto_awesome,
-              size: 60,
-              color: Colors.white,
+          // Logo
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.asset(
+              'assets/logo/mytrademate-logo.png',
+              width: 120,
+              height: 120,
+              fit: BoxFit.contain,
             ),
           ),
 
@@ -388,7 +373,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
           // Title
           Text(
-            'MyTradeMate',
+            'MyTradeMateApp',
             style: AppTheme.displayLarge.copyWith(
               fontSize: 32,
               fontWeight: FontWeight.bold,
@@ -485,7 +470,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 16),
 
           Text(
-            'Full access for 2 days, then €5.99/month or €57.50/year',
+            'Full access for 2 days, then €6.99/month or €67.10/year',
             style: AppTheme.bodyLarge.copyWith(
               fontSize: 17,
               color: AppTheme.getTextSecondary(context),
@@ -590,7 +575,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 _buildFeature('✓ Real-time market data', fontSize: 15),
                 const SizedBox(height: 16),
                 Text(
-                  '€5.99/month or €57.50/year (save 20%)',
+                  '€6.99/month or €67.10/year (save 20%)',
                   style: AppTheme.labelMedium.copyWith(
                     fontSize: 13,
                     color: AppTheme.primary,

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Mytrademate</string>
+	<string>MyTradeMate</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -50,10 +50,70 @@
 	<key>NSFaceIDUsageDescription</key>
 	<string>We use Face ID to securely authenticate you and protect your crypto portfolio.</string>
 
+	<!-- User Notifications - REQUIRED for AI Alerts -->
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>We send you notifications when AI detects trading opportunities for your portfolio.</string>
+
 	<!-- Encryption Export Compliance - REQUIRED for App Store -->
 	<!-- Set to false because we only use standard iOS encryption (HTTPS/TLS, Keychain) -->
 	<!-- No custom encryption algorithms implemented -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+
+	<!-- Network Access - Allow HTTPS connections to API endpoints -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Allow secure HTTPS connections to all domains -->
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<!-- Specific exception for Binance API -->
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>api.binance.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+			</dict>
+			<key>api.kraken.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+			</dict>
+			<key>api.coinbase.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+			</dict>
+			<key>api.exchange.coinbase.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+			</dict>
+		</dict>
+	</dict>
 </dict>
 </plist>

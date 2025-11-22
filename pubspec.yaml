@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+9
+version: 1.0.0+11
 
 environment:
   sdk: ^3.9.2
@@ -75,6 +75,8 @@ dependencies:
   # Local Notifications & Background Tasks (NO CLOUD!)
   flutter_local_notifications: ^17.0.0
   workmanager: ^0.9.0
+  permission_handler: ^12.0.1
+  pointycastle: ^4.0.0
 
 dev_dependencies:
   flutter_test:
@@ -86,6 +88,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -104,6 +107,7 @@ flutter:
     - assets/models/legacy/  # Legacy fallback models
     - assets/ml/  # NEW multi-timeframe models (6 coins × 3 timeframes = 18 models)
     - assets/models/model_registry.json
+    - assets/logo/  # App logo
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -130,3 +134,8 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "/Users/lupudragos/Desktop/Mytrademate poze instagram/logo/mytrademate-logo-1024.png"

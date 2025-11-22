@@ -6,7 +6,6 @@ import 'dart:convert' show utf8;
 // import '../services/full_feature_builder.dart';
 import '../services/binance_service.dart';
 import 'model_registry.dart';
-import 'crypto_ml_service.dart';
 
 /// Unified ML Service:
 /// - Loads Model Registry from assets
@@ -168,6 +167,9 @@ class UnifiedMLService {
     }
     final modelsToUse = selected.isNotEmpty ? selected : reg.selectModels(coinUpper: '*', timeframe: tfNorm);
 
+    // ADAPTIVE MODEL SELECTION: Filter models based on market conditions
+    final List<ModelEntry> adaptiveModels = _applyAdaptiveSelection(modelsToUse, features);
+
     // For execution, we rely on CryptoMLService interpreters naming convention
     // model ids align with coin+tf (e.g., btc_1h, general_1h)
     final probsAccum = List<double>.filled(3, 0.0);
@@ -176,20 +178,24 @@ class UnifiedMLService {
     final usedWeights = <double>[];
     final usedTemps = <double>[];
 
-    for (final m in modelsToUse) {
+    for (final m in adaptiveModels) {
       try {
         final Map<String, double> pMap = await _predictWithCryptoService(modelId: m.id, coin: m.coin, timeframe: m.tf, features: features);
         // Normalize incoming labels to registry order
         final List<double> p = _reorderToRegistry(pMap, m.labels, reg.labelOrder);
         // Apply bias on logits then temperature scaling
         final List<double> pCal = _calibrate(p, temperature: m.temp, bias: m.bias);
-        // Weighted sum
-        probsAccum[0] += pCal[0] * m.w;
-        probsAccum[1] += pCal[1] * m.w;
-        probsAccum[2] += pCal[2] * m.w;
-        totalW += m.w;
+
+        // TIME-BASED WEIGHT ADJUSTMENT: adjust weight based on trading session
+        final double adjustedWeight = _getTimeBasedWeight(m.id, m.w);
+
+        // Weighted sum with time-adjusted weights
+        probsAccum[0] += pCal[0] * adjustedWeight;
+        probsAccum[1] += pCal[1] * adjustedWeight;
+        probsAccum[2] += pCal[2] * adjustedWeight;
+        totalW += adjustedWeight;
         usedIds.add(m.id);
-        usedWeights.add(m.w);
+        usedWeights.add(adjustedWeight); // Log adjusted weight
         usedTemps.add(m.temp);
       } catch (e) {
         debugPrint('⚠️ UnifiedMLService: model ${m.id} failed → $e');
@@ -225,10 +231,44 @@ class UnifiedMLService {
     // Normalize final ensemble
     final List<double> pFinal = probsAccum.map((v) => v / totalW).toList(growable: false);
 
+    // Apply consensus bonus if multiple models strongly agree
+    final consensusResult = _applyConsensusBonus(pFinal, usedIds.length);
+    final List<double> pFinalWithBonus = consensusResult.probabilities;
+    final String consensusReason = consensusResult.reason;
+
+    // METADATA FILTER: Check signal quality before trading
+    final bool shouldTrade = _shouldTradeBasedOnMetadata(features);
+    if (!shouldTrade) {
+      // Low volume or poor market conditions - force HOLD
+      debugPrint('🚫 [Metadata Filter] LOW VOLUME or poor conditions → forcing HOLD');
+      _logTelemetry(
+        coin: coin,
+        tf: tfNorm,
+        ids: usedIds,
+        weights: usedWeights,
+        temps: usedTemps,
+        pFinal: pFinalWithBonus,
+        action: 'HOLD',
+        confidence: pFinalWithBonus[1],
+        confThresh: reg.thresholdForTimeframe(tfNorm),
+        featureHashOk: featureHashOk,
+        reason: 'metadata_filter_low_volume',
+      );
+      return UnifiedDecisionResult(
+        action: 'HOLD',
+        confidence: pFinalWithBonus[1],
+        probabilities: pFinalWithBonus,
+        timeframe: tfNorm,
+        usedModelIds: usedIds,
+        featureHashOk: featureHashOk,
+        reason: 'metadata_filter_low_volume',
+      );
+    }
+
     // Gating by timeframe threshold + optional risk adjustment based on volatility z-score
     double gate = reg.thresholdForTimeframe(tfNorm);
     double usedGate = gate;
-    String reason = 'ok';
+    String reason = consensusReason.isNotEmpty ? consensusReason : 'ok';
 
     // Optional: risk-based threshold bump if volatility is high
     final double? volZ = _estimateVolatilityZ(features);
@@ -236,8 +276,8 @@ class UnifiedMLService {
       usedGate = (gate + reg.risk!.volThreshIncrement).clamp(0.0, 0.95);
     }
 
-    final int argMax = _argmax(pFinal);
-    final double conf = pFinal[argMax];
+    final int argMax = _argmax(pFinalWithBonus);
+    final double conf = pFinalWithBonus[argMax];
 
     if (conf < usedGate) {
       // Telemetry
@@ -247,17 +287,17 @@ class UnifiedMLService {
         ids: usedIds,
         weights: usedWeights,
         temps: usedTemps,
-        pFinal: pFinal,
+        pFinal: pFinalWithBonus,
         action: 'HOLD',
-        confidence: pFinal[1],
+        confidence: pFinalWithBonus[1],
         confThresh: usedGate,
         featureHashOk: featureHashOk,
         reason: 'below_threshold',
       );
       return UnifiedDecisionResult(
         action: 'HOLD',
-        confidence: pFinal[1],
-        probabilities: pFinal,
+        confidence: pFinalWithBonus[1],
+        probabilities: pFinalWithBonus,
         timeframe: tfNorm,
         usedModelIds: usedIds,
         featureHashOk: featureHashOk,
@@ -273,17 +313,17 @@ class UnifiedMLService {
       ids: usedIds,
       weights: usedWeights,
       temps: usedTemps,
-      pFinal: pFinal,
+      pFinal: pFinalWithBonus,
       action: action,
       confidence: conf,
       confThresh: usedGate,
       featureHashOk: featureHashOk,
-      reason: 'ok',
+      reason: reason,
     );
     return UnifiedDecisionResult(
       action: action,
       confidence: conf,
-      probabilities: pFinal,
+      probabilities: pFinalWithBonus,
       timeframe: tfNorm,
       usedModelIds: usedIds,
       featureHashOk: featureHashOk,
@@ -479,6 +519,215 @@ class UnifiedMLService {
       return null;
     }
   }
+
+  /// TIME-BASED WEIGHT ADJUSTMENT: Adjust model weights based on trading session
+  /// Asia session (1-8 UTC): Trust 1h models more (calmer markets)
+  /// Europe session (8-14 UTC): Balanced weights
+  /// US session (14-22 UTC): Trust 5m/15m models more (high volatility)
+  /// Does NOT modify features - only adjusts voting weights
+  double _getTimeBasedWeight(String modelId, double baseWeight) {
+    try {
+      final now = DateTime.now().toUtc();
+      final hour = now.hour;
+
+      // Define weight multipliers for each session
+      double multiplier = 1.0;
+
+      // ASIA SESSION (1-8 UTC): Calmer markets, trust longer timeframes
+      if (hour >= 1 && hour < 8) {
+        if (modelId.contains('1h') || modelId.contains('4h')) {
+          multiplier = 1.4; // Boost 1h/4h models
+        } else if (modelId.contains('5m') || modelId.contains('15m')) {
+          multiplier = 0.7; // Reduce 5m/15m models
+        }
+        debugPrint('🌏 [Asia Session] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} → ${(baseWeight * multiplier).toStringAsFixed(2)}');
+      }
+      // EUROPE SESSION (8-14 UTC): Balanced, use default weights
+      else if (hour >= 8 && hour < 14) {
+        multiplier = 1.0; // No adjustment
+        debugPrint('🇪🇺 [Europe Session] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} (unchanged)');
+      }
+      // US SESSION (14-22 UTC): High volatility, trust shorter timeframes
+      else if (hour >= 14 && hour < 22) {
+        if (modelId.contains('5m') || modelId.contains('15m')) {
+          multiplier = 1.5; // Boost 5m/15m models
+        } else if (modelId.contains('1d') || modelId.contains('4h')) {
+          multiplier = 0.5; // Reduce 1d/4h models
+        }
+        debugPrint('🇺🇸 [US Session] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} → ${(baseWeight * multiplier).toStringAsFixed(2)}');
+      }
+      // OFF-HOURS (22-1 UTC): Low liquidity, use balanced weights
+      else {
+        multiplier = 1.0;
+        debugPrint('🌙 [Off-Hours] Model $modelId: weight ${baseWeight.toStringAsFixed(2)} (unchanged)');
+      }
+
+      return baseWeight * multiplier;
+    } catch (e) {
+      debugPrint('⚠️ [Time-Based Weights] Error: $e - using base weight');
+      return baseWeight; // Safe default: use original weight
+    }
+  }
+
+  /// METADATA FILTER: Check if we should trade based on market conditions
+  /// Returns false if volume is too low (< 30% of average)
+  /// Does NOT modify features - only reads from them
+  bool _shouldTradeBasedOnMetadata(List<List<double>> features) {
+    try {
+      if (features.isEmpty || features.first.length <= 4) {
+        return true; // Safe default: allow trading if we can't calculate
+      }
+
+      // Volume is at feature index 4
+      final volumeValues = features.map((row) => row[4]).toList();
+      if (volumeValues.isEmpty || volumeValues.length < 2) {
+        return true; // Safe default
+      }
+
+      // Calculate average volume
+      final avgVolume = volumeValues.reduce((a, b) => a + b) / volumeValues.length;
+
+      // Get latest volume
+      final latestVolume = volumeValues.last;
+
+      // Skip trading if volume is too low (< 30% of average)
+      if (latestVolume < avgVolume * 0.3) {
+        debugPrint('📉 [Volume Check] Current: ${latestVolume.toStringAsFixed(2)}, Avg: ${avgVolume.toStringAsFixed(2)} (${((latestVolume / avgVolume) * 100).toStringAsFixed(1)}%)');
+        return false; // Low volume - don't trade
+      }
+
+      return true; // Normal volume - allow trading
+    } catch (e) {
+      debugPrint('⚠️ [Metadata Filter] Error: $e - defaulting to ALLOW trading');
+      return true; // Safe default: allow trading on error
+    }
+  }
+
+  /// ADAPTIVE MODEL SELECTION: Filter models based on market conditions
+  /// High volatility → exclude long-timeframe models (1d, 4h)
+  /// Low volume → trust only higher timeframes (1h, 1d)
+  /// Normal conditions → use all models
+  List<ModelEntry> _applyAdaptiveSelection(List<ModelEntry> models, List<List<double>> features) {
+    if (models.isEmpty || features.isEmpty) {
+      return models;
+    }
+
+    // Calculate market conditions from features
+    final double? atr = _calculateATR(features);
+    final double? volumePercentile = _calculateVolumePercentile(features);
+
+    // If we can't calculate conditions, use all models (safe fallback)
+    if (atr == null || volumePercentile == null) {
+      debugPrint('📊 [Adaptive Selection] Using all ${models.length} models (no market data)');
+      return models;
+    }
+
+    // HIGH VOLATILITY: Exclude long-timeframe models (too slow to react)
+    if (atr > 2.0) {
+      final filtered = models.where((m) => !['1d', '7d', '4h'].contains(m.tf)).toList();
+      if (filtered.isNotEmpty) {
+        debugPrint('⚡ [Adaptive Selection] HIGH VOLATILITY (ATR=$atr) → using ${filtered.length}/${models.length} models (excluded 1d/4h)');
+        return filtered;
+      }
+    }
+
+    // LOW VOLUME: Trust only higher timeframes (less noise)
+    if (volumePercentile < 0.30) {  // Fixed: 0.30 not 30 (0-1 scale)
+      final filtered = models.where((m) => ['1h', '4h', '1d', '7d'].contains(m.tf)).toList();
+      if (filtered.isNotEmpty) {
+        debugPrint('🔇 [Adaptive Selection] LOW VOLUME (percentile=${(volumePercentile * 100).toStringAsFixed(1)}%) → using ${filtered.length}/${models.length} models (1h+ only)');
+        return filtered;
+      }
+    }
+
+    // NORMAL CONDITIONS: Use all models
+    debugPrint('✅ [Adaptive Selection] NORMAL CONDITIONS (ATR=${atr.toStringAsFixed(2)}%, vol=${(volumePercentile * 100).toStringAsFixed(1)}%) → using all ${models.length} models');
+    return models;
+  }
+
+  /// Calculate ATR (Average True Range) from features
+  /// ATR is typically in feature indices 20-25 (depending on feature engineering)
+  double? _calculateATR(List<List<double>> features) {
+    try {
+      // ATR is feature index 21 in our 76-feature pipeline
+      // (close, open, high, low, volume, sma5-200, ema12-200, rsi, macd, bb, atr, obv, etc.)
+      final atrValues = features.map((row) => row.length > 21 ? row[21] : 0.0).toList();
+      if (atrValues.isEmpty) return null;
+
+      // Return average ATR across all candles
+      return atrValues.reduce((a, b) => a + b) / atrValues.length;
+    } catch (e) {
+      debugPrint('⚠️ [ATR Calculation] Failed: $e');
+      return null;
+    }
+  }
+
+  /// Calculate volume percentile from features
+  /// Returns percentile (0-100) of current volume vs recent history
+  double? _calculateVolumePercentile(List<List<double>> features) {
+    try {
+      // Volume is feature index 4 in our 76-feature pipeline
+      final volumeValues = features.map((row) => row.length > 4 ? row[4] : 0.0).toList();
+      if (volumeValues.isEmpty || volumeValues.length < 2) return null;
+
+      // Calculate percentile of latest volume vs historical
+      final latestVolume = volumeValues.last;
+      final sorted = List<double>.from(volumeValues)..sort();
+      final rank = sorted.indexWhere((v) => v >= latestVolume);
+
+      return (rank / sorted.length) * 100.0;
+    } catch (e) {
+      debugPrint('⚠️ [Volume Percentile] Failed: $e');
+      return null;
+    }
+  }
+
+  /// Apply consensus bonus when multiple models strongly agree
+  /// Returns modified probabilities with potential confidence boost
+  _ConsensusResult _applyConsensusBonus(List<double> probs, int modelCount) {
+    // Need at least 3 models for meaningful consensus
+    if (modelCount < 3) {
+      return _ConsensusResult(probabilities: probs, reason: '');
+    }
+
+    // Check if we have strong agreement (one action has >55% probability)
+    final int argMax = _argmax(probs);
+    final double maxProb = probs[argMax];
+
+    if (maxProb < 0.55) {
+      // No strong consensus
+      return _ConsensusResult(probabilities: probs, reason: '');
+    }
+
+    // Apply consensus bonus: boost the winning action by up to 15%
+    // The more models agree, the stronger the boost
+    final double consensusStrength = (maxProb - 0.55) / 0.45; // 0.0 to 1.0
+    final double boost = 0.15 * consensusStrength; // Up to 15% boost
+
+    // Create boosted probabilities
+    final List<double> boosted = List<double>.from(probs);
+    boosted[argMax] = math.min(0.95, boosted[argMax] + boost);
+
+    // Renormalize to ensure sum = 1.0
+    final double sum = boosted.reduce((a, b) => a + b);
+    final List<double> normalized = boosted.map((p) => p / sum).toList(growable: false);
+
+    final String action = argMax == 0 ? 'SELL' : (argMax == 2 ? 'BUY' : 'HOLD');
+    debugPrint('🤝 [Consensus Bonus] $modelCount models agree on $action: ${maxProb.toStringAsFixed(3)} → ${normalized[argMax].toStringAsFixed(3)} (+${boost.toStringAsFixed(3)})');
+
+    return _ConsensusResult(
+      probabilities: normalized,
+      reason: 'consensus_boost_$action',
+    );
+  }
+}
+
+/// Result of consensus bonus calculation
+class _ConsensusResult {
+  final List<double> probabilities;
+  final String reason;
+
+  _ConsensusResult({required this.probabilities, required this.reason});
 }
 
 // Global singleton

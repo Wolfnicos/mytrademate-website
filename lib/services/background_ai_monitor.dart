@@ -31,6 +31,26 @@ void callbackDispatcher() {
       // Get timeframe (default: 4h)
       final timeframe = prefs.getString('alert_timeframe') ?? '4h';
 
+      // Get exchange name (default: binance)
+      final exchangeName = prefs.getString('ai_alerts_exchange') ?? 'binance';
+
+      // Build correct symbol based on exchange
+      String buildSymbol(String coin, String exchange) {
+        switch (exchange.toLowerCase()) {
+          case 'kraken':
+            // Kraken uses XBT for Bitcoin
+            final krakenCoin = coin == 'BTC' ? 'XBT' : coin;
+            return '${krakenCoin}EUR';
+          case 'coinbase':
+            // Coinbase uses hyphen separator
+            return '$coin-EUR';
+          case 'binance':
+          default:
+            // Binance uses direct concatenation
+            return '${coin}EUR';
+        }
+      }
+
       // Initialize ML service
       final mlService = CryptoMLService();
       await mlService.initialize();
@@ -44,23 +64,47 @@ void callbackDispatcher() {
       // Check each coin
       for (final coin in coinsJson) {
         try {
+          final symbol = buildSymbol(coin, exchangeName);
+          debugPrint('');
+          debugPrint('🔍 ==========================================');
+          debugPrint('🔍 BACKGROUND CHECK: $coin on $exchangeName');
+          debugPrint('🔍 Symbol: $symbol, Timeframe: $timeframe');
+          debugPrint('🔍 Threshold: ${(threshold * 100).toStringAsFixed(0)}%');
+          debugPrint('🔍 ==========================================');
+
           final prediction = await mlService.getPrediction(
             coin: coin,
-            symbol: '${coin}EUR',
+            symbol: symbol,
             timeframe: timeframe,
-            silent: true, // Don't print debug logs in background
+            silent: false, // SHOW ALL DEBUG LOGS to understand what's happening
           );
 
           final currentConfidence = prediction.confidence;
           final previousConfidence = prevConfidences[coin] ?? 0.0;
           final momentum = currentConfidence - previousConfidence;
 
+          debugPrint('');
+          debugPrint('📊 CONFIDENCE ANALYSIS:');
+          debugPrint('   Previous: ${(previousConfidence * 100).toStringAsFixed(1)}%');
+          debugPrint('   Current:  ${(currentConfidence * 100).toStringAsFixed(1)}%');
+          debugPrint('   Momentum: ${(momentum * 100).toStringAsFixed(1)}%');
+          debugPrint('   Action: ${prediction.action}');
+          debugPrint('');
+
           // Save current confidence for next check
           await prefs.setDouble('prev_confidence_$coin', currentConfidence);
 
           // ALERT 1: High confidence opportunity
-          if (currentConfidence > threshold &&
-              previousConfidence < threshold - 0.05) {
+          final shouldSendOpportunityAlert = currentConfidence > threshold &&
+              previousConfidence < threshold - 0.05;
+
+          debugPrint('🔔 ALERT CHECK 1 (Opportunity):');
+          debugPrint('   Current > threshold? ${currentConfidence > threshold} (${(currentConfidence * 100).toStringAsFixed(1)}% > ${(threshold * 100).toStringAsFixed(0)}%)');
+          debugPrint('   Previous < threshold-5%? ${previousConfidence < threshold - 0.05} (${(previousConfidence * 100).toStringAsFixed(1)}% < ${((threshold - 0.05) * 100).toStringAsFixed(0)}%)');
+          debugPrint('   → Will send alert? $shouldSendOpportunityAlert');
+
+          if (shouldSendOpportunityAlert) {
+            debugPrint('🔔 SENDING OPPORTUNITY ALERT for $coin!');
             await LocalNotificationService.showOpportunityAlert(
               coin: coin,
               confidence: currentConfidence,
@@ -70,8 +114,16 @@ void callbackDispatcher() {
           }
 
           // ALERT 2: Strong momentum (>3% change)
-          if (momentum.abs() > 0.03) {
+          final shouldSendMomentumAlert = momentum.abs() > 0.03;
+
+          debugPrint('');
+          debugPrint('🔔 ALERT CHECK 2 (Momentum):');
+          debugPrint('   |Momentum| > 3%? ${momentum.abs() > 0.03} (${(momentum.abs() * 100).toStringAsFixed(1)}% > 3.0%)');
+          debugPrint('   → Will send alert? $shouldSendMomentumAlert');
+
+          if (shouldSendMomentumAlert) {
             final trend = momentum > 0 ? '📈 ACCELERATING' : '📉 REVERSAL RISK';
+            debugPrint('🔔 SENDING MOMENTUM ALERT for $coin!');
             await LocalNotificationService.showMomentumAlert(
               coin: coin,
               momentum: momentum,
@@ -79,7 +131,9 @@ void callbackDispatcher() {
             );
           }
 
-          debugPrint('✅ $coin: ${(currentConfidence * 100).toStringAsFixed(1)}% (momentum: ${(momentum * 100).toStringAsFixed(1)}%)');
+          debugPrint('');
+          debugPrint('✅ $coin check complete: ${(currentConfidence * 100).toStringAsFixed(1)}% ${prediction.action}');
+          debugPrint('==========================================');
         } catch (e) {
           debugPrint('❌ Error checking $coin: $e');
         }
@@ -98,6 +152,24 @@ void callbackDispatcher() {
 class BackgroundAIMonitor {
   static const String _taskName = 'ai_monitoring_task';
 
+  /// Calculate adaptive polling interval based on timeframe
+  /// - 5M → check every 5 minutes
+  /// - 15M → check every 15 minutes
+  /// - 1H+ → check every 30 minutes
+  static Duration _getPollingInterval(String timeframe) {
+    switch (timeframe) {
+      case '5m':
+        return const Duration(minutes: 5);
+      case '15m':
+        return const Duration(minutes: 15);
+      case '1h':
+      case '4h':
+      case '1d':
+      default:
+        return const Duration(minutes: 30);
+    }
+  }
+
   /// Initialize background monitoring
   static Future<void> initialize() async {
     // Workmanager only works on Android
@@ -112,10 +184,15 @@ class BackgroundAIMonitor {
     }
   }
 
-  /// Start monitoring
+  /// Start monitoring with adaptive frequency based on timeframe
   static Future<void> startMonitoring({
-    Duration frequency = const Duration(minutes: 30),
+    required String exchangeName,
   }) async {
+    // Read timeframe from SharedPreferences to calculate adaptive frequency
+    final prefs = await SharedPreferences.getInstance();
+    final timeframe = prefs.getString('alert_timeframe') ?? '4h';
+    final frequency = _getPollingInterval(timeframe);
+
     // Background monitoring only works on Android
     if (Platform.isAndroid) {
       await Workmanager().registerPeriodicTask(
@@ -128,15 +205,16 @@ class BackgroundAIMonitor {
           requiresBatteryNotLow: true, // Don't drain battery
         ),
       );
-      debugPrint('🚀 Background monitoring started (every ${frequency.inMinutes} minutes)');
+      debugPrint('🚀 Background monitoring started: $timeframe → check every ${frequency.inMinutes} minutes');
     } else {
       // iOS: Just save the enabled state, notifications work in foreground
       debugPrint('⚠️  iOS: Background monitoring limited - alerts work when app is open');
     }
 
-    // Save enabled state
-    final prefs = await SharedPreferences.getInstance();
+    // Save enabled state and exchange name
     await prefs.setBool('ai_alerts_enabled', true);
+    await prefs.setString('ai_alerts_exchange', exchangeName);
+    debugPrint('📝 AI Alerts exchange set to: $exchangeName');
   }
 
   /// Stop monitoring
@@ -172,11 +250,21 @@ class BackgroundAIMonitor {
     debugPrint('📝 Confidence threshold updated: ${(threshold * 100).toStringAsFixed(0)}%');
   }
 
-  /// Update alert timeframe
+  /// Update alert timeframe and restart monitoring with new interval
   static Future<void> setAlertTimeframe(String timeframe) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('alert_timeframe', timeframe);
-    debugPrint('📝 Alert timeframe updated: $timeframe');
+
+    // If monitoring is active, restart with new adaptive interval
+    final isActive = prefs.getBool('ai_alerts_enabled') ?? false;
+    if (isActive) {
+      final exchangeName = prefs.getString('ai_alerts_exchange') ?? 'binance';
+      await stopMonitoring();
+      await startMonitoring(exchangeName: exchangeName);
+      debugPrint('🔄 Restarted monitoring with new timeframe: $timeframe → ${_getPollingInterval(timeframe).inMinutes} min');
+    } else {
+      debugPrint('📝 Alert timeframe updated: $timeframe');
+    }
   }
 
   /// Get current settings

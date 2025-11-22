@@ -10,8 +10,8 @@ class CryptoAvatar extends StatelessWidget {
   final double size;
   final bool showBorder;
 
-  // Cache of known unavailable logos (WLFI, TRUMP are too new)
-  static final Set<String> _knownUnavailable = {'WLFI', 'TRUMP'};
+  // Cache of known unavailable logos (too new or delisted coins)
+  static final Set<String> _knownUnavailable = {'WLFI', 'TRUMP', 'ANC', 'UST', 'LUNA'};
   static final Set<String> _loggedErrors = {};
 
   const CryptoAvatar({

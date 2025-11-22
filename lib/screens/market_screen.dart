@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import '../models/candle.dart';
-import '../services/binance_service.dart';
 import '../services/app_settings_service.dart';
 import '../services/user_coins_service.dart';
 import '../theme/app_theme.dart';
@@ -11,6 +10,7 @@ import '../widgets/crypto_avatar.dart';
 import '../widgets/upgrade_banner.dart';
 import '../utils/responsive.dart';
 import '../providers/subscription_provider.dart';
+import '../providers/exchange_provider.dart';
 import 'paywall_screen.dart';
 
 class MarketScreen extends StatefulWidget {
@@ -21,7 +21,6 @@ class MarketScreen extends StatefulWidget {
 }
 
 class _MarketScreenState extends State<MarketScreen> {
-  final BinanceService _binance = BinanceService();
   final Map<String, Map<String, double>> _tickers = {};
   String _interval = '4h'; // Default to 4H (free tier)
   String _selectedSymbol = 'BTCUSDT';
@@ -32,14 +31,19 @@ class _MarketScreenState extends State<MarketScreen> {
   List<String> _userCoins = []; // Dynamic coin list from UserCoinsService
 
   List<List<String>> get _symbols {
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final exchange = exchangeProvider.currentExchange;
     final q = AppSettingsService().quoteCurrency.toUpperCase();
+
     // Use UserCoinsService coins or fallback to default TOP 10
     final coins = _userCoins.isNotEmpty ? _userCoins : UserCoinsService.defaultCoins;
+
+    // Build trading pairs using exchange-specific format
     return coins.map((coin) => [
-      '$coin$q',
-      '${coin}USDT',
-      '${coin}EUR',
-      '${coin}USDC',
+      exchange.buildTradingPair(coin, q),
+      exchange.buildTradingPair(coin, 'USDT'),
+      exchange.buildTradingPair(coin, 'EUR'),
+      exchange.buildTradingPair(coin, 'USDC'),
     ]).toList();
   }
 
@@ -47,8 +51,7 @@ class _MarketScreenState extends State<MarketScreen> {
   void initState() {
     super.initState();
     debugPrint('📍 Market: initState() - adding UserCoinsService listener');
-    final q = AppSettingsService().quoteCurrency.toUpperCase();
-    _selectedSymbol = 'BTC$q';
+
     _loadUserCoins();
 
     // Listen to quote currency changes and reload data
@@ -57,12 +60,45 @@ class _MarketScreenState extends State<MarketScreen> {
     // Listen to UserCoinsService changes (when API added/removed in Settings)
     UserCoinsService().addListener(_onCoinsChanged);
     debugPrint('✅ Market: UserCoinsService listener added');
+
+    // Initialize selected symbol with correct exchange format
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+        final exchange = exchangeProvider.currentExchange;
+        final q = AppSettingsService().quoteCurrency.toUpperCase();
+        setState(() {
+          _selectedSymbol = exchange.buildTradingPair('BTC', q);
+        });
+
+        // Listen to exchange changes and reload data
+        exchangeProvider.addListener(_onExchangeChanged);
+      }
+    });
   }
 
   /// Called when UserCoinsService notifies that coins changed
   void _onCoinsChanged() {
     debugPrint('📢 Market: Coins changed, reloading...');
     _loadUserCoins();
+  }
+
+  /// Called when ExchangeProvider notifies that exchange changed
+  void _onExchangeChanged() {
+    debugPrint('Market: Exchange changed, reloading data...');
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final exchange = exchangeProvider.currentExchange;
+    final q = AppSettingsService().quoteCurrency.toUpperCase();
+
+    setState(() {
+      _selectedSymbol = exchange.buildTradingPair('BTC', q);
+      _loadingTickers = true;
+      _loadingChart = true;
+      _candles = []; // Clear old candles to prevent showing stale data
+      _tickers.clear(); // Clear old tickers
+    });
+    _refreshTickers();
+    _loadChart();
   }
 
   Future<void> _loadUserCoins() async {
@@ -82,27 +118,39 @@ class _MarketScreenState extends State<MarketScreen> {
   void dispose() {
     AppSettingsService().removeListener(_onSettingsChanged);
     UserCoinsService().removeListener(_onCoinsChanged);
+    try {
+      Provider.of<ExchangeProvider>(context, listen: false).removeListener(_onExchangeChanged);
+    } catch (e) {
+      // Ignore if provider not available
+    }
     super.dispose();
   }
 
   void _onSettingsChanged() {
     // Reload tickers and chart when quote currency changes
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final exchange = exchangeProvider.currentExchange;
     final q = AppSettingsService().quoteCurrency.toUpperCase();
     debugPrint('Market: Quote currency changed to $q, reloading data...');
     setState(() {
-      _selectedSymbol = 'BTC$q';
+      _selectedSymbol = exchange.buildTradingPair('BTC', q);
       _loadingTickers = true;
       _loadingChart = true;
+      _candles = []; // Clear old candles to prevent showing stale data
+      _tickers.clear(); // Clear old tickers
     });
     _refreshTickers();
     _loadChart();
   }
 
   Future<void> _refreshTickers() async {
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final exchange = exchangeProvider.currentExchange;
+
     setState(() => _loadingTickers = true);
     for (final List<String> symbolList in _symbols) {
       try {
-        final Map<String, double> t = await _binance.fetchTicker24hWithFallback(symbolList);
+        final Map<String, double> t = await exchange.fetchTicker24hWithFallback(symbolList);
         if (mounted) {
           setState(() => _tickers[symbolList.first] = t);
         }
@@ -138,17 +186,32 @@ class _MarketScreenState extends State<MarketScreen> {
         limit = 60;  // Default fallback
       }
 
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
+
       // Find the symbol list for fallback (try multiple quote currencies)
       final List<String> symbolListForFallback = _symbols.firstWhere(
         (list) => list.first == _selectedSymbol,
         orElse: () => [_selectedSymbol], // Fallback to just the symbol itself
       );
 
-      final List<Candle> klines = await _binance.fetchKlinesWithFallback(
+      List<Candle> klines = await exchange.fetchKlinesWithFallback(
         symbolListForFallback,
         _interval,
         limit: limit,
       );
+
+      // CRITICAL: Sort candles by time (ascending) to ensure proper order
+      // Some exchanges may return candles in descending order
+      klines.sort((a, b) => a.openTime.compareTo(b.openTime));
+
+      // DEBUG: Log the candle data received
+      if (klines.isNotEmpty) {
+        debugPrint('📊 [Market] Loaded ${klines.length} candles for $_interval');
+        debugPrint('📊 [Market] First candle: open=${klines.first.open}, close=${klines.first.close}, time=${klines.first.openTime}');
+        debugPrint('📊 [Market] Last candle: open=${klines.last.open}, close=${klines.last.close}, time=${klines.last.openTime}');
+      }
+
       final List<CandleData> data = <CandleData>[];
       for (int i = 0; i < klines.length; i++) {
         final Candle c = klines[i];
@@ -281,17 +344,38 @@ class _MarketScreenState extends State<MarketScreen> {
                                 style: AppTheme.headingLarge,
                               ),
                               const SizedBox(height: AppTheme.spacing4),
-                              if (_candles.isNotEmpty)
-                                Text(
-                                  prefix + (_candles.last.close >= 100
-                                      ? _candles.last.close.toStringAsFixed(0)
-                                      : _candles.last.close.toStringAsFixed(4)),
-                                  style: AppTheme.monoLarge.copyWith(
-                                    color: _candles.last.close > _candles.last.open
-                                        ? AppTheme.buyGreen
-                                        : AppTheme.sellRed,
-                                  ),
-                                ),
+                              Builder(
+                                builder: (context) {
+                                  // Get price from candles if available, otherwise from ticker
+                                  final double price = _candles.length >= 2
+                                      ? _candles[_candles.length - 2].close
+                                      : (_tickers[_selectedSymbol]?['lastPrice'] ?? 0.0);
+
+                                  if (price == 0.0) {
+                                    return Text(
+                                      '${prefix}—.——',
+                                      style: AppTheme.monoLarge.copyWith(color: AppTheme.textSecondary),
+                                    );
+                                  }
+
+                                  final priceText = prefix + (price >= 100
+                                      ? price.toStringAsFixed(0)
+                                      : price.toStringAsFixed(4));
+                                  debugPrint('💰 [Market] Displaying price: $priceText for $_selectedSymbol');
+
+                                  // Determine color from candles if available, otherwise neutral
+                                  final color = _candles.length >= 2
+                                      ? (_candles[_candles.length - 2].close > _candles[_candles.length - 2].open
+                                          ? AppTheme.buyGreen
+                                          : AppTheme.sellRed)
+                                      : AppTheme.textPrimary;
+
+                                  return Text(
+                                    priceText,
+                                    style: AppTheme.monoLarge.copyWith(color: color),
+                                  );
+                                },
+                              ),
                             ],
                           ),
                           Container(
@@ -331,6 +415,7 @@ class _MarketScreenState extends State<MarketScreen> {
                                     ),
                                   )
                                 : CandlestickChart(
+                                    key: ValueKey('${_selectedSymbol}_$_interval'),
                                     data: _candles,
                                     bullColor: AppTheme.buyGreen,
                                     bearColor: AppTheme.sellRed,
@@ -384,7 +469,14 @@ class _MarketScreenState extends State<MarketScreen> {
             MaterialPageRoute(builder: (context) => const PaywallScreen()),
           );
         } else {
-          setState(() => _interval = value);
+          debugPrint('🔄 [Market] User changed timeframe to $value (old: $_interval)');
+          setState(() {
+            _interval = value;
+            _candles = []; // Clear old candles when changing timeframe
+            _loadingChart = true;
+          });
+          debugPrint('🔄 [Market] Cleared _candles, now length=${_candles.length}');
+          debugPrint('🔄 [Market] Calling _loadChart() for $_interval');
           _loadChart();
         }
       },
@@ -421,6 +513,8 @@ class _MarketScreenState extends State<MarketScreen> {
 
   List<Widget> _buildTickerCards(String quote, String prefix) {
     final q = quote.toUpperCase();
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final exchange = exchangeProvider.currentExchange;
 
     Widget buildCard(String base, String key) {
       final t = _tickers[key];
@@ -432,7 +526,10 @@ class _MarketScreenState extends State<MarketScreen> {
 
       return GestureDetector(
         onTap: () {
-          setState(() => _selectedSymbol = symbol);
+          setState(() {
+            _selectedSymbol = symbol;
+            _candles = []; // Clear old candles to prevent showing stale BTC price
+          });
           _loadChart();
         },
         child: Container(
@@ -442,13 +539,13 @@ class _MarketScreenState extends State<MarketScreen> {
           padding: const EdgeInsets.all(AppTheme.spacing12),
           decoration: BoxDecoration(
             gradient: isSelected ? AppTheme.primaryGradient : null,
-            color: isSelected ? null : (Theme.of(context).brightness == Brightness.dark 
-                ? AppTheme.glassWhite 
+            color: isSelected ? null : (Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.glassWhite
                 : Colors.grey[100]),
             borderRadius: BorderRadius.circular(AppTheme.radiusMD),
             border: Border.all(
-              color: isSelected ? Colors.transparent : (Theme.of(context).brightness == Brightness.dark 
-                  ? AppTheme.glassBorder 
+              color: isSelected ? Colors.transparent : (Theme.of(context).brightness == Brightness.dark
+                  ? AppTheme.glassBorder
                   : Colors.grey[300]!),
               width: 1.5,
             ),
@@ -471,8 +568,8 @@ class _MarketScreenState extends State<MarketScreen> {
                     child: Text(
                       base,
                       style: AppTheme.bodyMedium.copyWith(
-                        color: isSelected ? Colors.white : (Theme.of(context).brightness == Brightness.dark 
-                            ? AppTheme.textPrimary 
+                        color: isSelected ? Colors.white : (Theme.of(context).brightness == Brightness.dark
+                            ? AppTheme.textPrimary
                             : AppTheme.textPrimaryLight),
                         fontWeight: FontWeight.w600,
                       ),
@@ -488,8 +585,8 @@ class _MarketScreenState extends State<MarketScreen> {
               Text(
                 price > 0 ? prefix + (price >= 100 ? price.toStringAsFixed(0) : price.toStringAsFixed(4)) : '—',
                 style: AppTheme.monoMedium.copyWith(
-                  color: isSelected ? Colors.white : (Theme.of(context).brightness == Brightness.dark 
-                      ? AppTheme.textPrimary 
+                  color: isSelected ? Colors.white : (Theme.of(context).brightness == Brightness.dark
+                      ? AppTheme.textPrimary
                       : AppTheme.textPrimaryLight),
                   fontWeight: FontWeight.w600,
                 ),
@@ -541,7 +638,8 @@ class _MarketScreenState extends State<MarketScreen> {
 
     // Use _userCoins dynamically (TOP 10 default or user's coins from API)
     final coins = _userCoins.isNotEmpty ? _userCoins : UserCoinsService.defaultCoins;
-    return coins.map((coin) => buildCard(coin, '$coin$q')).toList();
+    // Use exchange-specific format for ticker lookup key (e.g., BTC-EUR for Coinbase, XBTEUR for Kraken)
+    return coins.map((coin) => buildCard(coin, exchange.buildTradingPair(coin, q))).toList();
   }
 }
 
@@ -614,8 +712,9 @@ class CandlestickChart extends StatelessWidget {
       );
     }
 
-    // Get current price (last candle close)
-    final double currentPrice = data.last.close;
+    // Get current price from LAST CLOSED candle (second-to-last in array)
+    // The last candle might be incomplete/current, so we use the penultimate one
+    final double currentPrice = data.length >= 2 ? data[data.length - 2].close : data.last.close;
     final String currencyPrefix = _getCurrencyPrefix();
 
     return SfCartesianChart(
@@ -708,12 +807,14 @@ class CandlestickChart extends StatelessWidget {
         enablePanning: true,
         zoomMode: ZoomMode.x,
       ),
-      // Annotations for current price line
+      // Annotations for current price line (using last CLOSED candle)
       annotations: <CartesianChartAnnotation>[
         CartesianChartAnnotation(
           widget: Container(
             decoration: BoxDecoration(
-              color: data.last.close > data.last.open ? bullColor : bearColor,
+              color: data.length >= 2
+                ? (data[data.length - 2].close > data[data.length - 2].open ? bullColor : bearColor)
+                : (data.last.close > data.last.open ? bullColor : bearColor),
               borderRadius: BorderRadius.circular(4),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -728,7 +829,7 @@ class CandlestickChart extends StatelessWidget {
             ),
           ),
           coordinateUnit: CoordinateUnit.point,
-          x: data.length - 1,
+          x: data.length >= 2 ? data.length - 2 : data.length - 1,
           y: currentPrice,
           horizontalAlignment: ChartAlignment.far,
           verticalAlignment: ChartAlignment.center,
@@ -737,7 +838,9 @@ class CandlestickChart extends StatelessWidget {
         CartesianChartAnnotation(
           widget: Container(
             height: 1,
-            color: (data.last.close > data.last.open ? bullColor : bearColor).withOpacity(0.5),
+            color: (data.length >= 2
+              ? (data[data.length - 2].close > data[data.length - 2].open ? bullColor : bearColor)
+              : (data.last.close > data.last.open ? bullColor : bearColor)).withOpacity(0.5),
           ),
           coordinateUnit: CoordinateUnit.point,
           region: AnnotationRegion.plotArea,

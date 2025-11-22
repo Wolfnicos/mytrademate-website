@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/theme_provider.dart';
 import '../providers/subscription_provider.dart';
-import '../services/binance_service.dart';
+import '../providers/exchange_provider.dart';
+// import '../services/binance_service.dart'; // Unused - commented out
 import '../services/app_settings_service.dart';
 import '../services/auth_service.dart';
 import '../services/background_ai_monitor.dart';
@@ -26,7 +28,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final LocalAuthentication _localAuth = LocalAuthentication();
-  final BinanceService _binanceService = BinanceService();
+  // final BinanceService _binanceService = BinanceService(); // Unused - commented out
 
   final TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _apiSecretController = TextEditingController();
@@ -35,7 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _canCheckBiometrics = false;
   bool _isTestingConnection = false;
   bool _obscureSecret = true;
-  String _permissionLevel = 'read';
+  // String _permissionLevel = 'read'; // Unused - commented out
   String _quote = 'USDT';
 
   // AI Alerts settings
@@ -83,10 +85,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
+    // Get current exchange
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final currentExchange = exchangeProvider.currentExchange;
+
     // Load settings and credentials in parallel for faster startup
     final results = await Future.wait([
       SharedPreferences.getInstance(),
-      _binanceService.loadCredentials(),
+      currentExchange.loadCredentials(),
       BackgroundAIMonitor.getSettings(),
       UserCoinsService().getUserCoins(),
       UserCoinsService().getCoinsSource(),
@@ -101,17 +107,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       setState(() {
         _biometricEnabled = prefs.getBool('biometric_enabled') ?? false;
-        _permissionLevel = AppSettingsService().permissionLevel;
+        // _permissionLevel = AppSettingsService().permissionLevel; // Unused - commented out
         _quote = AppSettingsService().quoteCurrency;
-        _apiKeyController.text = _binanceService.apiKey ?? '';
-        _apiSecretController.text = _binanceService.apiSecret ?? '';
+
+        // Load credentials from CURRENT exchange (not hardcoded Binance)
+        _apiKeyController.text = currentExchange.apiKey ?? '';
+        _apiSecretController.text = currentExchange.apiSecret ?? '';
 
         // AI Alerts settings
         _aiAlertsEnabled = aiSettings['enabled'] as bool;
         _confidenceThreshold = aiSettings['threshold'] as double;
         _alertTimeframe = aiSettings['timeframe'] as String;
+
+        // Migration: Auto-upgrade 5m to 15m (Android WorkManager minimum is 15 minutes)
+        if (_alertTimeframe == '5m') {
+          _alertTimeframe = '15m';
+          BackgroundAIMonitor.setAlertTimeframe('15m'); // Update stored value
+          debugPrint('🔄 Migrated AI Alerts timeframe from 5m to 15m (Android minimum)');
+        }
+
         _userCoinsCount = userCoins.length;
         _coinsSource = coinsSource;
+      });
+    }
+  }
+
+  /// Reload credentials when switching exchanges
+  void _reloadExchangeCredentials() {
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final currentExchange = exchangeProvider.currentExchange;
+
+    if (mounted) {
+      setState(() {
+        _apiKeyController.text = currentExchange.apiKey ?? '';
+        _apiSecretController.text = currentExchange.apiSecret ?? '';
       });
     }
   }
@@ -221,23 +250,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
 
-      // Start background monitoring
+      // Get current exchange
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+
+      // Start background monitoring with current exchange (uses adaptive interval)
       await BackgroundAIMonitor.startMonitoring(
-        frequency: const Duration(minutes: 30),
+        exchangeName: exchangeProvider.selectedExchange,
       );
 
-      // Update coins from Binance if API connected
-      await UserCoinsService().updateCoinsFromBinance();
+      // Update coins from current exchange if API connected
+      await UserCoinsService().updateCoinsFromExchange(exchangeProvider.currentExchange);
 
       // Get updated coin count
       final coins = await UserCoinsService().getUserCoins();
+      final coinsSource = await UserCoinsService().getCoinsSource();
+
+      // Save coins to BackgroundAIMonitor (so background task uses correct coins)
+      await BackgroundAIMonitor.setMonitoredCoins(coins);
 
       if (mounted) {
         setState(() {
           _aiAlertsEnabled = true;
           _userCoinsCount = coins.length;
+          _coinsSource = coinsSource;
         });
-        _showSnackBar('AI Alerts enabled - monitoring ${coins.length} coins', isError: false);
+        _showSnackBar('AI Alerts enabled - monitoring ${coins.length} ${coinsSource == "api" ? "portfolio" : "popular"} coins', isError: false);
       }
     } else {
       // Stop background monitoring
@@ -271,10 +308,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     try {
-      await _binanceService.saveCredentials(apiKey, apiSecret);
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
 
-      // Update coins from Binance portfolio
-      await UserCoinsService().updateCoinsFromBinance();
+      await exchange.saveCredentials(apiKey, apiSecret);
+
+      // Update coins from current exchange portfolio
+      await UserCoinsService().updateCoinsFromExchange(exchange);
+
+      // Notify all listeners (Portfolio, Dashboard) to reload
+      exchangeProvider.refresh();
 
       _showSnackBar('Credentials saved successfully', isError: false);
       // Keep them in the fields so they persist visually
@@ -288,7 +331,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _isTestingConnection = true);
 
     try {
-      final success = await _binanceService.testConnection();
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
+
+      final success = await exchange.testConnection();
       if (success) {
         _showSnackBar('Connection successful! API keys are valid.', isError: false);
       } else {
@@ -330,7 +376,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (confirm == true) {
-      await _binanceService.clearCredentials();
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
+
+      await exchange.clearCredentials();
       _showSnackBar('Credentials deleted', isError: false);
     }
   }
@@ -611,9 +660,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       Expanded(
                                         child: Slider(
                                           value: _confidenceThreshold,
-                                          min: 0.50,
+                                          min: 0.30,
                                           max: 0.70,
-                                          divisions: 20,
+                                          divisions: 40,
                                           label: '${(_confidenceThreshold * 100).toStringAsFixed(0)}%',
                                           onChanged: _updateConfidenceThreshold,
                                           activeColor: AppTheme.primary,
@@ -662,10 +711,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       child: DropdownButton<String>(
                                         value: _alertTimeframe,
                                         isExpanded: true,
+                                        menuMaxHeight: 250, // Add scroll for dropdown
                                         items: const [
                                           DropdownMenuItem(value: '15m', child: Text('15 Minutes')),
                                           DropdownMenuItem(value: '1h', child: Text('1 Hour')),
-                                          DropdownMenuItem(value: '4h', child: Text('4 Hours (Recommended)')),
+                                          DropdownMenuItem(value: '4h', child: Text('4 Hours')),
+                                          DropdownMenuItem(value: '1d', child: Text('1 Day')),
                                         ],
                                         onChanged: _updateAlertTimeframe,
                                       ),
@@ -687,11 +738,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         Icon(Icons.info_outline, color: AppTheme.primary, size: 20),
                                         const SizedBox(width: AppTheme.spacing8),
                                         Expanded(
-                                          child: Text(
-                                            _coinsSource == 'api'
-                                                ? 'Monitoring your portfolio coins from Binance API'
-                                                : 'Monitoring TOP 10 popular coins (connect Binance API to track your portfolio)',
-                                            style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
+                                          child: Consumer<ExchangeProvider>(
+                                            builder: (context, exchangeProvider, _) {
+                                              final exchangeName = exchangeProvider.selectedExchange;
+                                              return Text(
+                                                _coinsSource == 'api'
+                                                    ? 'Monitoring $_userCoinsCount portfolio coins from $exchangeName API'
+                                                    : 'Monitoring TOP 10 popular coins (connect $exchangeName API to monitor your portfolio)',
+                                                style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
+                                              );
+                                            },
                                           ),
                                         ),
                                       ],
@@ -812,18 +868,118 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: AppTheme.spacing24),
 
-          // Binance Connection (Read-Only)
-          _buildSectionHeader('Binance Connection (Read-Only)', Icons.vpn_lock),
-          GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(AppTheme.spacing16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Connect your Binance account to view your portfolio',
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
+          // Exchange Selection
+          _buildSectionHeader('Exchange Selection', Icons.sync_alt),
+          Consumer<ExchangeProvider>(
+            builder: (context, exchangeProvider, _) {
+              return GlassCard(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppTheme.spacing16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Choose your preferred crypto exchange',
+                        style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
+                      ),
+                      const SizedBox(height: AppTheme.spacing16),
+
+                      // Exchange Cards
+                      ...exchangeProvider.availableExchanges.map((exchange) {
+                        final isSelected = exchangeProvider.selectedExchange == exchange;
+                        final icon = exchangeProvider.getExchangeIcon(exchange);
+                        final description = exchangeProvider.getExchangeDescription(exchange);
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: AppTheme.spacing12),
+                          child: GestureDetector(
+                            onTap: () async {
+                              await exchangeProvider.setExchange(exchange);
+                              // Reload credentials for the new exchange
+                              _reloadExchangeCredentials();
+                              _showSnackBar('Switched to $exchange', isError: false);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(AppTheme.spacing16),
+                              decoration: BoxDecoration(
+                                gradient: isSelected ? AppTheme.primaryGradient : null,
+                                color: isSelected ? null : AppTheme.glassWhite,
+                                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                                border: Border.all(
+                                  color: isSelected ? AppTheme.primary : AppTheme.glassBorder,
+                                  width: isSelected ? 2 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    icon,
+                                    style: const TextStyle(fontSize: 32),
+                                  ),
+                                  const SizedBox(width: AppTheme.spacing12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          exchange,
+                                          style: AppTheme.headingSmall.copyWith(
+                                            color: isSelected ? Colors.white : AppTheme.getTextPrimary(context),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: AppTheme.spacing4),
+                                        Text(
+                                          description,
+                                          style: AppTheme.bodySmall.copyWith(
+                                            color: isSelected ? Colors.white.withOpacity(0.9) : AppTheme.getTextSecondary(context),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ],
                   ),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: AppTheme.spacing24),
+
+          // Exchange Connection (dynamically shows current exchange)
+          Consumer<ExchangeProvider>(
+            builder: (context, exchangeProvider, _) {
+              return _buildSectionHeader(
+                '${exchangeProvider.selectedExchange} Connection',
+                Icons.vpn_lock,
+              );
+            },
+          ),
+          Consumer<ExchangeProvider>(
+            builder: (context, exchangeProvider, _) {
+              return GlassCard(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppTheme.spacing16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Connect your ${exchangeProvider.selectedExchange} account to view your portfolio',
+                        style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
+                      ),
                   const SizedBox(height: AppTheme.spacing16),
                   // Portfolio Tracker - Read-Only API
                   Container(
@@ -851,7 +1007,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             size: 20,
                           ),
                         ),
-                        const SizedBox(width: AppTheme.spacing12),
+                        const SizedBox(width: AppTheme.spacing8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -861,6 +1017,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 style: AppTheme.labelLarge.copyWith(
                                   color: Colors.white,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: AppTheme.spacing4),
                               Text(
@@ -868,10 +1025,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 style: AppTheme.bodySmall.copyWith(
                                   color: Colors.white.withOpacity(0.8),
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(width: AppTheme.spacing4),
                         Icon(
                           Icons.account_balance_wallet,
                           color: Colors.white.withOpacity(0.6),
@@ -902,7 +1061,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(width: AppTheme.spacing12),
                         Expanded(
                           child: Text(
-                            'MyTradeMate connects to Binance via read-only API to track your portfolio. We never hold your funds or access your private keys.',
+                            'MyTradeMate connects to ${exchangeProvider.selectedExchange} via read-only API to track your portfolio. We never hold your funds or access your private keys.',
                             style: AppTheme.bodySmall.copyWith(
                               color: AppTheme.getTextSecondary(context),
                             ),
@@ -914,68 +1073,103 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
+              );
+            },
           ),
 
           const SizedBox(height: AppTheme.spacing24),
 
           // Quote Currency
           _buildSectionHeader('Quote Currency', Icons.currency_exchange),
-          GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(AppTheme.spacing16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Select the currency for prices and totals (Binance supported)',
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
-                  ),
-                  const SizedBox(height: AppTheme.spacing16),
-                  Wrap(
-                    spacing: AppTheme.spacing8,
-                    runSpacing: AppTheme.spacing8,
-                    children: ['USDT', 'EUR', 'USDC'].map((q) {
-                      final isSelected = _quote == q;
-                      return GestureDetector(
-                        onTap: () async {
-                          final svc = AppSettingsService();
-                          await svc.setQuoteCurrency(q);
-                          setState(() => _quote = q);
-                          _showSnackBar('Quote currency set to: $q', isError: false);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppTheme.spacing16,
-                            vertical: AppTheme.spacing12,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: isSelected ? AppTheme.primaryGradient : null,
-                            color: isSelected ? null : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.7),
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                            border: Border.all(
-                              color: isSelected ? Colors.transparent : Theme.of(context).colorScheme.outlineVariant.withOpacity(0.6),
+          Consumer<ExchangeProvider>(
+            builder: (context, exchangeProvider, _) {
+              final exchange = exchangeProvider.selectedExchange;
+
+              // Top 3 currencies for each exchange (based on trading volume and availability)
+              List<String> currencies;
+              switch (exchange) {
+                case 'Binance':
+                  // Binance: USDT (highest volume), EUR
+                  // Note: BUSD was deprecated by Binance in 2024
+                  currencies = ['USDT', 'EUR'];
+                  break;
+                case 'Coinbase':
+                  // Coinbase: USD (primary), EUR, USDC
+                  currencies = ['USD', 'EUR', 'USDC'];
+                  break;
+                case 'Kraken':
+                  // Kraken: USD, EUR (NO USDT support!)
+                  currencies = ['USD', 'EUR'];
+                  break;
+                default:
+                  currencies = ['EUR', 'USD', 'USDT'];
+              }
+
+              return GlassCard(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppTheme.spacing16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Select quote currency for $exchange',
+                        style: AppTheme.bodyMedium.copyWith(color: AppTheme.getTextSecondary(context)),
+                      ),
+                      const SizedBox(height: AppTheme.spacing16),
+                      Wrap(
+                        spacing: AppTheme.spacing8,
+                        runSpacing: AppTheme.spacing8,
+                        children: currencies.map((q) {
+                          final isSelected = _quote == q;
+                          return GestureDetector(
+                            onTap: () async {
+                              final svc = AppSettingsService();
+                              await svc.setQuoteCurrency(q);
+                              setState(() => _quote = q);
+                              _showSnackBar('Preferred currency set to: $q', isError: false);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppTheme.spacing16,
+                                vertical: AppTheme.spacing12,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: isSelected ? AppTheme.primaryGradient : null,
+                                color: isSelected ? null : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                                border: Border.all(
+                                  color: isSelected ? Colors.transparent : Theme.of(context).colorScheme.outlineVariant.withOpacity(0.6),
+                                ),
+                              ),
+                              child: Text(
+                                q,
+                                style: AppTheme.bodyMedium.copyWith(
+                                  color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
-                          ),
-                          child: Text(
-                            q,
-                            style: AppTheme.bodyMedium.copyWith(
-                              color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: AppTheme.spacing24),
 
-          // API Section
-          _buildSectionHeader('Binance API', Icons.vpn_key),
+          // API Section (dynamically shows current exchange)
+          Consumer<ExchangeProvider>(
+            builder: (context, exchangeProvider, _) {
+              return _buildSectionHeader(
+                '${exchangeProvider.selectedExchange} API',
+                Icons.vpn_key,
+              );
+            },
+          ),
           GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(AppTheme.spacing16),
@@ -1009,12 +1203,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                       ),
                       prefixIcon: const Icon(Icons.vpn_key, color: AppTheme.primary),
-                      suffixIcon: _binanceService.hasCredentials
-                          ? Tooltip(
-                              message: 'Loaded from secure storage',
-                              child: const Icon(Icons.verified, color: AppTheme.success),
-                            )
-                          : null,
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_apiKeyController.text.isNotEmpty)
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(20),
+                                onTap: () async {
+                                  await Clipboard.setData(ClipboardData(text: _apiKeyController.text));
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text('API Key copied!'),
+                                        duration: const Duration(seconds: 1),
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: AppTheme.success,
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Icon(Icons.copy, color: AppTheme.getTextSecondary(context), size: 20),
+                                ),
+                              ),
+                            ),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () async {
+                                final data = await Clipboard.getData(Clipboard.kTextPlain);
+                                if (data != null && data.text != null) {
+                                  setState(() {
+                                    _apiKeyController.text = data.text!;
+                                  });
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text('API Key pasted!'),
+                                        duration: const Duration(seconds: 1),
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: AppTheme.primary,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Icon(Icons.paste, color: AppTheme.primary, size: 20),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: AppTheme.spacing16),
@@ -1046,12 +1291,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                       ),
                       prefixIcon: const Icon(Icons.lock, color: AppTheme.primary),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureSecret ? Icons.visibility : Icons.visibility_off,
-                          color: AppTheme.getTextSecondary(context),
-                        ),
-                        onPressed: () => setState(() => _obscureSecret = !_obscureSecret),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_apiSecretController.text.isNotEmpty)
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(20),
+                                onTap: () async {
+                                  await Clipboard.setData(ClipboardData(text: _apiSecretController.text));
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text('Secret Key copied!'),
+                                        duration: const Duration(seconds: 1),
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: AppTheme.success,
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Icon(Icons.copy, color: AppTheme.getTextSecondary(context), size: 20),
+                                ),
+                              ),
+                            ),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () async {
+                                final data = await Clipboard.getData(Clipboard.kTextPlain);
+                                if (data != null && data.text != null) {
+                                  setState(() {
+                                    _apiSecretController.text = data.text!;
+                                  });
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text('Secret Key pasted!'),
+                                        duration: const Duration(seconds: 1),
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: AppTheme.primary,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Icon(Icons.paste, color: AppTheme.primary, size: 20),
+                              ),
+                            ),
+                          ),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () => setState(() => _obscureSecret = !_obscureSecret),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Icon(
+                                  _obscureSecret ? Icons.visibility : Icons.visibility_off,
+                                  color: AppTheme.getTextSecondary(context),
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -1319,7 +1629,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _openPrivacyPolicy() async {
-    final Uri url = Uri.parse('https://mytrademate.app/privacy.html');
+    final Uri url = Uri.parse('https://mytrademate.app/privacy-policy.html');
     try {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } catch (e) {
@@ -1328,7 +1638,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _openTermsOfService() async {
-    final Uri url = Uri.parse('https://mytrademate.app/terms.html');
+    final Uri url = Uri.parse('https://mytrademate.app/terms-of-service.html');
     try {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } catch (e) {
@@ -1337,7 +1647,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _openSupport() async {
-    final Uri url = Uri.parse('https://mytrademate.app/support.html');
+    final Uri url = Uri.parse('https://mytrademate.app/#faq');
     try {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } catch (e) {
@@ -1346,11 +1656,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _openContact() async {
-    final Uri url = Uri.parse('https://mytrademate.app/contact.html');
+    final Uri url = Uri.parse('mailto:mytrademate.app@gmail.com');
     try {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } catch (e) {
-      _showSnackBar('Could not open Contact page', isError: true);
+      _showSnackBar('Could not open email app', isError: true);
     }
   }
 
@@ -1363,6 +1673,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  // Unused - kept for potential future use
+  /*
   void _showAboutDialog() {
     showDialog(
       context: context,
@@ -1501,7 +1813,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+  */
 
+  // Unused - kept for potential future use
+  /*
   Widget _buildFeatureRow(String emoji, String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.spacing4),
@@ -1519,6 +1834,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+  */
 
   Widget _buildSectionHeader(String title, IconData icon) {
     return Padding(
@@ -1527,9 +1843,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Icon(icon, color: AppTheme.primary, size: 20),
           const SizedBox(width: AppTheme.spacing8),
-          Text(
-            title,
-            style: AppTheme.headingMedium.copyWith(color: AppTheme.getTextSecondary(context)),
+          Expanded(
+            child: Text(
+              title,
+              style: AppTheme.headingMedium.copyWith(color: AppTheme.getTextSecondary(context)),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),

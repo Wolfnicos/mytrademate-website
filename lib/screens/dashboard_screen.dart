@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/binance_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/app_settings_service.dart';
 import '../services/user_coins_service.dart';
-import '../providers/subscription_provider.dart';
+// import '../providers/subscription_provider.dart'; // Unused - commented out
+import '../providers/exchange_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/ai_indicator.dart';
 import '../widgets/crypto_avatar.dart';
 import '../widgets/trial_banner.dart';
-import '../widgets/trial_activation_dialog.dart';
+// import '../widgets/trial_activation_dialog.dart'; // Unused - commented out
 import '../ml/ensemble_predictor.dart';
 import '../utils/responsive.dart';
 
@@ -30,11 +31,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // });
     // Listen to quote currency changes and rebuild all tiles
     AppSettingsService().addListener(_onSettingsChanged);
+
+    // Listen to exchange changes and rebuild dashboard
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<ExchangeProvider>(context, listen: false).addListener(_onExchangeChanged);
+      }
+    });
   }
 
   @override
   void dispose() {
     AppSettingsService().removeListener(_onSettingsChanged);
+    try {
+      Provider.of<ExchangeProvider>(context, listen: false).removeListener(_onExchangeChanged);
+    } catch (e) {
+      // Ignore if provider not available
+    }
     super.dispose();
   }
 
@@ -48,23 +61,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _maybeShowTrialDialog() async {
-    if (!mounted) return;
-
-    final settings = AppSettingsService();
-    if (settings.shouldShowTrialDialog) {
-      final accepted = await TrialActivationDialog.show(context);
-      if (accepted) {
-        await settings.activateTrial();
-        // Notify SubscriptionProvider to rebuild UI (hide upgrade banners)
-        if (mounted) {
-          Provider.of<SubscriptionProvider>(context, listen: false).notifyListeners();
-        }
-      } else {
-        await settings.declineTrial();
-      }
+  void _onExchangeChanged() {
+    // Rebuild dashboard when exchange changes
+    debugPrint('Dashboard: Exchange changed, rebuilding dashboard...');
+    if (mounted) {
+      setState(() {
+        // Force rebuild of all dashboard tiles with new exchange
+      });
     }
   }
+
+  // Future<void> _maybeShowTrialDialog() async { // UNUSED - commented out
+  //   if (!mounted) return;
+  //
+  //   final settings = AppSettingsService();
+  //   if (settings.shouldShowTrialDialog) {
+  //     final accepted = await TrialActivationDialog.show(context);
+  //     if (accepted) {
+  //       await settings.activateTrial();
+  //       // Notify SubscriptionProvider to rebuild UI (hide upgrade banners)
+  //       if (mounted) {
+  //         Provider.of<SubscriptionProvider>(context, listen: false).notifyListeners();
+  //       }
+  //     } else {
+  //       await settings.declineTrial();
+  //     }
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -130,9 +153,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: AppTheme.spacing16),
 
                   // Portfolio Overview Card
-                  RepaintBoundary(
-                    key: ValueKey('portfolio_${AppSettingsService().quoteCurrency}'),
-                    child: const PortfolioOverviewCard(),
+                  Consumer<ExchangeProvider>(
+                    builder: (context, exchangeProvider, _) => RepaintBoundary(
+                      key: ValueKey('portfolio_${exchangeProvider.selectedExchange}_${AppSettingsService().quoteCurrency}'),
+                      child: PortfolioOverviewCard(),
+                    ),
                   ),
 
                   const SizedBox(height: AppTheme.spacing16),
@@ -171,26 +196,77 @@ class PortfolioOverviewCard extends StatefulWidget {
 }
 
 class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
-  final BinanceService _binance = BinanceService();
-  bool _isLoading = true;
+  // bool _isLoading = false; // Unused - commented out
   double _totalValue = 0.0;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    _loadCachedValue();
     _loadPortfolio();
+
+    // Listen to exchange changes and reload portfolio (same as Portfolio screen)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<ExchangeProvider>(context, listen: false).addListener(_onExchangeChanged);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    try {
+      Provider.of<ExchangeProvider>(context, listen: false).removeListener(_onExchangeChanged);
+    } catch (e) {
+      // Ignore if provider not available
+    }
+    super.dispose();
+  }
+
+  void _onExchangeChanged() {
+    // Exchange changed - load new exchange's cached value and reload
+    debugPrint('[PortfolioOverview] 📢 Exchange changed listener triggered');
+    debugPrint('[PortfolioOverview] 🔄 Reloading portfolio overview...');
+    if (mounted) {
+      setState(() {
+        _totalValue = 0.0; // Clear old cached value immediately
+        // _isLoading = true; // Unused - commented out
+      });
+      _loadCachedValue(); // Load cached value for new exchange
+      _loadPortfolio(); // Then load fresh data
+    } else {
+      debugPrint('[PortfolioOverview] ⚠️  Widget not mounted, skipping reload');
+    }
+  }
+
+  Future<void> _loadCachedValue() async {
+    // Load cached value immediately for instant display
+    // Include exchange name in cache key to avoid showing wrong exchange data
+    final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+    final exchangeName = exchangeProvider.selectedExchange;
+
+    final prefs = await SharedPreferences.getInstance();
+    final cacheKey = 'portfolio_total_value_$exchangeName';
+    final cachedValue = prefs.getDouble(cacheKey);
+
+    if (cachedValue != null && mounted) {
+      setState(() {
+        _totalValue = cachedValue;
+      });
+    }
   }
 
   Future<void> _loadPortfolio() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    // Don't show loading state, just update in background
+    _error = null;
 
     try {
-      await _binance.loadCredentials();
-      final balances = await _binance.getAccountBalances();
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
+
+      await exchange.loadCredentials();
+      final balances = await exchange.getAccountBalances();
       final quote = AppSettingsService().quoteCurrency.toUpperCase();
 
       double total = 0.0;
@@ -207,7 +283,7 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
 
         try {
           // Try to get price for this asset in quote currency
-          final ticker = await _binance.fetchTicker24hWithFallback([
+          final ticker = await exchange.fetchTicker24hWithFallback([
             '$asset$quote',
             '${asset}USDT',
             '${asset}EUR',
@@ -216,22 +292,28 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
           final price = ticker['lastPrice'] ?? 0.0;
           total += amount * price;
         } catch (e) {
-          print('Portfolio: Could not get price for $asset: $e');
+          debugPrint('[PortfolioOverview] Could not get price for $asset: $e');
         }
       }
 
       if (mounted) {
         setState(() {
           _totalValue = total;
-          _isLoading = false;
+          // _isLoading = false; // Unused - commented out
         });
+
+        // Cache the value for instant display next time
+        // Include exchange name in cache key to avoid mixing data between exchanges
+        final cacheKey = 'portfolio_total_value_${exchange.exchangeName}';
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setDouble(cacheKey, total);
       }
     } catch (e) {
-      print('Portfolio: Error loading portfolio: $e');
+      debugPrint('[PortfolioOverview] Error loading portfolio: $e');
       if (mounted) {
         setState(() {
           _error = 'Failed to load portfolio';
-          _isLoading = false;
+          // _isLoading = false; // Unused - commented out
         });
       }
     }
@@ -278,9 +360,7 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
           ),
           const SizedBox(height: AppTheme.spacing4),
 
-          if (_isLoading)
-            const CircularProgressIndicator()
-          else if (_error != null)
+          if (_error != null)
             Text(
               _error!,
               style: AppTheme.bodyMedium.copyWith(color: AppTheme.error),
@@ -340,7 +420,8 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
   late AnimationController _controller;
   late Animation<double> _pulseAnimation;
   int _progressKey = 0;
-  bool _hasLoadedOnce = false;  // Track if models loaded once
+  // bool _hasLoadedOnce = false;  // Unused - commented out
+  bool _isLoaded = false;
 
   @override
   void initState() {
@@ -356,7 +437,24 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
 
-    // Removed: Activity cycling animation (was giving impression of constant work)
+    // Check if models are loaded periodically
+    _checkModelsLoaded();
+  }
+
+  void _checkModelsLoaded() {
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        final isLoaded = globalEnsemblePredictor.isLoaded;
+        if (isLoaded != _isLoaded) {
+          setState(() {
+            _isLoaded = isLoaded;
+          });
+        }
+        if (!isLoaded) {
+          _checkModelsLoaded();
+        }
+      }
+    });
   }
 
   @override
@@ -367,7 +465,7 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    final isActive = globalEnsemblePredictor.isLoaded;
+    final isActive = _isLoaded;
 
     return GlassCard(
       child: Column(
@@ -503,7 +601,7 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
 
           const SizedBox(height: AppTheme.spacing20),
 
-          // AI Activity Display
+          // AI Processing Visualization
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(AppTheme.spacing16),
@@ -532,88 +630,111 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.data_usage,
-                      color: isActive ? AppTheme.primary : AppTheme.textTertiary,
-                      size: 18,
-                    ),
-                    const SizedBox(width: AppTheme.spacing8),
-                    Expanded(
-                      // Static text (no cycling animation)
-                      child: Text(
-                        isActive ? 'AI Models: Active & Ready' : 'Initializing neural engine...',
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: isActive ? AppTheme.textPrimary : AppTheme.textTertiary,
-                          fontWeight: FontWeight.w600,
+                if (isActive) ...[
+                  // Neural Network Visualization Grid
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildAIStatBox(
+                          label: 'AI Models',
+                          value: '26',
+                          icon: Icons.memory,
+                          color: AppTheme.primary,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-
-                if (isActive) ...[
-                  const SizedBox(height: AppTheme.spacing12),
-
-                  // Processing bar (animate once on first load, then static)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                    child: !_hasLoadedOnce
-                        ? TweenAnimationBuilder<double>(
-                            duration: const Duration(seconds: 2),
-                            curve: Curves.easeInOut,
-                            tween: Tween<double>(
-                              begin: 0.0,
-                              end: 1.0,
-                            ),
-                            onEnd: () {
-                              // Mark as loaded, stop animation
-                              if (mounted) {
-                                setState(() {
-                                  _hasLoadedOnce = true;
-                                });
-                              }
-                            },
-                            builder: (context, value, _) {
-                              return LinearProgressIndicator(
-                                value: value,
-                                backgroundColor: AppTheme.glassBorder,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppTheme.primary.withOpacity(0.8),
-                                ),
-                                minHeight: 3,
-                              );
-                            },
-                          )
-                        : Container(
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: AppTheme.success.withOpacity(0.4),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                  ),
-
-                  const SizedBox(height: AppTheme.spacing12),
-
-                  // Real-time stats
-                  Wrap(
-                    spacing: AppTheme.spacing8,
-                    runSpacing: AppTheme.spacing8,
-                    alignment: WrapAlignment.spaceBetween,
-                    children: [
-                      _buildStatChip(
-                        icon: Icons.speed,
-                        label: 'Real-time',
-                        color: AppTheme.primary,
+                      const SizedBox(width: AppTheme.spacing12),
+                      Expanded(
+                        child: _buildAIStatBox(
+                          label: 'Indicators',
+                          value: '76',
+                          icon: Icons.show_chart,
+                          color: AppTheme.secondary,
+                        ),
                       ),
-                      _buildStatChip(
-                        icon: Icons.layers,
-                        label: 'Multi-layer',
-                        color: AppTheme.secondary,
+                      const SizedBox(width: AppTheme.spacing12),
+                      Expanded(
+                        child: _buildAIStatBox(
+                          label: 'Timeframes',
+                          value: '5',
+                          icon: Icons.access_time,
+                          color: AppTheme.success,
+                        ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: AppTheme.spacing16),
+
+                  // Animated processing bar
+                  TweenAnimationBuilder<double>(
+                    key: ValueKey(_progressKey),
+                    duration: const Duration(milliseconds: 2000),
+                    curve: Curves.easeInOut,
+                    tween: Tween<double>(begin: 0.0, end: 1.0),
+                    onEnd: () {
+                      if (mounted) {
+                        setState(() {
+                          _progressKey++;
+                        });
+                      }
+                    },
+                    builder: (context, value, _) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Processing market data...',
+                                style: AppTheme.bodySmall.copyWith(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 11,
+                                ),
+                              ),
+                              Text(
+                                '${(value * 100).toInt()}%',
+                                style: AppTheme.bodySmall.copyWith(
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppTheme.spacing8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                            child: LinearProgressIndicator(
+                              value: value,
+                              backgroundColor: AppTheme.glassBorder,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppTheme.primary,
+                              ),
+                              minHeight: 4,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ] else ...[
+                  Center(
+                    child: Column(
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppTheme.primary.withOpacity(0.5),
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.spacing12),
+                        Text(
+                          'Initializing AI models...',
+                          style: AppTheme.bodySmall.copyWith(
+                            color: AppTheme.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ],
@@ -624,32 +745,74 @@ class _AIModelsStatusCardState extends State<AIModelsStatusCard> with SingleTick
     );
   }
 
-  Widget _buildStatChip({
-    required IconData icon,
+  // Widget _buildStatChip({ // UNUSED - commented out
+  //   required IconData icon,
+  //   required String label,
+  //   required Color color,
+  // }) {
+  //   return Container(
+  //     padding: const EdgeInsets.symmetric(
+  //       horizontal: AppTheme.spacing8,
+  //       vertical: AppTheme.spacing4,
+  //     ),
+  //     decoration: BoxDecoration(
+  //       color: color.withOpacity(0.15),
+  //       borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+  //     ),
+  //     child: Row(
+  //       mainAxisSize: MainAxisSize.min,
+  //       children: [
+  //         Icon(icon, size: 12, color: color),
+  //         const SizedBox(width: AppTheme.spacing4),
+  //         Text(
+  //           label,
+  //           style: AppTheme.bodySmall.copyWith(
+  //             color: color,
+  //             fontSize: 10,
+  //             fontWeight: FontWeight.w600,
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
+
+  Widget _buildAIStatBox({
     required String label,
+    required String value,
+    required IconData icon,
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacing8,
-        vertical: AppTheme.spacing4,
-      ),
+      padding: const EdgeInsets.all(AppTheme.spacing12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1.5,
+        ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
         children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: AppTheme.spacing4),
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: AppTheme.spacing8),
+          Text(
+            value,
+            style: AppTheme.headingLarge.copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 24,
+            ),
+          ),
+          const SizedBox(height: AppTheme.spacing4),
           Text(
             label,
             style: AppTheme.bodySmall.copyWith(
-              color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondary,
+              fontSize: 11,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -665,7 +828,6 @@ class PnLTodaySection extends StatefulWidget {
 }
 
 class _PnLTodaySectionState extends State<PnLTodaySection> {
-  final BinanceService _binance = BinanceService();
   List<String> _userCoins = []; // Dynamic coins from UserCoinsService
   Map<String, Map<String, double>> _tickers = {}; // Coin -> ticker data
   bool _isLoading = true;
@@ -709,12 +871,14 @@ class _PnLTodaySectionState extends State<PnLTodaySection> {
   Future<void> _refresh() async {
     setState(() => _isLoading = true);
     try {
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      final exchange = exchangeProvider.currentExchange;
       final quote = AppSettingsService().quoteCurrency.toUpperCase();
 
       // Fetch tickers for all user coins dynamically
       for (final coin in _userCoins) {
         try {
-          final ticker = await _binance.fetchTicker24hWithFallback([
+          final ticker = await exchange.fetchTicker24hWithFallback([
             '$coin$quote',
             '${coin}USDT',
             '${coin}EUR',

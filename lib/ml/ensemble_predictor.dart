@@ -32,13 +32,13 @@ class EnsemblePredictor {
   };
 
   // Legacy fallback models (deprecated, kept for backward compatibility)
-  Interpreter? _transformerModel;
-  Interpreter? _lstmModel;
+  // Interpreter? _transformerModel; // Unused - commented out
+  // Interpreter? _lstmModel; // Unused - commented out
   Interpreter? _legacyTcnModel;
 
   // Model weights
   // Per-coin models: 100% (specialized knowledge for each coin)
-  static const double _perCoinWeight = 1.0;
+  // static const double _perCoinWeight = 1.0; // Unused - commented out
 
   // Model load status
   bool _isLoaded = false;
@@ -141,37 +141,37 @@ class EnsemblePredictor {
     debugPrint('');
   }
 
-  /// Load Transformer model
-  Future<void> _loadTransformerModel() async {
-    _transformerModel = await Interpreter.fromAsset('assets/models/transformer_crypto_model.tflite');
-    _modelStatus['transformer'] = true;
-    debugPrint('   ✅ Transformer loaded (40.77% accuracy on 76 features)');
-  }
+  // /// Load Transformer model - UNUSED, commented out
+  // Future<void> _loadTransformerModel() async {
+  //   _transformerModel = await Interpreter.fromAsset('assets/models/transformer_crypto_model.tflite');
+  //   _modelStatus['transformer'] = true;
+  //   debugPrint('   ✅ Transformer loaded (40.77% accuracy on 76 features)');
+  // }
 
-  /// Load LSTM model
-  Future<void> _loadLstmModel() async {
-    try {
-      // LSTM uses Flex ops - try loading directly first
-      _lstmModel = await Interpreter.fromAsset('assets/models/lstm_crypto_model.tflite');
-      _modelStatus['lstm'] = true;
-      debugPrint('   ✅ LSTM loaded (trained on 76 features)');
-    } catch (e) {
-      // If loading fails, try with options
-      try {
-        debugPrint('   ⚠️ LSTM direct load failed, trying with options...');
-        final options = InterpreterOptions()..threads = 2;
-        _lstmModel = await Interpreter.fromAsset(
-          'assets/models/lstm_crypto_model.tflite',
-          options: options,
-        );
-        _modelStatus['lstm'] = true;
-        debugPrint('   ✅ LSTM loaded (with options)');
-      } catch (e2) {
-        debugPrint('   ❌ LSTM load failed completely: $e2');
-        rethrow;
-      }
-    }
-  }
+  // /// Load LSTM model - UNUSED, commented out
+  // Future<void> _loadLstmModel() async {
+  //   try {
+  //     // LSTM uses Flex ops - try loading directly first
+  //     _lstmModel = await Interpreter.fromAsset('assets/models/lstm_crypto_model.tflite');
+  //     _modelStatus['lstm'] = true;
+  //     debugPrint('   ✅ LSTM loaded (trained on 76 features)');
+  //   } catch (e) {
+  //     // If loading fails, try with options
+  //     try {
+  //       debugPrint('   ⚠️ LSTM direct load failed, trying with options...');
+  //       final options = InterpreterOptions()..threads = 2;
+  //       _lstmModel = await Interpreter.fromAsset(
+  //         'assets/models/lstm_crypto_model.tflite',
+  //         options: options,
+  //       );
+  //       _modelStatus['lstm'] = true;
+  //       debugPrint('   ✅ LSTM loaded (with options)');
+  //     } catch (e2) {
+  //       debugPrint('   ❌ LSTM load failed completely: $e2');
+  //       rethrow;
+  //     }
+  //   }
+  // }
 
   /// Load Random Forest model (if available as TFLite)
   Future<void> _loadRandomForestModel() async {
