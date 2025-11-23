@@ -366,6 +366,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               width: 120,
               height: 120,
               fit: BoxFit.contain,
+              // Adapt logo color based on theme (white in dark mode, black in light mode)
+              color: AppTheme.getTextPrimary(context),
+              colorBlendMode: BlendMode.srcIn,
             ),
           ),
 
