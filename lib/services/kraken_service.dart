@@ -688,15 +688,23 @@ class KrakenService implements BaseExchangeService {
       // Symbol is already in correct Kraken format
       final krakenTargetSymbol = targetSymbol;
 
-      // Extract quote currency from targetSymbol (e.g., XBTEUR → EUR)
-      // TOP 10 by volume on Kraken (Nov 2025) - hardcoded exact symbols
-      // This eliminates 404 errors and ensures accurate volume percentile calculations
-      // Note: Kraken uses XBT instead of BTC
-      const _topVolumeSymbols = [
-        'XBTUSD', 'ETHUSD', 'SOLUSD', 'ADAUSD', 'DOTUSD',
-        'DOGEUSD', 'LINKUSD', 'AVAXUSD', 'MATICUSD', 'XRPUSD'
-      ];
-      final symbols = comparisonSymbols ?? _topVolumeSymbols;
+      // FIX 2025: Extract quote currency and compare ONLY with same quote
+      String quote;
+      if (krakenTargetSymbol.endsWith('EUR')) {
+        quote = 'EUR';
+      } else if (krakenTargetSymbol.endsWith('USD')) {
+        quote = 'USD';
+      } else {
+        quote = 'USD'; // fallback
+      }
+
+      // TOP symbols by quote currency (Kraken uses XBT instead of BTC)
+      final Map<String, List<String>> _topVolumeSymbolsByQuote = {
+        'USD': ['XBTUSD', 'ETHUSD', 'SOLUSD', 'ADAUSD', 'DOTUSD', 'DOGEUSD', 'LINKUSD', 'AVAXUSD', 'MATICUSD', 'XRPUSD'],
+        'EUR': ['XBTEUR', 'ETHEUR', 'SOLEUR', 'ADAEUR', 'DOGEEUR', 'XRPEUR'],
+      };
+
+      final symbols = comparisonSymbols ?? _topVolumeSymbolsByQuote[quote] ?? _topVolumeSymbolsByQuote['USD']!;
 
       // Fetch volumes for all symbols in parallel
       final volumeFutures = symbols.map((s) => get24hVolume(s));

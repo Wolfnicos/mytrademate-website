@@ -87,7 +87,7 @@ class CryptoMLService {
 
   // PHASE 3 PILOT: Volume percentile cache (5 min TTL)
   static final Map<String, (double, DateTime)> _volumeCache = {};
-  static const Duration _volumeCacheTTL = Duration(minutes: 5);
+  static const Duration _volumeCacheTTL = Duration(seconds: 10); // REDUS TEMPORAR pentru fix volume percentile
 
   /// Clear volume percentile cache (useful when switching exchanges)
   static void clearVolumeCache() {

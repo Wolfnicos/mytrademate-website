@@ -773,14 +773,21 @@ class CoinbaseService implements BaseExchangeService {
   @override
   Future<double> getVolumePercentile(String targetSymbol, {List<String>? comparisonSymbols}) async {
     try {
-      // Extract quote currency from targetSymbol (e.g., BTC-EUR → EUR)
-      // TOP 10 by volume on Coinbase (Nov 2025) - hardcoded exact symbols
-      // This eliminates 404 errors (BNB, MATIC, UNI delisted) and ensures accurate percentile
-      const _topVolumeSymbols = [
-        'BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD', 'DOGE-USD',
-        'ADA-USD', 'AVAX-USD', 'MATIC-USD', 'LINK-USD', 'DOT-USD'
-      ];
-      final symbols = comparisonSymbols ?? _topVolumeSymbols;
+      // FIX 2025: Extract quote currency and compare ONLY with same quote
+      String quote;
+      if (targetSymbol.contains('-')) {
+        quote = targetSymbol.split('-').last; // BTC-EUR → EUR
+      } else {
+        quote = 'USD'; // fallback
+      }
+
+      // TOP symbols by quote currency
+      final Map<String, List<String>> _topVolumeSymbolsByQuote = {
+        'USD': ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD', 'DOGE-USD', 'ADA-USD', 'AVAX-USD', 'MATIC-USD', 'LINK-USD', 'DOT-USD'],
+        'EUR': ['BTC-EUR', 'ETH-EUR', 'SOL-EUR', 'XRP-EUR', 'DOGE-EUR', 'ADA-EUR'],
+      };
+
+      final symbols = comparisonSymbols ?? _topVolumeSymbolsByQuote[quote] ?? _topVolumeSymbolsByQuote['USD']!;
 
       // Fetch volumes for all symbols in parallel
       final volumeFutures = symbols.map((s) => get24hVolume(s));

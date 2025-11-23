@@ -1085,14 +1085,26 @@ class BinanceService implements BaseExchangeService {
   /// Used by Phase 3: High-volume symbols (percentile > 0.5) get +5% confidence boost
   Future<double> getVolumePercentile(String targetSymbol, {List<String>? comparisonSymbols}) async {
     try {
-      // Extract quote currency from targetSymbol (e.g., BTCUSDT → USDT)
-      // TOP 10 by volume on Binance (Nov 2025) - hardcoded exact symbols
-      // This eliminates 404 errors and ensures accurate volume percentile calculations
-      const _topVolumeSymbols = [
-        'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
-        'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'TRXUSDT', 'SHIBUSDT'
-      ];
-      final symbols = comparisonSymbols ?? _topVolumeSymbols;
+      // FIX 2025: Extract quote currency and compare ONLY with same quote
+      String quote;
+      if (targetSymbol.endsWith('USDT') || targetSymbol.endsWith('BUSD') || targetSymbol.endsWith('USDC')) {
+        quote = 'USDT';
+      } else if (targetSymbol.endsWith('EUR')) {
+        quote = 'EUR';
+      } else if (targetSymbol.endsWith('USD')) {
+        quote = 'USD';
+      } else {
+        quote = 'USDT'; // fallback
+      }
+
+      // TOP symbols by quote currency
+      final Map<String, List<String>> _topVolumeSymbolsByQuote = {
+        'USDT': ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'TRXUSDT', 'SHIBUSDT'],
+        'EUR': ['BTCEUR', 'ETHEUR', 'BNBEUR', 'SOLEUR', 'XRPEUR', 'DOGEEUR', 'ADAEUR'],
+        'USD': ['BTCUSD', 'ETHUSD', 'BNBUSD', 'SOLUSD'],
+      };
+
+      final symbols = comparisonSymbols ?? _topVolumeSymbolsByQuote[quote] ?? _topVolumeSymbolsByQuote['USDT']!;
 
       // Fetch volumes for all symbols in parallel
       final volumeFutures = symbols.map((s) => get24hVolume(s));
