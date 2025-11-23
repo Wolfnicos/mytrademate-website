@@ -359,14 +359,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 20),
 
           // Logo
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Image.asset(
-              'assets/logo/mytrademate-logo.png',
-              width: 120,
-              height: 120,
-              fit: BoxFit.contain,
-            ),
+          Image.asset(
+            'assets/logo/mytrademate-logo.png',
+            width: 120,
+            height: 120,
+            fit: BoxFit.contain,
           ),
 
           const SizedBox(height: 20),
