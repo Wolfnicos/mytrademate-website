@@ -361,34 +361,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           // Logo
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
-            child: Theme.of(context).brightness == Brightness.light
-                ? ColorFiltered(
-                    colorFilter: const ColorFilter.matrix(<double>[
-                      -1, 0, 0, 0, 255, // Invert red
-                      0, -1, 0, 0, 255, // Invert green
-                      0, 0, -1, 0, 255, // Invert blue
-                      0, 0, 0, 1, 0,    // Keep alpha
-                    ]),
-                    child: Image.asset(
-                      'assets/logo/mytrademate-logo.png',
-                      width: 120,
-                      height: 120,
-                      fit: BoxFit.contain,
-                    ),
-                  )
-                : Image.asset(
-                    'assets/logo/mytrademate-logo.png',
-                    width: 120,
-                    height: 120,
-                    fit: BoxFit.contain,
-                  ),
+            child: Image.asset(
+              'assets/logo/mytrademate-logo.png',
+              width: 120,
+              height: 120,
+              fit: BoxFit.contain,
+            ),
           ),
 
           const SizedBox(height: 20),
 
           // Title
           Text(
-            'MyTradeMateApp',
+            'MyTradeMate',
             style: AppTheme.displayLarge.copyWith(
               fontSize: 32,
               fontWeight: FontWeight.bold,
