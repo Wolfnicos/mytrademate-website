@@ -7,9 +7,8 @@ class AppSettingsService extends ChangeNotifier {
   factory AppSettingsService() => _instance;
   AppSettingsService._internal();
 
-  // BETA MODE: Set to false before production release!
-  // When true, all users have unlimited premium access for testing
-  static const bool IS_BETA_BUILD = true;
+  // ✅ PRODUCTION MODE: Beta testing completed
+  static const bool IS_BETA_BUILD = false;
 
   // Allowed quote currencies (BUSD excluded - deprecated by Binance 2024)
   static const List<String> allowedQuoteCurrencies = ['USDT', 'EUR', 'USD', 'USDC'];
