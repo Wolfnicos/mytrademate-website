@@ -941,7 +941,21 @@ class CoinbaseService implements BaseExchangeService {
     try {
       candles = await fetchKlines(coinbaseSymbol, interval, limit: 1000);
 
-      // Store in cache
+      // VALIDATE FETCHED DATA BEFORE CACHING
+      if (candles.isNotEmpty) {
+        final dataAge = now.difference(candles.last.closeTime);
+        final maxDataAge = _getMaxDataAge(interval);
+
+        if (dataAge > maxDataAge) {
+          // Fetched data is stale - DON'T cache it!
+          debugPrint('[Coinbase] ❌ FETCHED DATA IS STALE for $coinbaseSymbol @ $interval');
+          debugPrint('[Coinbase]    Latest candle: ${candles.last.closeTime} (${dataAge.inHours}h old)');
+          debugPrint('[Coinbase]    Max allowed: ${maxDataAge.inHours}h - REJECTING and NOT caching');
+          throw Exception('Coinbase: Fetched data is too old (${dataAge.inHours}h) for $coinbaseSymbol @ $interval');
+        }
+      }
+
+      // Store in cache ONLY if data is fresh
       _candlesCache[cacheKey] = candles;
       _cacheTimestamp[cacheKey] = now;
 
