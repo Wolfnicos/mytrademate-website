@@ -1097,14 +1097,14 @@ class BinanceService implements BaseExchangeService {
         quote = 'USDT'; // fallback
       }
 
-      // TOP symbols by quote currency (updated 2025)
+      // TOP symbols by quote currency (top 10 by market cap + WLFI/TRUMP)
       final Map<String, List<String>> _topVolumeSymbolsByQuote = {
         'USDT': [
           'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
-          'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'TRXUSDT', 'SHIBUSDT',
-          'WLFIUSDT', 'TRUMPUSDT'  // 2025 trending coins
+          'ADAUSDT', 'AVAXUSDT', 'TRXUSDT', 'MATICUSDT', 'LINKUSDT',
+          'WLFIUSDT', 'TRUMPUSDT'  // 2025 trending
         ],
-        'EUR': ['BTCEUR', 'ETHEUR', 'BNBEUR', 'SOLEUR', 'XRPEUR', 'DOGEEUR', 'ADAEUR'],
+        'EUR': ['BTCEUR', 'ETHEUR', 'BNBEUR', 'SOLEUR', 'XRPEUR', 'ADAEUR'],
         'USD': ['BTCUSD', 'ETHUSD', 'BNBUSD', 'SOLUSD'],
       };
 
