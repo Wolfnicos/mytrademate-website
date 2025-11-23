@@ -774,13 +774,13 @@ class CoinbaseService implements BaseExchangeService {
   Future<double> getVolumePercentile(String targetSymbol, {List<String>? comparisonSymbols}) async {
     try {
       // Extract quote currency from targetSymbol (e.g., BTC-EUR → EUR)
-      final RegExp quoteRegex = RegExp(r'(EUR|USD|USDC|USDT)$');
-      final match = quoteRegex.firstMatch(targetSymbol);
-      final quote = match?.group(1) ?? 'USD'; // Coinbase defaults to USD
-
-      // Build dynamic comparison list with same quote currency
-      final baseAssets = ['BTC', 'ETH', 'XRP', 'ADA', 'DOGE', 'DOT', 'LINK', 'UNI'];
-      final symbols = comparisonSymbols ?? baseAssets.map((base) => buildTradingPair(base, quote)).toList();
+      // TOP 10 by volume on Coinbase (Nov 2025) - hardcoded exact symbols
+      // This eliminates 404 errors (BNB, MATIC, UNI delisted) and ensures accurate percentile
+      const _topVolumeSymbols = [
+        'BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD', 'DOGE-USD',
+        'ADA-USD', 'AVAX-USD', 'MATIC-USD', 'LINK-USD', 'DOT-USD'
+      ];
+      final symbols = comparisonSymbols ?? _topVolumeSymbols;
 
       // Fetch volumes for all symbols in parallel
       final volumeFutures = symbols.map((s) => get24hVolume(s));

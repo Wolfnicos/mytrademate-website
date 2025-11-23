@@ -8,7 +8,6 @@ import 'package:crypto/crypto.dart';
 import '../models/candle.dart';
 import '../models/features_with_atr.dart';
 import '../services/full_feature_builder.dart';
-import '../utils/symbol_mapper.dart';
 import 'base_exchange_service.dart';
 
 /// Kraken Exchange API Service
@@ -84,6 +83,57 @@ class KrakenService implements BaseExchangeService {
     return '$krakenBase$quote';
   }
 
+  @override
+  String getPreferredQuote(String base, String desiredQuote) {
+    // Normalize to uppercase
+    String baseUpper = base.toUpperCase();
+    final quoteUpper = desiredQuote.toUpperCase();
+
+    // Handle BTC → XBT conversion
+    if (baseUpper == 'BTC') {
+      baseUpper = 'XBT';
+    }
+    // Handle MATIC → POL conversion
+    if (baseUpper == 'MATIC') {
+      baseUpper = 'POL';
+    }
+
+    // Major coins that support EUR on Kraken (as of 2025)
+    // Kraken has strong EUR support
+    const majorCoinsWithEUR = {
+      'XBT', 'ETH', 'SOL', 'AVAX', 'LINK', 'XRP', 'DOGE', 'ADA', 'DOT',
+      'LTC', 'BCH', 'XLM', 'UNI', 'AAVE', 'POL'
+    };
+
+    // Coins that support USD on Kraken (most major coins)
+    const coinsWithUSD = {
+      'XBT', 'ETH', 'SOL', 'AVAX', 'LINK', 'XRP', 'DOGE', 'ADA', 'DOT',
+      'LTC', 'BCH', 'XLM', 'UNI', 'AAVE', 'SNX', 'COMP', 'YFI', 'MKR', 'POL'
+    };
+
+    // Check if coin supports EUR
+    if (majorCoinsWithEUR.contains(baseUpper) && quoteUpper == 'EUR') {
+      return 'EUR';
+    }
+
+    // Check if coin supports USD
+    if (coinsWithUSD.contains(baseUpper)) {
+      // Kraken prefers USD over USDT
+      if (quoteUpper == 'USD' || quoteUpper == 'EUR') {
+        return 'USD'; // Fallback to USD if EUR not supported
+      }
+      if (quoteUpper == 'USDT') return 'USDT';
+      if (quoteUpper == 'USDC') return 'USDC';
+      // Default for major coins: USD
+      return 'USD';
+    } else {
+      // Small/mid-cap coins on Kraken typically have USD pairs
+      // Examples: TRUMP, WLFI, ARB, OP
+      // Kraken prefers USD even for smaller coins
+      return 'USD';
+    }
+  }
+
   // ===================================
   // Time Synchronization
   // ===================================
@@ -136,8 +186,12 @@ class KrakenService implements BaseExchangeService {
   @override
   Future<void> loadCredentials() async {
     try {
-      _apiKey = await _secureStorage.read(key: '${_storageKeyPrefix}api_key');
-      _apiSecret = await _secureStorage.read(key: '${_storageKeyPrefix}api_secret');
+      final rawKey = await _secureStorage.read(key: '${_storageKeyPrefix}api_key');
+      final rawSecret = await _secureStorage.read(key: '${_storageKeyPrefix}api_secret');
+
+      // Clean credentials when loading (defensive - removes quotes, whitespace)
+      _apiKey = rawKey?.replaceAll(RegExp(r'\s+'), '').replaceAll("'", '').replaceAll('"', '');
+      _apiSecret = rawSecret?.replaceAll(RegExp(r'\s+'), '').replaceAll("'", '').replaceAll('"', '');
       debugPrint('[Kraken] Credentials loaded: ${hasCredentials ? "✓" : "✗"}');
     } catch (e) {
       debugPrint('[Kraken] Error loading credentials: $e');
@@ -148,10 +202,10 @@ class KrakenService implements BaseExchangeService {
 
   @override
   Future<void> saveCredentials(String apiKey, String apiSecret) async {
-    // Remove ALL whitespace from credentials (common copy-paste issue)
-    // Base64 should have no spaces, newlines, or tabs
-    final cleanApiKey = apiKey.replaceAll(RegExp(r'\s+'), '');
-    final cleanApiSecret = apiSecret.replaceAll(RegExp(r'\s+'), '');
+    // Remove ALL whitespace and quotes from credentials (common copy-paste issues)
+    // Base64 should have no spaces, newlines, tabs, or quotes
+    final cleanApiKey = apiKey.replaceAll(RegExp(r'\s+'), '').replaceAll("'", '').replaceAll('"', '');
+    final cleanApiSecret = apiSecret.replaceAll(RegExp(r'\s+'), '').replaceAll("'", '').replaceAll('"', '');
 
     await _secureStorage.write(key: '${_storageKeyPrefix}api_key', value: cleanApiKey);
     await _secureStorage.write(key: '${_storageKeyPrefix}api_secret', value: cleanApiSecret);
@@ -315,8 +369,9 @@ class KrakenService implements BaseExchangeService {
     int? endTime,
   }) async {
     try {
-      // Convert symbol to Kraken format: BTCEUR -> XBTEUR
-      final krakenSymbol = _convertToKrakenSymbol(symbol);
+      // Symbol is already in correct Kraken format from buildTradingPair()
+      // e.g., XBTEUR, ETHEUR, SOLUSD
+      final krakenSymbol = symbol;
 
       // Convert interval to Kraken interval (minutes)
       final krakenInterval = _convertIntervalToKraken(interval);
@@ -340,7 +395,7 @@ class KrakenService implements BaseExchangeService {
         queryParams['since'] = sinceTime.toString();
 
         debugPrint('[Kraken] ⏰ Time calc: now=$now, interval=$intervalMinutes min, limit=$limit candles');
-        debugPrint('[Kraken] ⏰ Going back ${totalMinutes} minutes = ${totalMinutes/60} hours = ${totalMinutes/1440} days');
+        debugPrint('[Kraken] ⏰ Going back $totalMinutes minutes = ${totalMinutes/60} hours = ${totalMinutes/1440} days');
         debugPrint('[Kraken] ⏰ Since timestamp: $sinceTime (${DateTime.fromMillisecondsSinceEpoch(sinceTime * 1000)})');
       }
 
@@ -437,7 +492,8 @@ class KrakenService implements BaseExchangeService {
   @override
   Future<Map<String, double>> fetchTicker24h(String symbol) async {
     try {
-      final krakenSymbol = _convertToKrakenSymbol(symbol);
+      // Symbol is already in correct Kraken format
+      final krakenSymbol = symbol;
 
       final queryParams = {
         'pair': krakenSymbol,
@@ -515,7 +571,8 @@ class KrakenService implements BaseExchangeService {
   @override
   Future<Map<String, dynamic>> getExchangeInfo({String? symbol}) async {
     try {
-      final queryParams = symbol != null ? {'pair': _convertToKrakenSymbol(symbol)} : <String, String>{};
+      // Symbol is already in correct format
+      final queryParams = symbol != null ? {'pair': symbol} : <String, String>{};
 
       final uri = Uri.https(_baseHost, '/0/public/AssetPairs', queryParams);
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
@@ -545,7 +602,21 @@ class KrakenService implements BaseExchangeService {
   /// Convert standard symbol to Kraken format
   /// Example: BTCEUR -> XBTEUR, ETHEUR -> ETHEUR
   String _convertToKrakenSymbol(String symbol) {
-    return getUniversalSymbol(symbol, 'Kraken');
+    // Kraken uses XBT instead of BTC
+    if (symbol.startsWith('BTC')) {
+      return 'XBT' + symbol.substring(3);
+    }
+
+    // Add X prefix for crypto, Z for fiat (Kraken convention)
+    final quotes = ['EUR', 'USD', 'USDT', 'USDC'];
+    for (final quote in quotes) {
+      if (symbol.endsWith(quote)) {
+        final base = symbol.substring(0, symbol.length - quote.length);
+        return base + quote;
+      }
+    }
+
+    return symbol;
   }
 
   /// Convert interval string to Kraken interval (minutes)
@@ -574,7 +645,8 @@ class KrakenService implements BaseExchangeService {
   /// Get 24h volume for a symbol
   Future<double> get24hVolume(String symbol) async {
     try {
-      final krakenSymbol = _convertToKrakenSymbol(symbol);
+      // Symbol is already in correct format
+      final krakenSymbol = symbol;
       final queryParams = {'pair': krakenSymbol};
       final uri = Uri.https(_baseHost, '/0/public/Ticker', queryParams);
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
@@ -613,18 +685,18 @@ class KrakenService implements BaseExchangeService {
   @override
   Future<double> getVolumePercentile(String targetSymbol, {List<String>? comparisonSymbols}) async {
     try {
-      // Convert Binance-style symbol to Kraken format (BTCEUR → XBTEUR)
-      final krakenTargetSymbol = _convertToKrakenSymbol(targetSymbol);
+      // Symbol is already in correct Kraken format
+      final krakenTargetSymbol = targetSymbol;
 
       // Extract quote currency from targetSymbol (e.g., XBTEUR → EUR)
-      final RegExp quoteRegex = RegExp(r'(EUR|USD|USDC|USDT)$');
-      final match = quoteRegex.firstMatch(krakenTargetSymbol);
-      final quote = match?.group(1) ?? 'EUR'; // Fallback to EUR if no match
-
-      // Build dynamic comparison list with same quote currency
+      // TOP 10 by volume on Kraken (Nov 2025) - hardcoded exact symbols
+      // This eliminates 404 errors and ensures accurate volume percentile calculations
       // Note: Kraken uses XBT instead of BTC
-      final baseAssets = ['XBT', 'ETH', 'XRP', 'ADA', 'DOGE', 'DOT', 'LINK', 'UNI'];
-      final symbols = comparisonSymbols ?? baseAssets.map((base) => '$base$quote').toList();
+      const _topVolumeSymbols = [
+        'XBTUSD', 'ETHUSD', 'SOLUSD', 'ADAUSD', 'DOTUSD',
+        'DOGEUSD', 'LINKUSD', 'AVAXUSD', 'MATICUSD', 'XRPUSD'
+      ];
+      final symbols = comparisonSymbols ?? _topVolumeSymbols;
 
       // Fetch volumes for all symbols in parallel
       final volumeFutures = symbols.map((s) => get24hVolume(s));
@@ -693,8 +765,8 @@ class KrakenService implements BaseExchangeService {
 
   @override
   Future<FeaturesWithATR> getFeaturesWithATRFallback(String symbol, {String interval = '1h'}) async {
-    // Convert Binance-style symbol to Kraken format (BTCEUR → XBTEUR)
-    final krakenSymbol = _convertToKrakenSymbol(symbol);
+    // Symbol is already in correct Kraken format
+    final krakenSymbol = symbol;
 
     // Check cache first (Opțiunea 1)
     final cacheKey = '${krakenSymbol}_$interval';
