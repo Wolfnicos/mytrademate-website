@@ -71,7 +71,7 @@ Completăm formularul de Data Privacy & Security din Google Play Console pentru 
 - Verificat în: `lib/providers/subscription_provider.dart`
 
 **2. Historique des achats** ✅ DA (doar subscripții app)
-- RevenueCat gestionează subscripțiile Pro (€9.99/month, €84.99/year)
+- RevenueCat gestionează subscripțiile Pro (€6.99/month, €67.99/year)
 - Google Play stochează istoricul de purchase-uri
 - ⚠️ Aplicația NU colectează historic de crypto trades (e view-only)
 - Verificat în: `lib/providers/subscription_provider.dart`, `pubspec.yaml` (purchases_flutter: ^8.2.2)
