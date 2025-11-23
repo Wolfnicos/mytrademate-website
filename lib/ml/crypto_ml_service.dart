@@ -478,8 +478,21 @@ class CryptoMLService {
         final actualTf = coinKey.split('_').last;
 
         // Fetch candles for the ACTUAL model's timeframe (not requested tf)
-        final service = exchangeService ?? _binanceService;
-        final result = await service.getFeaturesWithATRFallback(symbol, interval: actualTf);
+        // Try primary exchange first, fallback to Binance if it fails
+        late final result;
+        try {
+          final service = exchangeService ?? _binanceService;
+          result = await service.getFeaturesWithATRFallback(symbol, interval: actualTf);
+        } catch (primaryError) {
+          // If primary exchange fails (e.g., Coinbase stale data), retry with Binance
+          if (exchangeService != null && exchangeService != _binanceService) {
+            // ignore: avoid_print
+            print('   🔄 Primary exchange failed for $coinKey, retrying with Binance...');
+            result = await _binanceService.getFeaturesWithATRFallback(symbol, interval: actualTf);
+          } else {
+            rethrow; // Already using Binance or no exchange service
+          }
+        }
 
         // Calculate ATR for the requested timeframe (for weights)
         if (actualTf == timeframe) {
@@ -559,8 +572,21 @@ class CryptoMLService {
       if (_interpreters.containsKey(generalKey)) {
         try {
           // Fetch candles for THIS general model's timeframe (using exchange-specific service)
-          final service = exchangeService ?? _binanceService;
-          final result = await service.getFeaturesWithATRFallback(symbol, interval: tf);
+          // Try primary exchange first, fallback to Binance if it fails
+          late final result;
+          try {
+            final service = exchangeService ?? _binanceService;
+            result = await service.getFeaturesWithATRFallback(symbol, interval: tf);
+          } catch (primaryError) {
+            // If primary exchange fails (e.g., Coinbase stale data), retry with Binance
+            if (exchangeService != null && exchangeService != _binanceService) {
+              // ignore: avoid_print
+              print('   🔄 Primary exchange failed for $generalKey, retrying with Binance...');
+              result = await _binanceService.getFeaturesWithATRFallback(symbol, interval: tf);
+            } else {
+              rethrow; // Already using Binance or no exchange service
+            }
+          }
 
           final pred = await _getPredictionWithModel(
             generalKey,
