@@ -18,6 +18,7 @@ import 'screens/ai_strategies_screen.dart';
 import 'screens/portfolio_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/paywall_screen.dart';
 import 'services/app_settings_service.dart';
 import 'services/auth_service.dart';
 import 'services/local_notification_service.dart';
@@ -27,6 +28,32 @@ import 'theme/app_theme.dart';
 import 'providers/navigation_provider.dart';
 import 'services/achievement_service.dart';
 import 'services/ml_loading_state.dart';
+import 'services/binance_service.dart';
+import 'services/kraken_service.dart';
+
+/// Migration: Clean stored API credentials (removes trailing quotes/whitespace)
+/// This fixes credentials that were saved before quote-stripping was added
+Future<void> _cleanStoredCredentials() async {
+  try {
+    // Clean Binance credentials
+    final binance = BinanceService();
+    if (binance.hasCredentials && binance.apiKey != null && binance.apiSecret != null) {
+      // Re-save credentials (will trigger automatic cleaning via saveCredentials)
+      await binance.saveCredentials(binance.apiKey!, binance.apiSecret!);
+      debugPrint('[Migration] ✅ Cleaned Binance credentials');
+    }
+
+    // Clean Kraken credentials
+    final kraken = KrakenService();
+    if (kraken.hasCredentials && kraken.apiKey != null && kraken.apiSecret != null) {
+      // Re-save credentials (will trigger automatic cleaning via saveCredentials)
+      await kraken.saveCredentials(kraken.apiKey!, kraken.apiSecret!);
+      debugPrint('[Migration] ✅ Cleaned Kraken credentials');
+    }
+  } catch (e) {
+    debugPrint('[Migration] ⚠️  Error cleaning credentials: $e');
+  }
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,17 +76,19 @@ Future<void> main() async {
   final themeProvider = ThemeProvider();
   await themeProvider.init();
 
-  // Initialize RevenueCat SDK (DISABLED for LITE version testing)
-  // TODO: Enable after getting real RevenueCat API keys
-  // await SubscriptionProvider.initializeRevenueCat();
+  // Initialize RevenueCat SDK
+  await SubscriptionProvider.initializeRevenueCat();
 
-  // Initialize subscription provider (check status disabled for testing)
+  // Initialize subscription provider
   final subscriptionProvider = SubscriptionProvider();
-  // await subscriptionProvider.checkSubscriptionStatus();
+  await subscriptionProvider.checkSubscriptionStatus();
 
   // Initialize exchange provider
   final exchangeProvider = ExchangeProvider();
   await exchangeProvider.initialize();
+
+  // MIGRATION: Clean stored API credentials (removes trailing quotes, whitespace)
+  await _cleanStoredCredentials();
 
   // Start the app immediately
   runApp(
@@ -186,26 +215,34 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Create widget list in build() so they can respond to Provider changes
-    final widgetOptions = <Widget>[
-      const DashboardScreen(),
-      const MarketScreen(),
-      const AiStrategiesScreen(),
-      const PortfolioScreen(),
-    ];
+    return Consumer<SubscriptionProvider>(
+      builder: (context, subscription, _) {
+        // ✅ FREE TIER ENABLED: Allow all users to access app
+        // Free users get 4H timeframe only
+        // Premium features (5m, 15m, 1h, 1D, AI strategies) require Pro subscription
+        // Individual screens will show upgrade banners/paywalls for premium features
 
-    final nav = Provider.of<NavigationProvider>(context);
-    return Scaffold(
-      extendBody: true,
-      appBar: _PremiumAppBar(),
-      body: IndexedStack(
-        index: nav.index,
-        children: widgetOptions,
-      ),
-      bottomNavigationBar: _PremiumBottomNav(
-        currentIndex: nav.index,
-        onTap: nav.setIndex,
-      ),
+        final widgetOptions = <Widget>[
+          const DashboardScreen(),
+          const MarketScreen(),
+          const AiStrategiesScreen(),
+          const PortfolioScreen(),
+        ];
+
+        final nav = Provider.of<NavigationProvider>(context);
+        return Scaffold(
+          extendBody: true,
+          appBar: _PremiumAppBar(),
+          body: IndexedStack(
+            index: nav.index,
+            children: widgetOptions,
+          ),
+          bottomNavigationBar: _PremiumBottomNav(
+            currentIndex: nav.index,
+            onTap: nav.setIndex,
+          ),
+        );
+      },
     );
   }
 }
