@@ -36,7 +36,11 @@ class AppSettingsService extends ChangeNotifier {
     // BETA MODE: Grant unlimited premium access for testing
     if (IS_BETA_BUILD) return true;
 
-    // PRODUCTION MODE: Check actual trial period
+    // PRODUCTION MODE: If trial dialog should be shown, consider user in trial
+    // This prevents paywall from blocking BEFORE user sees trial dialog
+    if (shouldShowTrialDialog) return true;
+
+    // Check actual trial period (48h after activation)
     if (_trialStartTime == null || _trialDeclined) return false;
     final now = DateTime.now();
     final diff = now.difference(_trialStartTime!);
