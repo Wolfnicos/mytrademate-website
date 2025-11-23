@@ -75,6 +75,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!mounted) return;
 
     final settings = AppSettingsService();
+    // Wait for settings to be fully loaded from SharedPreferences
+    await settings.load();
+
     if (settings.shouldShowTrialDialog) {
       final accepted = await TrialActivationDialog.show(context);
       if (accepted) {
