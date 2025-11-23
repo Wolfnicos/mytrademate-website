@@ -10,8 +10,8 @@ class AppSettingsService extends ChangeNotifier {
   // ✅ PRODUCTION MODE: Beta testing completed
   static const bool IS_BETA_BUILD = false;
 
-  // Allowed quote currencies (BUSD excluded - deprecated by Binance 2024)
-  static const List<String> allowedQuoteCurrencies = ['USDT', 'EUR', 'USD', 'USDC'];
+  // Allowed quote currencies (BUSD, USDC excluded - limited exchange support)
+  static const List<String> allowedQuoteCurrencies = ['USDT', 'EUR', 'USD'];
   static const String defaultQuoteCurrency = 'USDT';
 
   static const String _kQuoteKey = 'quote_currency';

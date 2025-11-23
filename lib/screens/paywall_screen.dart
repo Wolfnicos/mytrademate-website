@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
 
-/// Paywall screen for upgrading to Pro subscription
-/// Shows pricing, features, and purchase buttons
+/// Premium Paywall Screen 2025 - Ultra Modern Design
+/// Shows pricing, features, and purchase buttons with glassmorphism
 class PaywallScreen extends StatelessWidget {
   const PaywallScreen({super.key});
 
@@ -12,264 +12,407 @@ class PaywallScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: AppTheme.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppTheme.spacing24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header Icon
-              Container(
-                width: 80,
-                height: 80,
+        child: Stack(
+          children: [
+            // Background Gradient Orbs (Premium effect)
+            Positioned(
+              top: -100,
+              right: -100,
+              child: Container(
+                width: 300,
+                height: 300,
                 decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
                   shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.rocket_launch,
-                  size: 40,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: AppTheme.spacing24),
-
-              // Title
-              Text(
-                'Unlock Faster AI Signals',
-                style: AppTheme.headingLarge.copyWith(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppTheme.spacing12),
-
-              // Subtitle
-              Text(
-                'Get short-term predictions and price alerts',
-                style: AppTheme.bodyLarge.copyWith(
-                  color: AppTheme.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppTheme.spacing32),
-
-              // Feature List
-              _buildFeatureCard(
-                icon: Icons.speed,
-                title: 'Short-term predictions (5m–4h)',
-                description: 'AI signals on 5m, 15m, 1h, and 4h timeframes',
-              ),
-              const SizedBox(height: AppTheme.spacing12),
-              _buildFeatureCard(
-                icon: Icons.notifications_active,
-                title: 'Price alerts & faster refresh',
-                description: 'Get notified of market moves instantly',
-              ),
-              const SizedBox(height: AppTheme.spacing12),
-              _buildFeatureCard(
-                icon: Icons.check_circle,
-                title: 'Portfolio tracking',
-                description: 'Read-only access to your holdings',
-                isHighlighted: false,
-              ),
-              const SizedBox(height: AppTheme.spacing32),
-
-              // Pricing Card
-              Container(
-                padding: const EdgeInsets.all(AppTheme.spacing20),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.glassGradient,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-                  border: Border.all(
-                    color: AppTheme.primary.withOpacity(0.3),
-                    width: 1,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppTheme.primary.withOpacity(0.15),
+                      AppTheme.primary.withOpacity(0.0),
+                    ],
                   ),
                 ),
-                child: Column(
-                  children: [
-                    Text(
-                      '€6.99/month',
-                      style: AppTheme.headingLarge.copyWith(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+              ),
+            ),
+            Positioned(
+              bottom: -150,
+              left: -100,
+              child: Container(
+                width: 350,
+                height: 350,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppTheme.secondary.withOpacity(0.1),
+                      AppTheme.secondary.withOpacity(0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Main Content
+            SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.spacing24,
+                vertical: AppTheme.spacing16,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Close Button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const SizedBox(width: 40),
+                      IconButton(
+                        icon: Icon(
+                          Icons.close_rounded,
+                          color: AppTheme.textSecondary,
+                          size: 28,
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppTheme.spacing16),
+
+                  // Logo Header (Premium)
+                  Center(
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      padding: const EdgeInsets.all(AppTheme.spacing16),
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.glassGradient,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppTheme.primary.withOpacity(0.3),
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primary.withOpacity(0.2),
+                            blurRadius: 30,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                      ),
+                      child: Image.asset(
+                        'assets/logo/mytrademate-logo.png',
+                        fit: BoxFit.contain,
                       ),
                     ),
-                    const SizedBox(height: AppTheme.spacing4),
-                    Text(
-                      'or',
-                      style: AppTheme.bodySmall.copyWith(
-                        color: AppTheme.textTertiary,
-                      ),
+                  ),
+                  const SizedBox(height: AppTheme.spacing32),
+
+                  // Title (Bold & Modern)
+                  Text(
+                    'Unlock Premium',
+                    style: AppTheme.headingLarge.copyWith(
+                      fontSize: 40,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -1,
+                      height: 1.1,
                     ),
-                    const SizedBox(height: AppTheme.spacing4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppTheme.spacing8),
+
+                  // Subtitle (Clean)
+                  Text(
+                    'Advanced AI predictions & strategies',
+                    style: AppTheme.bodyLarge.copyWith(
+                      color: AppTheme.textSecondary,
+                      fontSize: 17,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppTheme.spacing40),
+
+                  // Feature Cards (Ultra Premium)
+                  _buildPremiumFeature(
+                    icon: Icons.auto_graph_rounded,
+                    title: 'Multi-timeframe AI',
+                    subtitle: '5m, 15m, 1h, 4h, 1D predictions',
+                    gradient: AppTheme.primaryGradient,
+                  ),
+                  const SizedBox(height: AppTheme.spacing16),
+
+                  _buildPremiumFeature(
+                    icon: Icons.psychology_rounded,
+                    title: 'Advanced Strategies',
+                    subtitle: 'RSI/ML • Momentum • Breakout • Mean Reversion',
+                    gradient: LinearGradient(
+                      colors: [
+                        AppTheme.secondary,
+                        AppTheme.secondary.withOpacity(0.7),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacing16),
+
+                  _buildPremiumFeature(
+                    icon: Icons.account_balance_wallet_rounded,
+                    title: 'Portfolio Tracking',
+                    subtitle: 'Real-time insights & performance metrics',
+                    gradient: LinearGradient(
+                      colors: [
+                        AppTheme.success,
+                        AppTheme.success.withOpacity(0.7),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacing40),
+
+                  // Pricing Section (Premium Glass Card)
+                  Container(
+                    padding: const EdgeInsets.all(AppTheme.spacing24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppTheme.surface.withOpacity(0.4),
+                          AppTheme.surface.withOpacity(0.2),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+                      border: Border.all(
+                        color: AppTheme.primary.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primary.withOpacity(0.1),
+                          blurRadius: 20,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: Column(
                       children: [
+                        // Monthly Price
                         Text(
-                          '€67.99/year',
+                          '€6.99',
                           style: AppTheme.headingLarge.copyWith(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.primary,
+                            fontSize: 48,
+                            fontWeight: FontWeight.w900,
+                            height: 1,
+                            letterSpacing: -2,
                           ),
                         ),
-                        const SizedBox(width: AppTheme.spacing8),
+                        Text(
+                          'per month',
+                          style: AppTheme.bodyMedium.copyWith(
+                            color: AppTheme.textTertiary,
+                            fontSize: 15,
+                          ),
+                        ),
+
+                        const SizedBox(height: AppTheme.spacing16),
+
+                        // Divider
+                        Container(
+                          height: 1,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.transparent,
+                                AppTheme.glassBorder,
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: AppTheme.spacing16),
+
+                        // Annual Price (Highlighted)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '€67.99',
+                              style: AppTheme.headingLarge.copyWith(
+                                fontSize: 36,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.primary,
+                                height: 1,
+                                letterSpacing: -1.5,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                'per year',
+                                style: AppTheme.bodyMedium.copyWith(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppTheme.spacing8),
+
+                        // Save Badge
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: AppTheme.spacing8,
-                            vertical: AppTheme.spacing4,
+                            horizontal: 16,
+                            vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: AppTheme.success.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                            gradient: LinearGradient(
+                              colors: [
+                                AppTheme.success,
+                                AppTheme.success.withOpacity(0.8),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(100),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.success.withOpacity(0.3),
+                                blurRadius: 12,
+                                spreadRadius: 2,
+                              ),
+                            ],
                           ),
                           child: Text(
-                            'Save 19%',
-                            style: AppTheme.labelSmall.copyWith(
-                              color: AppTheme.success,
-                              fontWeight: FontWeight.bold,
+                            'SAVE 19%',
+                            style: AppTheme.labelMedium.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1,
                             ),
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppTheme.spacing32),
-
-              // Subscribe Buttons
-              Consumer<SubscriptionProvider>(
-                builder: (context, subscription, _) {
-                  if (subscription.isLoading) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  }
-
-                  return Column(
-                    children: [
-                      // Annual Button (Highlighted)
-                      _buildSubscribeButton(
-                        context: context,
-                        label: 'Subscribe Annual (Save 30%)',
-                        icon: Icons.workspace_premium,
-                        onPressed: () async {
-                          final success = await subscription.purchaseAnnual(context);
-                          if (success && context.mounted) {
-                            Navigator.pop(context);
-                          }
-                        },
-                        isPrimary: true,
-                      ),
-                      const SizedBox(height: AppTheme.spacing12),
-
-                      // Monthly Button
-                      _buildSubscribeButton(
-                        context: context,
-                        label: 'Subscribe Monthly',
-                        icon: Icons.calendar_month,
-                        onPressed: () async {
-                          final success = await subscription.purchaseMonthly(context);
-                          if (success && context.mounted) {
-                            Navigator.pop(context);
-                          }
-                        },
-                        isPrimary: false,
-                      ),
-                      const SizedBox(height: AppTheme.spacing16),
-
-                      // Restore Purchases
-                      TextButton(
-                        onPressed: () => subscription.restorePurchases(context),
-                        child: Text(
-                          'Restore Purchases',
-                          style: AppTheme.bodyMedium.copyWith(
-                            color: AppTheme.textSecondary,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: AppTheme.spacing24),
-
-              // Footer Disclaimer
-              Container(
-                padding: const EdgeInsets.all(AppTheme.spacing12),
-                decoration: BoxDecoration(
-                  color: AppTheme.surface.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                ),
-                child: Text(
-                  'View-only app. No trading execution. Not financial advice.',
-                  style: AppTheme.labelSmall.copyWith(
-                    color: AppTheme.textTertiary,
                   ),
-                  textAlign: TextAlign.center,
-                ),
+                  const SizedBox(height: AppTheme.spacing32),
+
+                  // Subscribe Buttons (Modern)
+                  Consumer<SubscriptionProvider>(
+                    builder: (context, subscription, _) {
+                      if (subscription.isLoading) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
+
+                      return Column(
+                        children: [
+                          // Annual Button (Primary - Gradient)
+                          _buildModernButton(
+                            context: context,
+                            label: 'Subscribe Annual',
+                            onPressed: () async {
+                              final success = await subscription.purchaseAnnual(context);
+                              if (success && context.mounted) {
+                                Navigator.pop(context);
+                              }
+                            },
+                            isPrimary: true,
+                          ),
+                          const SizedBox(height: AppTheme.spacing12),
+
+                          // Monthly Button (Secondary)
+                          _buildModernButton(
+                            context: context,
+                            label: 'Subscribe Monthly',
+                            onPressed: () async {
+                              final success = await subscription.purchaseMonthly(context);
+                              if (success && context.mounted) {
+                                Navigator.pop(context);
+                              }
+                            },
+                            isPrimary: false,
+                          ),
+                          const SizedBox(height: AppTheme.spacing20),
+
+                          // Restore Purchases
+                          TextButton(
+                            onPressed: () => subscription.restorePurchases(context),
+                            child: Text(
+                              'Restore Purchases',
+                              style: AppTheme.bodyMedium.copyWith(
+                                color: AppTheme.textTertiary,
+                                decoration: TextDecoration.underline,
+                                decorationColor: AppTheme.textTertiary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: AppTheme.spacing24),
+
+                  // Footer Disclaimer (Subtle)
+                  Text(
+                    'View-only app • No trading execution • Not financial advice',
+                    style: AppTheme.labelSmall.copyWith(
+                      color: AppTheme.textTertiary.withOpacity(0.6),
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppTheme.spacing24),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildFeatureCard({
+  /// Premium Feature Card (2025 Design)
+  Widget _buildPremiumFeature({
     required IconData icon,
     required String title,
-    required String description,
-    bool isHighlighted = true,
+    required String subtitle,
+    required Gradient gradient,
   }) {
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spacing16),
+      padding: const EdgeInsets.all(AppTheme.spacing20),
       decoration: BoxDecoration(
-        gradient: isHighlighted ? AppTheme.glassGradient : null,
-        color: isHighlighted ? null : AppTheme.surface.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+        gradient: AppTheme.glassGradient,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLG),
         border: Border.all(
-          color: isHighlighted
-              ? AppTheme.primary.withOpacity(0.2)
-              : AppTheme.glassBorder,
+          color: AppTheme.glassBorder,
           width: 1,
         ),
       ),
       child: Row(
         children: [
+          // Icon with Gradient Background
           Container(
-            width: 40,
-            height: 40,
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
-              gradient: isHighlighted
-                  ? AppTheme.primaryGradient
-                  : LinearGradient(
-                      colors: [
-                        AppTheme.textSecondary.withOpacity(0.3),
-                        AppTheme.textSecondary.withOpacity(0.2),
-                      ],
-                    ),
-              borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+              gradient: gradient,
+              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+              boxShadow: [
+                BoxShadow(
+                  color: gradient.colors.first.withOpacity(0.3),
+                  blurRadius: 12,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
             child: Icon(
               icon,
               color: Colors.white,
-              size: 20,
+              size: 28,
             ),
           ),
-          const SizedBox(width: AppTheme.spacing12),
+          const SizedBox(width: AppTheme.spacing16),
+
+          // Text Content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,14 +420,16 @@ class PaywallScreen extends StatelessWidget {
                 Text(
                   title,
                   style: AppTheme.bodyLarge.copyWith(
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
-                  description,
+                  subtitle,
                   style: AppTheme.bodySmall.copyWith(
                     color: AppTheme.textSecondary,
+                    fontSize: 14,
                   ),
                 ),
               ],
@@ -295,38 +440,64 @@ class PaywallScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSubscribeButton({
+  /// Modern Button (Premium 2025)
+  Widget _buildModernButton({
     required BuildContext context,
     required String label,
-    required IconData icon,
     required VoidCallback onPressed,
     required bool isPrimary,
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 56,
-      child: ElevatedButton.icon(
+      height: 60,
+      child: ElevatedButton(
         onPressed: onPressed,
-        icon: Icon(icon, color: Colors.white),
-        label: Text(
-          label,
-          style: AppTheme.bodyLarge.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLG),
           ),
         ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary ? null : AppTheme.surface,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: isPrimary
+                ? AppTheme.primaryGradient
+                : LinearGradient(
+                    colors: [
+                      AppTheme.surface.withOpacity(0.5),
+                      AppTheme.surface.withOpacity(0.3),
+                    ],
+                  ),
+            borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+            border: Border.all(
+              color: isPrimary
+                  ? AppTheme.primary.withOpacity(0.3)
+                  : AppTheme.glassBorder,
+              width: isPrimary ? 0 : 1,
+            ),
+            boxShadow: isPrimary
+                ? [
+                    BoxShadow(
+                      color: AppTheme.primary.withOpacity(0.4),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
           ),
-          elevation: isPrimary ? 4 : 0,
-          shadowColor: isPrimary ? AppTheme.primary.withOpacity(0.5) : null,
-        ).copyWith(
-          backgroundColor: isPrimary
-              ? WidgetStateProperty.all(AppTheme.primary)
-              : WidgetStateProperty.all(AppTheme.surface),
+          child: Center(
+            child: Text(
+              label,
+              style: AppTheme.bodyLarge.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 17,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
         ),
       ),
     );
