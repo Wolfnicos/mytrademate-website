@@ -74,7 +74,7 @@ class MLService {
 
   Future<void> loadModel() async {
     try {
-      _interpreter = await Interpreter.fromAsset('assets/models/mytrademate_v8_tcn_mtf_float32.tflite');
+      _interpreter = await Interpreter.fromAsset('assets/models/legacy/mytrademate_v8_tcn_mtf_float32.tflite');
       isInitialized = true;
       // Try to infer feature count from input tensor shape [1, window, features]
       try {

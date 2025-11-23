@@ -43,9 +43,13 @@ class SubscriptionProvider extends ChangeNotifier {
   /// Call this once in main.dart
   static Future<void> initializeRevenueCat() async {
     try {
-      // Configure SDK with your API keys
-      const appleApiKey = 'test_GRdTXkhKZFPJoEAtiHIApMIRjFJ';
-      const googleApiKey = 'goog_YOUR_GOOGLE_KEY'; // Android not yet configured
+      // TODO: CRITICAL - Replace with PRODUCTION API keys before App Store submission!
+      // 1. Go to: https://app.revenuecat.com/projects → Your Project → API Keys
+      // 2. Copy the PRODUCTION Apple key (starts with 'appl_' not 'test_')
+      // 3. Replace below BEFORE building release .ipa
+      // WARNING: App Store will REJECT app with test_ key!
+      const appleApiKey = 'test_GRdTXkhKZFPJoEAtiHIApMIRjFJ'; // ⚠️ REPLACE WITH PRODUCTION KEY
+      const googleApiKey = 'goog_YOUR_GOOGLE_KEY'; // Android - add when launching on Google Play
 
       PurchasesConfiguration configuration;
       if (defaultTargetPlatform == TargetPlatform.iOS ||
