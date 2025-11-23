@@ -1108,7 +1108,7 @@ class BinanceService implements BaseExchangeService {
       }
 
       final percentile = lowerCount / volumes.length;
-      debugPrint('📊 Volume percentile for $targetSymbol: ${(percentile * 100).toStringAsFixed(1)}% (volume: ${targetVolume.toStringAsFixed(0)} $quote)');
+      debugPrint('📊 Volume percentile for $targetSymbol: ${(percentile * 100).toStringAsFixed(1)}% (volume: ${targetVolume.toStringAsFixed(0)} units)');
 
       return percentile;
     } catch (e) {
