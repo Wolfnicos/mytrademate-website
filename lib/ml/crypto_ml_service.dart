@@ -391,8 +391,17 @@ class CryptoMLService {
           // Not cached, fetch from API
           volumePercentile = await service.getVolumePercentile(symbol);
 
-          // Cache for 5 minutes (include exchange name in cache key to avoid mixing data)
-          _volumeCache[cacheKey] = (volumePercentile, DateTime.now());
+          // FIX: NU salva în cache valori 0.0 sau < 1% când exchange-ul e Coinbase/Kraken (sunt rareori reale)
+          // Problema: API errors/timeouts returnează 0.0 → se cache-uiește → 5 min de fallback-uri false
+          if (volumePercentile > 0.01) {
+            // Doar dacă e realist (> 1%), salvează în cache
+            _volumeCache[cacheKey] = (volumePercentile, DateTime.now());
+          } else {
+            // Șterge cache-ul vechi prost dacă era 0.0 (probabil API error)
+            _volumeCache.remove(cacheKey);
+            // ignore: avoid_print
+            print('⚠️  VolumeProfile: Ignorat și șters cache 0.0 pentru ${service.exchangeName}/$symbol (probabil API error)');
+          }
 
           if (!silent) {
             // ignore: avoid_print
