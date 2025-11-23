@@ -533,7 +533,12 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
               )).toList(),
               onChanged: (v) {
                 if (v == null) return;
-                setState(() => _selectedSymbol = v);
+                setState(() {
+                  _selectedSymbol = v;
+                  // Reset price tracking when switching symbols to avoid -100% error
+                  _previousPrice = null;
+                  _previousAtr = null;
+                });
                 _runInference();
               },
             ),

@@ -59,6 +59,23 @@ class CoinbaseService implements BaseExchangeService {
     }
   }
 
+  // Maximum age for actual candle data (not cache age)
+  Duration _getMaxDataAge(String interval) {
+    switch (interval) {
+      case '5m':
+      case '15m':
+        return const Duration(hours: 24); // Short intervals: data must be < 24h old
+      case '1h':
+      case '4h':
+        return const Duration(days: 3); // Medium intervals: data must be < 3 days old
+      case '1d':
+      case '1w':
+        return const Duration(days: 30); // Long intervals: data must be < 30 days old
+      default:
+        return const Duration(hours: 24);
+    }
+  }
+
   @override
   String get exchangeName => 'Coinbase';
 
@@ -873,31 +890,49 @@ class CoinbaseService implements BaseExchangeService {
       final cacheAge = now.difference(_cacheTimestamp[cacheKey]!);
       if (cacheAge < cacheDuration) {
         final cachedCandles = _candlesCache[cacheKey]!;
-        debugPrint('[Coinbase] ⚡ Using CACHED candles for $coinbaseSymbol @ $interval (age: ${cacheAge.inSeconds}s)');
 
-        // Calculate ATR from cached data
-        final candlesForATR = cachedCandles.map((c) => [
-          c.openTime.millisecondsSinceEpoch.toDouble(),
-          c.open,
-          c.high,
-          c.low,
-          c.close,
-          c.volume,
-        ]).toList();
+        // Validate data age (not just cache age)
+        if (cachedCandles.isNotEmpty) {
+          final latestCandle = cachedCandles.last;
+          final dataAge = now.difference(latestCandle.closeTime);
+          final maxDataAge = _getMaxDataAge(interval);
 
-        final atr = _calculateATR(candlesForATR, period: 14);
+          if (dataAge > maxDataAge) {
+            // Data is too old, invalidate cache and fetch fresh data
+            debugPrint('[Coinbase] ❌ STALE DATA detected for $coinbaseSymbol @ $interval');
+            debugPrint('[Coinbase]    Latest candle: ${latestCandle.closeTime} (${dataAge.inMinutes}min ago)');
+            debugPrint('[Coinbase]    Max allowed age: ${maxDataAge.inHours}h - INVALIDATING CACHE');
+            _candlesCache.remove(cacheKey);
+            _cacheTimestamp.remove(cacheKey);
+            // Continue to fetch fresh data below
+          } else {
+            debugPrint('[Coinbase] ⚡ Using CACHED candles for $coinbaseSymbol @ $interval (cache age: ${cacheAge.inSeconds}s, data age: ${dataAge.inMinutes}min)');
 
-        // Build features using FullFeatureBuilder
-        final fullBuilder = FullFeatureBuilder();
-        final features = fullBuilder.buildFeatures(candles: cachedCandles);
+            // Calculate ATR from cached data
+            final candlesForATR = cachedCandles.map((c) => [
+              c.openTime.millisecondsSinceEpoch.toDouble(),
+              c.open,
+              c.high,
+              c.low,
+              c.close,
+              c.volume,
+            ]).toList();
 
-        final currentPrice = cachedCandles.isNotEmpty ? cachedCandles.last.close : 0.0;
+            final atr = _calculateATR(candlesForATR, period: 14);
 
-        return FeaturesWithATR(
-          features: features,
-          atr: atr,
-          currentPrice: currentPrice,
-        );
+            // Build features using FullFeatureBuilder
+            final fullBuilder = FullFeatureBuilder();
+            final features = fullBuilder.buildFeatures(candles: cachedCandles);
+
+            final currentPrice = cachedCandles.isNotEmpty ? cachedCandles.last.close : 0.0;
+
+            return FeaturesWithATR(
+              features: features,
+              atr: atr,
+              currentPrice: currentPrice,
+            );
+          }
+        }
       }
     }
 
@@ -912,10 +947,25 @@ class CoinbaseService implements BaseExchangeService {
 
       debugPrint('[Coinbase] 💾 CACHED candles for $coinbaseSymbol @ $interval (${candles.length} candles)');
     } catch (e) {
-      // If rate limited and we have old cache, use it
+      // If rate limited and we have old cache, check if it's still usable
       if (_candlesCache.containsKey(cacheKey)) {
-        debugPrint('[Coinbase] ⚠️  Rate limited, using STALE cache for $coinbaseSymbol @ $interval');
         candles = _candlesCache[cacheKey]!;
+        if (candles.isNotEmpty) {
+          final dataAge = now.difference(candles.last.closeTime);
+          final maxDataAge = _getMaxDataAge(interval);
+
+          // Reject cache if data is too old
+          if (dataAge > maxDataAge) {
+            debugPrint('[Coinbase] ❌ Rate limited + STALE DATA (${dataAge.inHours}h old) for $coinbaseSymbol @ $interval');
+            debugPrint('[Coinbase]    Max allowed: ${maxDataAge.inHours}h - REJECTING fallback cache');
+            throw Exception('Coinbase: Data too old (${dataAge.inHours}h) and failed to fetch fresh data for $coinbaseSymbol @ $interval');
+          }
+
+          debugPrint('[Coinbase] ⚠️  Rate limited, using acceptable cache for $coinbaseSymbol @ $interval');
+          debugPrint('[Coinbase]    Latest candle: ${candles.last.closeTime} (${dataAge.inMinutes}min ago, max: ${maxDataAge.inHours}h)');
+        } else {
+          debugPrint('[Coinbase] ⚠️  Rate limited, using EMPTY cache for $coinbaseSymbol @ $interval');
+        }
       } else {
         rethrow;
       }
