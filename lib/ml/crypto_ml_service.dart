@@ -348,6 +348,7 @@ class CryptoMLService {
     String timeframe = '5m',
     bool silent = false,
     BaseExchangeService? exchangeService, // NEW: Pass exchange service for volume calculation
+    List<String>? userCoins, // NEW: User's portfolio coins for volume percentile comparison
   }) async {
     // ignore: avoid_print
     print('');
@@ -389,7 +390,7 @@ class CryptoMLService {
           }
         } else {
           // Not cached, fetch from API
-          volumePercentile = await service.getVolumePercentile(symbol);
+          volumePercentile = await service.getVolumePercentile(symbol, comparisonSymbols: userCoins);
 
           // FIX: NU salva în cache valori 0.0 sau < 1% când exchange-ul e Coinbase/Kraken (sunt rareori reale)
           // Problema: API errors/timeouts returnează 0.0 → se cache-uiește → 5 min de fallback-uri false

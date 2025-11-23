@@ -224,6 +224,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
         symbol: _selectedSymbol,
         timeframe: _interval,
         exchangeService: exchangeProvider.currentExchange,
+        userCoins: _availableCoins,  // Pass user's portfolio coins for volume percentile
       );
 
       // Get current price for price change tracking
@@ -309,11 +310,14 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       debugPrint('🔄 AI Strategies (SILENT): fetching CryptoML prediction for $coin @$_interval');
 
       // Fetch prediction with silent flag (reduced logging)
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
       final prediction = await CryptoMLService().getPrediction(
         coin: coin,
         symbol: _selectedSymbol,
         timeframe: _interval,
         silent: true,  // Silent mode: no verbose logging
+        exchangeService: exchangeProvider.currentExchange,
+        userCoins: _availableCoins,  // Pass user's portfolio coins for volume percentile
       );
 
       // Get current price for price change tracking
@@ -550,11 +554,11 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                   {'label': isProUser ? '5M' : '5M 🔒', 'value': '5m'},
                   {'label': isProUser ? '15M' : '15M 🔒', 'value': '15m'},
                   {'label': isProUser ? '1H' : '1H 🔒', 'value': '1h'},
-                  {'label': isProUser ? '4H' : '4H FREE', 'value': '4h'},
+                  {'label': isProUser ? '4H' : '4H 🔒', 'value': '4h'},
                   {'label': isProUser ? '1D' : '1D 🔒', 'value': '1d'},
                 ].map((item) {
                   final bool selected = _interval == item['value'];
-                  final bool isLocked = !isProUser && item['value'] != '4h';
+                  final bool isLocked = !isProUser;
 
                   return GestureDetector(
                     onTap: isLocked ? () {
@@ -628,7 +632,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                         const SizedBox(width: AppTheme.spacing8),
                         Expanded(
                           child: Text(
-                            '🔒 Short-term timeframes (5m-1h) and long-term (1d) are Premium only. Upgrade to unlock all signals.',
+                            '🔒 AI Predictions require Premium subscription. Upgrade to unlock all timeframes and get intelligent market insights.',
                             style: AppTheme.bodySmall.copyWith(
                               color: AppTheme.textSecondary,
                               height: 1.4,
