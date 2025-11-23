@@ -1108,7 +1108,9 @@ class BinanceService implements BaseExchangeService {
         'USD': ['BTCUSD', 'ETHUSD', 'BNBUSD', 'SOLUSD'],
       };
 
-      final symbols = comparisonSymbols ?? _topVolumeSymbolsByQuote[quote] ?? _topVolumeSymbolsByQuote['USDT']!;
+      final symbols = (comparisonSymbols != null && comparisonSymbols.isNotEmpty)
+          ? comparisonSymbols
+          : (_topVolumeSymbolsByQuote[quote] ?? _topVolumeSymbolsByQuote['USDT']!);
 
       // Fetch volumes for all symbols in parallel
       final volumeFutures = symbols.map((s) => get24hVolume(s));

@@ -787,7 +787,9 @@ class CoinbaseService implements BaseExchangeService {
         'EUR': ['BTC-EUR', 'ETH-EUR', 'SOL-EUR', 'XRP-EUR', 'DOGE-EUR', 'ADA-EUR'],
       };
 
-      final symbols = comparisonSymbols ?? _topVolumeSymbolsByQuote[quote] ?? _topVolumeSymbolsByQuote['USD']!;
+      final symbols = (comparisonSymbols != null && comparisonSymbols.isNotEmpty)
+          ? comparisonSymbols
+          : (_topVolumeSymbolsByQuote[quote] ?? _topVolumeSymbolsByQuote['USD']!);
 
       // Fetch volumes for all symbols in parallel
       final volumeFutures = symbols.map((s) => get24hVolume(s));
