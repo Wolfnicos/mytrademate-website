@@ -470,7 +470,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 16),
 
           Text(
-            'Full access for 2 days, then €6.99/month or €67.10/year',
+            'Full access for 2 days, then €6.99/month or €67.99/year',
             style: AppTheme.bodyLarge.copyWith(
               fontSize: 17,
               color: AppTheme.getTextSecondary(context),
@@ -575,7 +575,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 _buildFeature('✓ Real-time market data', fontSize: 15),
                 const SizedBox(height: 16),
                 Text(
-                  '€6.99/month or €67.10/year (save 20%)',
+                  '€6.99/month or €67.99/year (save 19%)',
                   style: AppTheme.labelMedium.copyWith(
                     fontSize: 13,
                     color: AppTheme.primary,

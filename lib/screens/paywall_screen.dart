@@ -116,7 +116,7 @@ class PaywallScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          '€67.10/year',
+                          '€67.99/year',
                           style: AppTheme.headingLarge.copyWith(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -134,7 +134,7 @@ class PaywallScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                           ),
                           child: Text(
-                            'Save 20%',
+                            'Save 19%',
                             style: AppTheme.labelSmall.copyWith(
                               color: AppTheme.success,
                               fontWeight: FontWeight.bold,

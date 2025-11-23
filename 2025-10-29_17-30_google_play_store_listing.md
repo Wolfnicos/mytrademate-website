@@ -13,7 +13,7 @@ Completăm "Fiches Play Store" în Google Play Console pentru aplicația **MyTra
 - ❌ NU există trading real
 - ✅ Face ID / Touch ID / PIN pentru securitate locală
 - ✅ Sign in ca guest (fără email)
-- ✅ RevenueCat pentru subscripții Pro (€9.99/lună, €84.99/an)
+- ✅ RevenueCat pentru subscripții Pro (€6.99/lună, €67.99/an)
 
 ---
 

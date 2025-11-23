@@ -4,9 +4,9 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import '../services/app_settings_service.dart';
 
 /// Manages subscription state via RevenueCat
-/// Entitlement: "pro"
+/// Entitlement: "MyTradeMate Pro"
 /// Offering: "default"
-/// Products: pro_monthly_999, pro_yearly_8499
+/// Products: monthly, yearly
 ///
 /// FREE TRIAL: First 48 hours after app install grants full Pro access
 class SubscriptionProvider extends ChangeNotifier {
@@ -44,9 +44,8 @@ class SubscriptionProvider extends ChangeNotifier {
   static Future<void> initializeRevenueCat() async {
     try {
       // Configure SDK with your API keys
-      // TODO: Replace with actual RevenueCat API keys before production
-      const appleApiKey = 'appl_YOUR_APPLE_KEY';
-      const googleApiKey = 'goog_YOUR_GOOGLE_KEY';
+      const appleApiKey = 'test_GRdTXkhKZFPJoEAtiHIApMIRjFJ';
+      const googleApiKey = 'goog_YOUR_GOOGLE_KEY'; // Android not yet configured
 
       PurchasesConfiguration configuration;
       if (defaultTargetPlatform == TargetPlatform.iOS ||
@@ -76,8 +75,8 @@ class SubscriptionProvider extends ChangeNotifier {
     try {
       final customerInfo = await Purchases.getCustomerInfo();
 
-      // Check if user has "pro" entitlement
-      final hasProEntitlement = customerInfo.entitlements.all['pro']?.isActive ?? false;
+      // Check if user has "MyTradeMate Pro" entitlement
+      final hasProEntitlement = customerInfo.entitlements.all['MyTradeMate Pro']?.isActive ?? false;
 
       _isProUser = hasProEntitlement;
       debugPrint('🔐 Subscription status: ${_isProUser ? "PRO" : "FREE"}');
@@ -96,7 +95,7 @@ class SubscriptionProvider extends ChangeNotifier {
     return await _purchasePackage(context, 'monthly');
   }
 
-  /// Purchase annual subscription (€84.99/year, save 30%)
+  /// Purchase annual subscription (€67.99/year, save 19%)
   Future<bool> purchaseAnnual(BuildContext context) async {
     return await _purchasePackage(context, 'annual');
   }
@@ -129,10 +128,10 @@ class SubscriptionProvider extends ChangeNotifier {
       }
 
       // Make purchase
-      final purchaserInfo = await Purchases.purchasePackage(package);
+      final purchaseResult = await Purchases.purchasePackage(package);
 
-      // Check if purchase was successful
-      final hasProEntitlement = purchaserInfo.entitlements.all['pro']?.isActive ?? false;
+      // Check if purchase was successful (SDK 9.x returns PurchaseResult)
+      final hasProEntitlement = purchaseResult.customerInfo.entitlements.all['MyTradeMate Pro']?.isActive ?? false;
       _isProUser = hasProEntitlement;
 
       if (_isProUser) {
@@ -195,7 +194,7 @@ class SubscriptionProvider extends ChangeNotifier {
     try {
       final customerInfo = await Purchases.restorePurchases();
 
-      final hasProEntitlement = customerInfo.entitlements.all['pro']?.isActive ?? false;
+      final hasProEntitlement = customerInfo.entitlements.all['MyTradeMate Pro']?.isActive ?? false;
       _isProUser = hasProEntitlement;
 
       if (_isProUser) {
