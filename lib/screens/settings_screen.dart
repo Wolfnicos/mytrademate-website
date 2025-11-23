@@ -1606,18 +1606,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: const Icon(Icons.open_in_new, color: AppTheme.textTertiary),
                   onTap: () => _openWebsite(),
                 ),
-                // ML Debug & Testing - Hidden for production
-                // const Divider(color: AppTheme.glassBorder),
-                // ListTile(
-                //   leading: const Icon(Icons.bug_report, color: AppTheme.primary),
-                //   title: Text('ML Debug & Testing', style: AppTheme.bodyMedium),
-                //   subtitle: Text('Test AI models accuracy', style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary)),
-                //   trailing: const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
-                //   onTap: () => Navigator.push(
-                //     context,
-                //     MaterialPageRoute(builder: (context) => const MLDebugScreen()),
-                //   ),
-                // ),
+                // Developer Tools
+                const Divider(color: AppTheme.glassBorder),
+                ListTile(
+                  leading: const Icon(Icons.refresh, color: AppTheme.warning),
+                  title: Text('Reset Trial (Debug)', style: AppTheme.bodyMedium),
+                  subtitle: Text('Reset 48h trial - show dialog again', style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary)),
+                  trailing: const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
+                  onTap: () async {
+                    await AppSettingsService().resetTrialForTesting();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Trial reset! Restart app to see dialog'),
+                          backgroundColor: AppTheme.success,
+                        ),
+                      );
+                    }
+                  },
+                ),
               ],
             ),
           ),
