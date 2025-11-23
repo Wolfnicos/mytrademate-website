@@ -217,10 +217,10 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Consumer<SubscriptionProvider>(
       builder: (context, subscription, _) {
-        // ✅ FREE TIER ENABLED: Allow all users to access app
-        // Free users get 4H timeframe only
-        // Premium features (5m, 15m, 1h, 1D, AI strategies) require Pro subscription
-        // Individual screens will show upgrade banners/paywalls for premium features
+        // ✅ FREE TIER: Dashboard, Market, Portfolio only
+        // ❌ INSIGHTS TAB BLOCKED for FREE users → Shows paywall
+        // 🎁 48H TRIAL: Full access to all features
+        // 💎 PRO: Full access forever
 
         final widgetOptions = <Widget>[
           const DashboardScreen(),
@@ -230,6 +230,8 @@ class _HomePageState extends State<HomePage> {
         ];
 
         final nav = Provider.of<NavigationProvider>(context);
+        final isProUser = subscription.isProUser;
+
         return Scaffold(
           extendBody: true,
           appBar: _PremiumAppBar(),
@@ -239,7 +241,17 @@ class _HomePageState extends State<HomePage> {
           ),
           bottomNavigationBar: _PremiumBottomNav(
             currentIndex: nav.index,
-            onTap: nav.setIndex,
+            onTap: (index) {
+              // Block Insights tab (index 2) for FREE users
+              if (index == 2 && !isProUser) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PaywallScreen()),
+                );
+                return;
+              }
+              nav.setIndex(index);
+            },
           ),
         );
       },
