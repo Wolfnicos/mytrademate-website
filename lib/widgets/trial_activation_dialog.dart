@@ -48,9 +48,10 @@ class TrialActivationDialog extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(AppTheme.spacing24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
               // Premium icon
               Container(
                 width: 80,
@@ -251,6 +252,7 @@ class TrialActivationDialog extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
             ],
+            ),
           ),
         ),
       ),
