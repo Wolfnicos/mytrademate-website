@@ -1102,7 +1102,7 @@ class BinanceService implements BaseExchangeService {
         'USDT': [
           'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
           'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'TRXUSDT', 'SHIBUSDT',
-          'WLFIUSDT', 'TRUMPUSDT', 'PEPEUSDT', 'BONKUSDT'  // 2025 trending memecoins
+          'WLFIUSDT', 'TRUMPUSDT', 'PEPEUSDT', 'BONKUSDT', 'FLOKIUSDT', 'MOGUSDT'  // 2025 trending memecoins
         ],
         'EUR': ['BTCEUR', 'ETHEUR', 'BNBEUR', 'SOLEUR', 'XRPEUR', 'DOGEEUR', 'ADAEUR'],
         'USD': ['BTCUSD', 'ETHUSD', 'BNBUSD', 'SOLUSD'],
