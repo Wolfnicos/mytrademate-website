@@ -3,14 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/app_settings_service.dart';
 import '../services/user_coins_service.dart';
-// import '../providers/subscription_provider.dart'; // Unused - commented out
+import '../providers/subscription_provider.dart';
 import '../providers/exchange_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/ai_indicator.dart';
 import '../widgets/crypto_avatar.dart';
 import '../widgets/trial_banner.dart';
-// import '../widgets/trial_activation_dialog.dart'; // Unused - commented out
+import '../widgets/trial_activation_dialog.dart';
 import '../ml/ensemble_predictor.dart';
 import '../utils/responsive.dart';
 
