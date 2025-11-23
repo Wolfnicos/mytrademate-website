@@ -25,10 +25,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // DISABLED: Trial dialog not used in Portfolio Lite edition
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   _maybeShowTrialDialog();
-    // });
+    // Show trial dialog on first app launch (48h free trial)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeShowTrialDialog();
+    });
     // Listen to quote currency changes and rebuild all tiles
     AppSettingsService().addListener(_onSettingsChanged);
 
@@ -71,23 +71,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // Future<void> _maybeShowTrialDialog() async { // UNUSED - commented out
-  //   if (!mounted) return;
-  //
-  //   final settings = AppSettingsService();
-  //   if (settings.shouldShowTrialDialog) {
-  //     final accepted = await TrialActivationDialog.show(context);
-  //     if (accepted) {
-  //       await settings.activateTrial();
-  //       // Notify SubscriptionProvider to rebuild UI (hide upgrade banners)
-  //       if (mounted) {
-  //         Provider.of<SubscriptionProvider>(context, listen: false).notifyListeners();
-  //       }
-  //     } else {
-  //       await settings.declineTrial();
-  //     }
-  //   }
-  // }
+  Future<void> _maybeShowTrialDialog() async {
+    if (!mounted) return;
+
+    final settings = AppSettingsService();
+    if (settings.shouldShowTrialDialog) {
+      final accepted = await TrialActivationDialog.show(context);
+      if (accepted) {
+        await settings.activateTrial();
+        // Notify SubscriptionProvider to rebuild UI (hide upgrade banners)
+        if (mounted) {
+          Provider.of<SubscriptionProvider>(context, listen: false).notifyListeners();
+        }
+      } else {
+        await settings.declineTrial();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
