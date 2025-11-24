@@ -9,6 +9,7 @@ import '../models/candle.dart';
 import '../models/features_with_atr.dart';
 import '../services/full_feature_builder.dart';
 import 'base_exchange_service.dart';
+import 'rate_limiter_service.dart';
 
 /// Kraken Exchange API Service
 /// Implements BaseExchangeService for Kraken API
@@ -144,6 +145,7 @@ class KrakenService implements BaseExchangeService {
       final uri = Uri.https(_baseHost, '/0/public/Time');
       final localBefore = DateTime.now().millisecondsSinceEpoch;
 
+      await RateLimiterService().throttle('Kraken');
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (response.statusCode != 200) {
@@ -319,6 +321,7 @@ class KrakenService implements BaseExchangeService {
         final uri = Uri.https(_baseHost, path);
         final headers = _buildHeaders(path, postData);
 
+        await RateLimiterService().throttle('Kraken');
         final response = await http.post(
           uri,
           headers: headers,
@@ -401,6 +404,7 @@ class KrakenService implements BaseExchangeService {
 
       final uri = Uri.https(_baseHost, '/0/public/OHLC', queryParams);
       debugPrint('[Kraken] 📡 OHLC Request: $uri');
+      await RateLimiterService().throttle('Kraken');
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
       debugPrint('[Kraken] 📥 OHLC Response: ${response.statusCode}');
@@ -500,6 +504,7 @@ class KrakenService implements BaseExchangeService {
       };
 
       final uri = Uri.https(_baseHost, '/0/public/Ticker', queryParams);
+      await RateLimiterService().throttle('Kraken');
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (response.statusCode != 200) {
@@ -575,6 +580,7 @@ class KrakenService implements BaseExchangeService {
       final queryParams = symbol != null ? {'pair': symbol} : <String, String>{};
 
       final uri = Uri.https(_baseHost, '/0/public/AssetPairs', queryParams);
+      await RateLimiterService().throttle('Kraken');
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
@@ -649,6 +655,7 @@ class KrakenService implements BaseExchangeService {
       final krakenSymbol = symbol;
       final queryParams = {'pair': krakenSymbol};
       final uri = Uri.https(_baseHost, '/0/public/Ticker', queryParams);
+      await RateLimiterService().throttle('Kraken');
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (response.statusCode != 200) {

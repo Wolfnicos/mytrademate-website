@@ -11,6 +11,7 @@ import '../models/features_with_atr.dart';
 // import '../services/technical_indicator_calculator.dart';
 import '../services/full_feature_builder.dart';
 import 'base_exchange_service.dart';
+import 'rate_limiter_service.dart';
 
 /// Result wrapper for feature extraction
 class FeatureResult {
@@ -126,6 +127,7 @@ class BinanceService implements BaseExchangeService {
       final uri = Uri.https(_baseHost, '/api/v3/time');
       final localBefore = DateTime.now().millisecondsSinceEpoch;
 
+      await RateLimiterService().throttle('Binance');
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (response.statusCode != 200) {
@@ -288,6 +290,7 @@ class BinanceService implements BaseExchangeService {
         'signature': signature,
       });
 
+      await RateLimiterService().throttle('Binance');
       final response = await http.get(
         uri,
         headers: {'X-MBX-APIKEY': _apiKey!},
@@ -318,6 +321,7 @@ class BinanceService implements BaseExchangeService {
         'signature': signature,
       });
 
+      await RateLimiterService().throttle('Binance');
       final response = await http.get(
         uri,
         headers: {'X-MBX-APIKEY': _apiKey!},
@@ -400,6 +404,7 @@ class BinanceService implements BaseExchangeService {
           ? Uri.https(_baseHost, '/api/v3/exchangeInfo', {'symbol': binanceSymbol})
           : Uri.https(_baseHost, '/api/v3/exchangeInfo');
 
+      await RateLimiterService().throttle('Binance');
       final response = await http.get(uri);
 
       if (response.statusCode != 200) {
@@ -578,6 +583,7 @@ class BinanceService implements BaseExchangeService {
 
     final uri = Uri.https(_baseHost, '/api/v3/order');
     final String body = '$queryString&signature=$signature';
+    await RateLimiterService().throttle('Binance');
     final res = await http.post(
       uri,
       headers: <String, String>{
@@ -643,6 +649,7 @@ class BinanceService implements BaseExchangeService {
 
     final uri = Uri.https(_baseHost, '/api/v3/order');
     final String body = '$queryString&signature=$signature';
+    await RateLimiterService().throttle('Binance');
     final res = await http.post(
       uri,
       headers: <String, String>{
@@ -705,6 +712,7 @@ class BinanceService implements BaseExchangeService {
 
     final uri = Uri.https(_baseHost, '/api/v3/order');
     final String body = '$queryString&signature=$signature';
+    await RateLimiterService().throttle('Binance');
     final res = await http.post(
       uri,
       headers: <String, String>{
@@ -763,6 +771,7 @@ class BinanceService implements BaseExchangeService {
 
     final uri = Uri.https(_baseHost, '/api/v3/order');
     final String body = '$queryString&signature=$signature';
+    await RateLimiterService().throttle('Binance');
     final res = await http.post(
       uri,
       headers: <String, String>{
@@ -811,6 +820,7 @@ class BinanceService implements BaseExchangeService {
       'signature': signature,
     });
 
+    await RateLimiterService().throttle('Binance');
     final res = await http.get(uri, headers: {'X-MBX-APIKEY': _apiKey!});
     if (res.statusCode != 200) {
       throw Exception('Binance openOrders error ${res.statusCode}: ${res.body}');
@@ -860,6 +870,7 @@ class BinanceService implements BaseExchangeService {
       ...params,
       'signature': signature,
     });
+    await RateLimiterService().throttle('Binance');
     final res = await http.delete(uri, headers: {'X-MBX-APIKEY': _apiKey!});
     if (res.statusCode != 200) {
       throw Exception('Binance cancel error ${res.statusCode}: ${res.body}');
@@ -914,6 +925,7 @@ class BinanceService implements BaseExchangeService {
 
     final uri = Uri.https(_baseHost, '/api/v3/order/oco');
     final String body = '$queryString&signature=$signature';
+    await RateLimiterService().throttle('Binance');
     final res = await http.post(
       uri,
       headers: <String, String>{
@@ -958,6 +970,7 @@ class BinanceService implements BaseExchangeService {
     if (endTime != null) query['endTime'] = endTime.toString();
 
     final uri = Uri.https(_baseHost, '/api/v3/klines', query);
+    await RateLimiterService().throttle('Binance');
     final http.Response res = await http.get(uri);
     if (res.statusCode != 200) {
       throw Exception('Binance klines error ${res.statusCode}: ${res.body}');
@@ -992,6 +1005,7 @@ class BinanceService implements BaseExchangeService {
   /// Fetch tradable spot pairs (symbol, base, quote) from exchangeInfo
   Future<List<Map<String, String>>> fetchTradingPairs() async {
     final uri = Uri.https(_baseHost, '/api/v3/exchangeInfo');
+    await RateLimiterService().throttle('Binance');
     final http.Response res = await http.get(uri);
     if (res.statusCode != 200) {
       throw Exception('Binance exchangeInfo error ${res.statusCode}: ${res.body}');
@@ -1030,6 +1044,9 @@ class BinanceService implements BaseExchangeService {
       binanceSymbol = upperSymbol;
     }
 
+    // Rate limiting: prevent API throttling/bans
+    await RateLimiterService().throttle('Binance');
+
     final uri = Uri.https(_baseHost, '/api/v3/ticker/24hr', {'symbol': binanceSymbol});
     final http.Response res = await http.get(uri);
     if (res.statusCode != 200) {
@@ -1062,6 +1079,7 @@ class BinanceService implements BaseExchangeService {
       }
 
       final uri = Uri.https(_baseHost, '/api/v3/ticker/24hr', {'symbol': binanceSymbol});
+      await RateLimiterService().throttle('Binance');
       final http.Response res = await http.get(uri);
       if (res.statusCode != 200) {
         throw Exception('Binance 24hr volume error ${res.statusCode}: ${res.body}');

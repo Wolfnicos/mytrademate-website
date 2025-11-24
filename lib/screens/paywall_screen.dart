@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -359,6 +360,55 @@ class PaywallScreen extends StatelessWidget {
                       fontSize: 12,
                     ),
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppTheme.spacing16),
+
+                  // Privacy Policy & Terms (Required by Apple/Google)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextButton(
+                        onPressed: () async {
+                          final uri = Uri.parse('https://mytrademate.app/privacy-policy.html');
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        child: Text(
+                          'Privacy Policy',
+                          style: AppTheme.labelSmall.copyWith(
+                            color: AppTheme.textTertiary,
+                            fontSize: 11,
+                            decoration: TextDecoration.underline,
+                            decorationColor: AppTheme.textTertiary,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        ' • ',
+                        style: AppTheme.labelSmall.copyWith(
+                          color: AppTheme.textTertiary.withOpacity(0.6),
+                          fontSize: 11,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          final uri = Uri.parse('https://mytrademate.app/terms-of-service.html');
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        child: Text(
+                          'Terms of Service',
+                          style: AppTheme.labelSmall.copyWith(
+                            color: AppTheme.textTertiary,
+                            fontSize: 11,
+                            decoration: TextDecoration.underline,
+                            decorationColor: AppTheme.textTertiary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: AppTheme.spacing24),
                 ],

@@ -14,6 +14,7 @@ import '../models/candle.dart';
 import '../models/features_with_atr.dart';
 import '../services/full_feature_builder.dart';
 import 'base_exchange_service.dart';
+import 'rate_limiter_service.dart';
 
 /// Coinbase Exchange API Service
 /// Implements BaseExchangeService for Coinbase Pro/Advanced Trade API
@@ -165,6 +166,7 @@ class CoinbaseService implements BaseExchangeService {
       final uri = Uri.https(_baseHost, '/api/v3/time');
       final localBefore = DateTime.now().millisecondsSinceEpoch;
 
+      await RateLimiterService().throttle('Coinbase');
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (response.statusCode != 200) {
@@ -442,6 +444,7 @@ class CoinbaseService implements BaseExchangeService {
       debugPrint('[Coinbase] 📝 Headers: ${headers.keys.join(", ")}');
       debugPrint('[Coinbase] 🔑 API Key: ${_apiKey != null && _apiKey!.length > 6 ? "${_apiKey!.substring(0, 6)}***" : "***"}');
 
+      await RateLimiterService().throttle('Coinbase');
       final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
 
       debugPrint('[Coinbase] 📥 Response status: ${response.statusCode}');
@@ -500,6 +503,7 @@ class CoinbaseService implements BaseExchangeService {
       };
 
       final uri = Uri.https(_exchangeHost, path, queryParams);
+      await RateLimiterService().throttle('Coinbase');
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
@@ -541,6 +545,7 @@ class CoinbaseService implements BaseExchangeService {
       final path = '/products/$coinbaseSymbol/ticker';
       final uri = Uri.https(_exchangeHost, path);
 
+      await RateLimiterService().throttle('Coinbase');
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (response.statusCode != 200) {
@@ -553,6 +558,7 @@ class CoinbaseService implements BaseExchangeService {
       // Get 24h stats from /products/{product-id}/stats
       final stats24hPath = '/products/$coinbaseSymbol/stats';
       final statsUri = Uri.https(_exchangeHost, stats24hPath);
+      await RateLimiterService().throttle('Coinbase');
       final statsResponse = await http.get(statsUri).timeout(const Duration(seconds: 5));
 
       double changePercent = 0.0;
@@ -590,6 +596,7 @@ class CoinbaseService implements BaseExchangeService {
       // Using v6 API (v4 is deprecated and returns wrong rates)
       try {
         final uri = Uri.https('open.er-api.com', '/v6/latest/EUR');
+        await RateLimiterService().throttle('Coinbase');
         final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
         if (response.statusCode == 200) {
@@ -613,7 +620,9 @@ class CoinbaseService implements BaseExchangeService {
         final eurUri = Uri.https('api.kraken.com', '/0/public/Ticker', {'pair': 'XBTEUR'});
         final usdUri = Uri.https('api.kraken.com', '/0/public/Ticker', {'pair': 'XBTUSD'});
 
+        await RateLimiterService().throttle('Coinbase');
         final eurResponse = await http.get(eurUri).timeout(const Duration(seconds: 5));
+        await RateLimiterService().throttle('Coinbase');
         final usdResponse = await http.get(usdUri).timeout(const Duration(seconds: 5));
 
         if (eurResponse.statusCode == 200 && usdResponse.statusCode == 200) {
@@ -710,6 +719,7 @@ class CoinbaseService implements BaseExchangeService {
           : '/api/v3/brokerage/products';
 
       final uri = Uri.https(_baseHost, path);
+      await RateLimiterService().throttle('Coinbase');
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
@@ -772,6 +782,7 @@ class CoinbaseService implements BaseExchangeService {
       );
 
       final uri = Uri.https(_baseHost, '/products/$coinbaseSymbol/stats');
+      await RateLimiterService().throttle('Coinbase');
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (response.statusCode != 200) {
