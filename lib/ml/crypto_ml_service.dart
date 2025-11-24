@@ -99,93 +99,48 @@ class CryptoMLService {
     print('🧹 Cleared volume percentile cache');
   }
 
-  /// Inițializează serviciul și încarcă modelele
+  /// Inițializează serviciul (LAZY LOADING - models load on-demand)
+  /// This dramatically improves startup performance by not loading 20+ models at once
   Future<void> initialize() async {
-    // ignore: avoid_print
-    print('🚀 ========================================');
-    // ignore: avoid_print
-    print('🚀 Initializing CryptoMLService');
-    // ignore: avoid_print
-    print('🚀 Loading NEW multi-timeframe models from assets/ml/');
-    // ignore: avoid_print
-    print('🚀 ========================================');
-
-    // Încarcă NOILE modele multi-timeframe (6 monede × 3 timeframes = 18 modele)
-    const coins = ['btc', 'eth', 'bnb', 'sol', 'trump', 'wlfi'];
-    const timeframes = ['5m', '15m', '1h'];
-
-    int successCount = 0;
-    int failCount = 0;
-
-    // ignore: avoid_print
-    print('📦 Loading coin-specific models...');
-    for (final coin in coins) {
-      for (final timeframe in timeframes) {
-        final success = await loadModel(coin, timeframe);
-        if (success) {
-          successCount++;
-        } else {
-          failCount++;
-        }
-      }
-    }
-
-    // ignore: avoid_print
-    print('');
-    // ignore: avoid_print
-    print('📦 Loading GENERAL models (work on ANY crypto)...');
-
-    // Load general_5m and general_1d (FIXED with correct features)
-    int generalSuccess = 0;
-    int generalFail = 0;
-
-    for (final tf in ['5m', '1d']) {
-      final loaded = await loadModel('general', tf);
-      if (loaded) {
-        generalSuccess++;
-      } else {
-        generalFail++;
-      }
-    }
+    debugPrint('🚀 ========================================');
+    debugPrint('🚀 Initializing CryptoMLService (LAZY LOADING)');
+    debugPrint('🚀 Models will load on-demand when needed');
+    debugPrint('🚀 ========================================');
 
     // PHASE 3: Load model registry with trained_date
     try {
       final registryJson = await rootBundle.loadString('assets/models/model_registry.json');
       _modelRegistry = json.decode(registryJson) as Map<String, dynamic>;
-      // ignore: avoid_print
-      print('✅ Model registry loaded (Phase 3)');
+      debugPrint('✅ Model registry loaded (Phase 3)');
     } catch (e) {
-      // ignore: avoid_print
-      print('⚠️  Failed to load model registry: $e');
+      debugPrint('⚠️  Failed to load model registry: $e');
     }
 
-    // ignore: avoid_print
-    print('');
-    // ignore: avoid_print
-    print('✅ ========================================');
-    // ignore: avoid_print
-    print('✅ CryptoMLService initialization complete');
-    // ignore: avoid_print
-    print('✅ ========================================');
-    // ignore: avoid_print
-    print('   Total models available: ${18 + generalSuccess}');
-    // ignore: avoid_print
-    print('   ✅ Coin-specific loaded: $successCount/18');
-    // ignore: avoid_print
-    print('   ✅ General models loaded: $generalSuccess/2 (5m, 1d)');
-    // ignore: avoid_print
-    print('   ✅ TOTAL loaded: ${successCount + generalSuccess}/${18 + 2}');
-    // ignore: avoid_print
-    print('   ❌ Failed to load: ${failCount + generalFail}');
-    // ignore: avoid_print
-    print('✅ ========================================');
-    // ignore: avoid_print
-    print('');
+    debugPrint('✅ CryptoMLService ready - Models will load on-demand');
+    debugPrint('✅ ========================================');
+  }
 
-    if (successCount == 0) {
-      // ignore: avoid_print
-      print('⚠️  WARNING: No ML models loaded! Predictions will use fallback logic.');
+  /// Ensure a specific model is loaded (lazy loading)
+  /// Returns true if model was loaded successfully or already loaded
+  Future<bool> _ensureModelLoaded(String coin, String timeframe) async {
+    final key = '${coin}_$timeframe';
+
+    // Check if already loaded
+    if (_interpreters.containsKey(key)) {
+      return true;
     }
+
+    // Load on-demand
+    debugPrint('⏳ Lazy loading model: $key...');
+    final success = await loadModel(coin, timeframe);
+
+    if (success) {
+      debugPrint('✅ Model loaded: $key');
+    } else {
+      debugPrint('❌ Failed to load model: $key');
+    }
+
+    return success;
   }
 
   /// Încarcă un model per-coin din assets/models/ (acestea MERG!)
@@ -465,6 +420,9 @@ class CryptoMLService {
     final Set<String> loadedModels = {};
 
     for (final tf in allTimeframes) {
+      // LAZY LOADING: Ensure model is loaded before using
+      await _ensureModelLoaded(normalizedCoin, tf);
+
       // Get best available model for this timeframe (with fallback)
       final coinKey = _getBestModelKey(normalizedCoin, tf);
 
@@ -570,6 +528,9 @@ class CryptoMLService {
     // NEW: Fetch candles for EACH general model's timeframe!
 
     for (final tf in ['5m', '1d']) {
+      // LAZY LOADING: Ensure general model is loaded before using
+      await _ensureModelLoaded('general', tf);
+
       final generalKey = 'general_$tf';
       if (_interpreters.containsKey(generalKey)) {
         try {
