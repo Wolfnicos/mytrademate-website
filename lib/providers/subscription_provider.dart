@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../services/app_settings_service.dart';
+import '../config/app_config.dart';
 
 /// Manages subscription state via RevenueCat
 /// Entitlement: "MyTradeMate Pro"
@@ -43,9 +44,9 @@ class SubscriptionProvider extends ChangeNotifier {
   /// Call this once in main.dart
   static Future<void> initializeRevenueCat() async {
     try {
-      // ✅ PRODUCTION API key configured
-      const appleApiKey = 'appl_vVgBtEaVpppbqhilxwiMvBrJZEX'; // Production Apple key from RevenueCat
-      const googleApiKey = 'goog_YOUR_GOOGLE_KEY'; // Android - add when launching on Google Play
+      // Get API keys from environment variables (set via --dart-define)
+      final appleApiKey = AppConfig.revenueCatAppleKey;
+      final googleApiKey = AppConfig.revenueCatGoogleKey;
 
       PurchasesConfiguration configuration;
       if (defaultTargetPlatform == TargetPlatform.iOS ||

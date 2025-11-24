@@ -28,6 +28,7 @@ import 'theme/app_theme.dart';
 import 'providers/navigation_provider.dart';
 import 'services/achievement_service.dart';
 import 'services/ml_loading_state.dart';
+import 'config/app_config.dart';
 import 'services/binance_service.dart';
 import 'services/kraken_service.dart';
 
@@ -58,8 +59,14 @@ Future<void> _cleanStoredCredentials() async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Register Syncfusion Community License (valid for 1 year for individual developers)
-  SyncfusionLicense.registerLicense('Ngo9BigBOggjHTQxAR8/V1JFaF5cXGRCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdmWH9ceXVVRmBZVUZxXEBWYEg=');
+  // Register Syncfusion License (from environment variables)
+  // Set via: flutter run --dart-define=SYNCFUSION_LICENSE=your_key_here
+  if (AppConfig.syncfusionLicense.isNotEmpty) {
+    SyncfusionLicense.registerLicense(AppConfig.syncfusionLicense);
+  } else {
+    print('⚠️ WARNING: Syncfusion license not configured. Charts may not work properly.');
+    print('   Set via: flutter run --dart-define=SYNCFUSION_LICENSE=your_key');
+  }
 
   // Initialize ONLY fast, essential services in main()
   // This allows the app to start in <1 second
