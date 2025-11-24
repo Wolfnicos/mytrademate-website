@@ -87,6 +87,38 @@ class UserCoinsService with ChangeNotifier {
     final source = prefs.getString(_sourceKey) ?? 'default';
 
     if (savedCoins != null && savedCoins.isNotEmpty) {
+      // MIGRATION: Remove delisted/unavailable coins (ANC, UST, LUNA)
+      // These coins are no longer tradeable on major exchanges
+      const delistedCoins = ['ANC', 'UST', 'LUNA'];
+      final hasDelistedCoins = savedCoins.any((coin) => delistedCoins.contains(coin));
+
+      if (hasDelistedCoins && source == 'default') {
+        debugPrint('🔄 Migrating: Removing delisted coins from saved list...');
+        // Remove delisted coins from saved list
+        final cleanedCoins = savedCoins.where((coin) => !delistedCoins.contains(coin)).toList();
+
+        // If cleaned list is empty or too small, reset to defaults
+        if (cleanedCoins.length < 3) {
+          debugPrint('   Too few valid coins remaining, resetting to defaults');
+          _cachedCoins = _cachedExchangeName != null
+              ? getDefaultCoinsForExchange(_cachedExchangeName!)
+              : List<String>.from(defaultCoins);
+          await _saveCoins(_cachedCoins, 'default');
+          _cachedSource = 'default';
+          debugPrint('✅ Migrated to ${_cachedCoins.length} default coins: ${_cachedCoins.join(", ")}');
+          return _cachedCoins;
+        }
+
+        // Save cleaned list
+        _cachedCoins = cleanedCoins;
+        await _saveCoins(_cachedCoins, source);
+        _cachedSource = source;
+        final removed = savedCoins.where((coin) => delistedCoins.contains(coin)).toList();
+        debugPrint('✅ Removed delisted coins: ${removed.join(", ")}');
+        debugPrint('   New coin list (${_cachedCoins.length}): ${_cachedCoins.join(", ")}');
+        return _cachedCoins;
+      }
+
       _cachedCoins = savedCoins;
       _cachedSource = source;
       debugPrint('✅ Loaded ${savedCoins.length} coins from $source');

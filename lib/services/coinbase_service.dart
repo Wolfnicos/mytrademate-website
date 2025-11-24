@@ -440,7 +440,7 @@ class CoinbaseService implements BaseExchangeService {
 
       debugPrint('[Coinbase] 📡 Calling: $uri');
       debugPrint('[Coinbase] 📝 Headers: ${headers.keys.join(", ")}');
-      debugPrint('[Coinbase] 🔑 API Key: ${_apiKey?.substring(0, 30)}...');
+      debugPrint('[Coinbase] 🔑 API Key: ${_apiKey != null && _apiKey!.length > 6 ? "${_apiKey!.substring(0, 6)}***" : "***"}');
 
       final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
 

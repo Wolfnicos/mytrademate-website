@@ -39,10 +39,12 @@ class _MarketScreenState extends State<MarketScreen> {
     final coins = _userCoins.isNotEmpty ? _userCoins : UserCoinsService.defaultCoins;
 
     // Build trading pairs using exchange-specific format
+    // Use getPreferredQuote to get the best available quote currency for each coin
     return coins.map((coin) => [
-      exchange.buildTradingPair(coin, q),
+      exchange.buildTradingPair(coin, exchange.getPreferredQuote(coin, q)),
       exchange.buildTradingPair(coin, 'USDT'),
       exchange.buildTradingPair(coin, 'EUR'),
+      exchange.buildTradingPair(coin, 'USD'),
       exchange.buildTradingPair(coin, 'USDC'),
     ]).toList();
   }
@@ -68,7 +70,7 @@ class _MarketScreenState extends State<MarketScreen> {
         final exchange = exchangeProvider.currentExchange;
         final q = AppSettingsService().quoteCurrency.toUpperCase();
         setState(() {
-          _selectedSymbol = exchange.buildTradingPair('BTC', q);
+          _selectedSymbol = exchange.buildTradingPair('BTC', exchange.getPreferredQuote('BTC', q));
         });
 
         // Listen to exchange changes and reload data
@@ -106,8 +108,19 @@ class _MarketScreenState extends State<MarketScreen> {
     UserCoinsService().clearCache();
 
     final coins = await UserCoinsService().getUserCoins();
+
+    // FILTER OUT DELISTED COINS (ANC, UST, LUNA)
+    // These coins are no longer tradeable on major exchanges
+    const delistedCoins = ['ANC', 'UST', 'LUNA'];
+    final validCoins = coins.where((coin) => !delistedCoins.contains(coin)).toList();
+
+    if (validCoins.length < coins.length) {
+      final removed = coins.where((coin) => delistedCoins.contains(coin)).toList();
+      debugPrint('⚠️  Market: Filtered out delisted coins: ${removed.join(", ")}');
+    }
+
     if (mounted) {
-      setState(() => _userCoins = coins);
+      setState(() => _userCoins = validCoins);
       // AFTER coins are loaded, refresh tickers and chart
       _refreshTickers();
       _loadChart();
@@ -146,16 +159,68 @@ class _MarketScreenState extends State<MarketScreen> {
   Future<void> _refreshTickers() async {
     final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
     final exchange = exchangeProvider.currentExchange;
+    final q = AppSettingsService().quoteCurrency.toUpperCase();
 
     setState(() => _loadingTickers = true);
-    for (final List<String> symbolList in _symbols) {
+
+    // Use _userCoins to match with _symbols
+    final coins = _userCoins.isNotEmpty ? _userCoins : UserCoinsService.defaultCoins;
+
+    for (int i = 0; i < _symbols.length; i++) {
+      final symbolList = _symbols[i];
+      final coin = coins[i]; // Get corresponding coin
+
       try {
+        debugPrint('Market: Fetching ticker for ${symbolList.first} (fallbacks: ${symbolList.join(", ")})');
         final Map<String, double> t = await exchange.fetchTicker24hWithFallback(symbolList);
         if (mounted) {
-          setState(() => _tickers[symbolList.first] = t);
+          // Save ticker using the same key that _buildTickerCards uses: exchange.buildTradingPair(coin, q)
+          final tickerKey = exchange.buildTradingPair(coin, q);
+
+          // Detect if price needs conversion (e.g., USDT → EUR)
+          // If first symbol in fallback list doesn't match user's quote currency, we need conversion
+          final primarySymbol = symbolList.first;
+          final needsConversion = q == 'EUR' && !primarySymbol.endsWith('EUR') && t['lastPrice'] != null && t['lastPrice']! > 0;
+
+          if (needsConversion) {
+            // Fetch EUR/USDT conversion rate (inverse)
+            try {
+              final eurUsdtTicker = await exchange.fetchTicker24hWithFallback([
+                exchange.buildTradingPair('EUR', 'USDT'),
+                'EURUSDT',
+              ]);
+
+              // EURUSDT gives EUR price in USDT (e.g., 1 EUR = 1.08 USDT)
+              // To convert USDT → EUR, we need to divide by this rate
+              final eurInUsdt = eurUsdtTicker['lastPrice'] ?? 1.08; // Fallback: 1 EUR = 1.08 USDT
+              final conversionRate = 1.0 / eurInUsdt; // e.g., 1/1.08 = 0.926 (USDT → EUR)
+
+              final convertedPrice = t['lastPrice']! * conversionRate;
+              final convertedChange = t['priceChangePercent'] ?? 0.0; // % stays same
+
+              setState(() => _tickers[tickerKey] = {
+                'lastPrice': convertedPrice,
+                'priceChangePercent': convertedChange,
+              });
+              debugPrint('Market: ✅ Ticker loaded for $tickerKey (coin: $coin) - price: €${convertedPrice.toStringAsFixed(4)} (converted from \$${t['lastPrice']} USDT, 1 EUR = $eurInUsdt USDT)');
+            } catch (e) {
+              debugPrint('Market: ⚠️  Failed to convert USDT→EUR for $coin: $e');
+              // Use fallback rate
+              const fallbackRate = 0.926; // ~1/1.08
+              final convertedPrice = t['lastPrice']! * fallbackRate;
+              setState(() => _tickers[tickerKey] = {
+                'lastPrice': convertedPrice,
+                'priceChangePercent': t['priceChangePercent'] ?? 0.0,
+              });
+              debugPrint('Market: ⚠️  Using fallback rate 0.926 for $coin → €${convertedPrice.toStringAsFixed(4)}');
+            }
+          } else {
+            setState(() => _tickers[tickerKey] = t);
+            debugPrint('Market: ✅ Ticker loaded for $tickerKey (coin: $coin) - price: ${t['lastPrice']} (no conversion needed)');
+          }
         }
       } catch (e) {
-        print('Market: Failed to fetch ticker for ${symbolList.first}: $e');
+        debugPrint('Market: ❌ Failed to fetch ticker for ${symbolList.first}: $e');
       }
     }
     if (mounted) {
@@ -436,7 +501,7 @@ class _MarketScreenState extends State<MarketScreen> {
                               _buildIntervalChip(isProUser ? '5M' : '5M 🔒', '5m', isProUser),
                               _buildIntervalChip(isProUser ? '15M' : '15M 🔒', '15m', isProUser),
                               _buildIntervalChip(isProUser ? '1H' : '1H 🔒', '1h', isProUser),
-                              _buildIntervalChip(isProUser ? '4H' : '4H FREE', '4h', true),
+                              _buildIntervalChip(isProUser ? '4H' : '4H 🔒', '4h', isProUser),
                               _buildIntervalChip(isProUser ? '1D' : '1D 🔒', '1d', isProUser),
                             ],
                           );

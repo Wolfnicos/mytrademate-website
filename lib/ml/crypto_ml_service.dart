@@ -90,7 +90,7 @@ class CryptoMLService {
 
   // PHASE 3 PILOT: Volume percentile cache (5 min TTL)
   static final Map<String, (double, DateTime)> _volumeCache = {};
-  static const Duration _volumeCacheTTL = Duration(seconds: 10); // REDUS TEMPORAR pentru fix volume percentile
+  static const Duration _volumeCacheTTL = Duration(minutes: 5); // 5 min cache to reduce API calls
 
   /// Clear volume percentile cache (useful when switching exchanges)
   static void clearVolumeCache() {
@@ -120,8 +120,9 @@ class CryptoMLService {
     debugPrint('✅ ========================================');
   }
 
-  /// Ensure a specific model is loaded (lazy loading)
+  /// Ensure a specific model is loaded (lazy loading with retry)
   /// Returns true if model was loaded successfully or already loaded
+  /// Implements exponential backoff retry for transient failures
   Future<bool> _ensureModelLoaded(String coin, String timeframe) async {
     final key = '${coin}_$timeframe';
 
@@ -130,17 +131,40 @@ class CryptoMLService {
       return true;
     }
 
-    // Load on-demand
-    debugPrint('⏳ Lazy loading model: $key...');
-    final success = await loadModel(coin, timeframe);
+    // Try to load with exponential backoff retry (max 3 attempts)
+    const maxRetries = 3;
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        debugPrint('⏳ Lazy loading model: $key (attempt $attempt/$maxRetries)...');
+        final success = await loadModel(coin, timeframe);
 
-    if (success) {
-      debugPrint('✅ Model loaded: $key');
-    } else {
-      debugPrint('❌ Failed to load model: $key');
+        if (success) {
+          debugPrint('✅ Model loaded: $key');
+          return true;
+        } else {
+          debugPrint('❌ Failed to load model: $key (attempt $attempt/$maxRetries)');
+
+          // Wait before retrying (exponential backoff: 500ms, 1s, 2s)
+          if (attempt < maxRetries) {
+            final delayMs = 500 * (1 << (attempt - 1)); // 500, 1000, 2000
+            await Future.delayed(Duration(milliseconds: delayMs));
+          }
+        }
+      } catch (e, stackTrace) {
+        debugPrint('❌ Exception loading model $key (attempt $attempt/$maxRetries): $e');
+        debugPrint('   Stack trace: $stackTrace');
+
+        // Wait before retrying
+        if (attempt < maxRetries) {
+          final delayMs = 500 * (1 << (attempt - 1));
+          await Future.delayed(Duration(milliseconds: delayMs));
+        }
+      }
     }
 
-    return success;
+    // All retries failed
+    debugPrint('⚠️  Model $key failed to load after $maxRetries attempts - predictions will use fallback');
+    return false;
   }
 
   /// Încarcă un model per-coin din assets/models/ (acestea MERG!)
