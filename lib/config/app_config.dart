@@ -10,23 +10,29 @@
 class AppConfig {
   /// Syncfusion license key (required for charts)
   /// Set via --dart-define=SYNCFUSION_LICENSE=key
+  /// For production, MUST be set via --dart-define
   static const String syncfusionLicense = String.fromEnvironment(
     'SYNCFUSION_LICENSE',
-    defaultValue: '', // Empty in development, must be set for production
+    // Development fallback (expires yearly - renew at syncfusion.com)
+    defaultValue: 'Ngo9BigBOggjHTQxAR8/V1JFaF5cXGRCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdmWH9ceXVVRmBZVUZxXEBWYEg=',
   );
 
   /// RevenueCat Apple API Key
   /// Set via --dart-define=REVENUECAT_APPLE_KEY=key
+  /// For production, MUST be set via --dart-define
   static const String revenueCatAppleKey = String.fromEnvironment(
     'REVENUECAT_APPLE_KEY',
-    defaultValue: 'appl_YOUR_KEY_HERE',
+    // Development fallback - replace with your production key
+    defaultValue: 'appl_vVgBtEaVpppbqhilxwiMvBrJZEX',
   );
 
   /// RevenueCat Google API Key
   /// Set via --dart-define=REVENUECAT_GOOGLE_KEY=key
+  /// For production, MUST be set via --dart-define
   static const String revenueCatGoogleKey = String.fromEnvironment(
     'REVENUECAT_GOOGLE_KEY',
-    defaultValue: 'goog_YOUR_KEY_HERE',
+    // Development fallback - add your Google Play key
+    defaultValue: 'goog_YOUR_GOOGLE_KEY',
   );
 
   /// Check if all required config is present
