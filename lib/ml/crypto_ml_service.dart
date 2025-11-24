@@ -6,7 +6,9 @@ import 'dart:math' show exp, log, sqrt;
 import 'package:mytrademate/services/binance_service.dart';
 import 'package:mytrademate/services/base_exchange_service.dart';
 import 'package:mytrademate/services/volume_profile_service.dart';
+import 'package:mytrademate/services/fear_greed_service.dart';
 import 'package:mytrademate/ml/ensemble_weights_v2.dart';
+import 'package:mytrademate/ml/hybrid/hybrid_prediction_engine.dart';
 
 /// Service pentru predicții ML crypto
 class CryptoMLService {
@@ -738,6 +740,35 @@ class CryptoMLService {
           : 'Normal market conditions';
     }
 
+    // 4. EXTREME FEAR BOOST: Independent check - FearGreed < 20 → Boost BUY +15%
+    // This can stack with other boosts above (anti-chop, trend, micro-trend)
+    try {
+      final fearGreedIndex = await FearGreedService().getCurrentIndex();
+      if (fearGreedIndex.value < 20 && finalAction == 'BUY') {
+        final boost = 1.15; // +15% confidence in extreme fear
+        final oldConfidence = finalConfidence;
+        finalConfidence = (finalConfidence * boost).clamp(0.0, 0.95);
+        decisionReason = 'Extreme fear (${fearGreedIndex.value}/100) - contrarian BUY opportunity';
+
+        if (!silent) {
+          // ignore: avoid_print
+          print('🔥 EXTREME FEAR BOOST: FearGreed=${fearGreedIndex.value} → +15% confidence on BUY (${(oldConfidence*100).toStringAsFixed(1)}% → ${(finalConfidence*100).toStringAsFixed(1)}%)');
+        }
+      } else if (fearGreedIndex.value < 20) {
+        // Log that extreme fear was detected but action wasn't BUY
+        if (!silent) {
+          // ignore: avoid_print
+          print('⚠️ EXTREME FEAR detected (${fearGreedIndex.value}) but signal is $finalAction - no boost');
+        }
+      }
+    } catch (e) {
+      // Fail silently if FearGreed unavailable (don't break predictions)
+      if (!silent) {
+        // ignore: avoid_print
+        print('⚠️ FearGreed check failed: $e');
+      }
+    }
+
     // Update ensemble with final decision
     ensemble = CryptoPrediction(
       action: finalAction,
@@ -811,8 +842,8 @@ class CryptoMLService {
       );
     }
 
-    // PHASE 4: Return prediction with market context (ATR + volume + decision reason)
-    return CryptoPrediction(
+    // PHASE 4: Build base prediction with market context (ATR + volume + decision reason)
+    final originalPrediction = CryptoPrediction(
       action: ensemble.action,
       confidence: ensemble.confidence,
       probabilities: ensemble.probabilities,
@@ -824,6 +855,34 @@ class CryptoMLService {
       volumePercentile: volumePercentile,
       decisionReason: ensemble.decisionReason, // Already set in Phase 4
     );
+
+    // 🆕 PHASE 5: SAFE ENHANCEMENT LAYER (disabled by default)
+    // This layer adds microstructure analysis + trading rules on top of existing ML
+    // SAFETY GUARANTEES:
+    // - Only runs in debug mode initially (kDebugMode guard)
+    // - Disabled by default (HybridPredictionEngine.isEnabled = false)
+    // - Never changes signal direction
+    // - Never reduces confidence
+    // - Returns original prediction on ANY error
+    // - Uses existing data (no new API calls)
+    if (HybridPredictionEngine.isEnabled) {
+      try {
+        return await HybridPredictionEngine.enhance(
+          originalPrediction,
+          coin: coin,
+          symbol: symbol,
+          timeframe: timeframe,
+          exchangeService: exchangeService,
+        );
+      } catch (e) {
+        // SAFETY: Return original prediction if enhancement fails
+        debugPrint('⚠️ Hybrid enhancement failed: $e');
+        return originalPrediction;
+      }
+    }
+
+    // Default: Return original ML prediction (unchanged behavior)
+    return originalPrediction;
   }
 
   /// Returnează o predicție neutră HOLD când modelele nu sunt disponibile
