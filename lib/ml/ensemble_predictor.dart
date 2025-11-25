@@ -637,6 +637,9 @@ class EnsemblePredictor {
   /// Check if models are loaded
   bool get isLoaded => _isLoaded;
 
+  /// Get number of loaded models
+  int get loadedModelsCount => _perCoinModels.values.where((m) => m != null).length;
+
   /// Get model load status
   Map<String, bool> get modelStatus => _modelStatus;
 

@@ -11,6 +11,7 @@ import '../widgets/ai_indicator.dart';
 import '../widgets/crypto_avatar.dart';
 import '../widgets/trial_banner.dart';
 import '../widgets/trial_activation_dialog.dart';
+import '../widgets/neural_engine_card.dart';
 import '../ml/ensemble_predictor.dart';
 import '../utils/responsive.dart';
 
@@ -165,10 +166,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                   const SizedBox(height: AppTheme.spacing16),
 
-                  // AI Models Status Card
+                  // Neural Engine Card - Premium 2025 Design
                   RepaintBoundary(
-                    key: ValueKey('ai_models_${AppSettingsService().quoteCurrency}'),
-                    child: const AIModelsStatusCard(),
+                    key: ValueKey('neural_engine_${AppSettingsService().quoteCurrency}'),
+                    child: const NeuralEngineCard(),
                   ),
 
                   const SizedBox(height: AppTheme.spacing16),

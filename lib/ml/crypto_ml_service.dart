@@ -983,24 +983,24 @@ class CryptoMLService {
     // Fewer active features → higher T (model less reliable)
     var probabilities = output[0];
 
-    // Calculate dynamic temperature with nuanced scaling
-    // RELAXED temperature thresholds to preserve model conviction:
-    //   - signal < 20% → T = 10.0 (very low signal → dampening)
-    //   - signal < 30% → T = 6.0 (low signal → moderate dampening)
-    //   - signal < 40% → T = 4.0 (medium signal → light dampening)
-    //   - signal < 50% → T = 3.0 (good signal → minimal dampening)
-    //   - signal >= 50% → T = 2.0 (strong signal → preserve confidence)
+    // Calculate dynamic temperature with GENTLE scaling
+    // Lower temperatures preserve more of the model's conviction
+    // Only dampen when signal is truly weak or confidence is suspiciously high
+    //   - signal < 20% → T = 3.0 (very weak signal → moderate dampening)
+    //   - signal < 30% → T = 2.0 (weak signal → light dampening)
+    //   - signal < 40% → T = 1.5 (medium signal → minimal dampening)
+    //   - signal >= 40% → T = 1.0 (good signal → NO dampening, trust model)
     final signalPercent = signalStrength * 100;
-    final double temperature = signalPercent < 20 ? 10.0
-                              : signalPercent < 30 ? 6.0
-                              : signalPercent < 40 ? 4.0
-                              : signalPercent < 50 ? 3.0
-                              : 2.0;
+    final double temperature = signalPercent < 20 ? 3.0
+                              : signalPercent < 30 ? 2.0
+                              : signalPercent < 40 ? 1.5
+                              : 1.0;  // No scaling when signal is good!
 
     final maxProb = probabilities.reduce((a, b) => a > b ? a : b);
 
-    // Always apply temperature scaling if confidence > 75% OR signal strength < 50%
-    if (maxProb > 0.75 || signalStrength < 0.50) {
+    // Only apply temperature scaling if confidence is VERY high (>85%) or signal is VERY weak (<30%)
+    // This preserves the model's conviction when signals are reasonable
+    if (maxProb > 0.85 || signalStrength < 0.30) {
       if (!silent) {
         // ignore: avoid_print
         print('   🔥 BEFORE scaling: [${probabilities.map((p) => p.toStringAsFixed(4)).join(", ")}]');

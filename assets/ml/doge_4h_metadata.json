@@ -1,0 +1,16 @@
+{
+  "coin": "DOGE",
+  "timeframe": "4h",
+  "num_features": 76,
+  "sequence_length": 60,
+  "num_classes": 3,
+  "test_accuracy": 0.49468085169792175,
+  "train_samples": 752,
+  "test_samples": 188,
+  "model_size_kb": 79.8828125,
+  "date": "2025-11-25T09:43:30.197823",
+  "architecture": "Conv1D+Dense",
+  "tflite_ops": "BUILTIN only",
+  "tensorflow_version": "2.12.0",
+  "compatible": "iOS/Android"
+}
