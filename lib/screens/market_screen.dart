@@ -347,7 +347,7 @@ class _MarketScreenState extends State<MarketScreen> {
                     IconButton(
                       icon: Icon(
                         Icons.refresh,
-                        color: AppTheme.textSecondary,
+                        color: AppTheme.getTextSecondary(context),
                       ),
                       onPressed: _loadingTickers ? null : () {
                         _refreshTickers();
@@ -419,7 +419,7 @@ class _MarketScreenState extends State<MarketScreen> {
                                   if (price == 0.0) {
                                     return Text(
                                       '${prefix}—.——',
-                                      style: AppTheme.monoLarge.copyWith(color: AppTheme.textSecondary),
+                                      style: AppTheme.monoLarge.copyWith(color: AppTheme.getTextSecondary(context)),
                                     );
                                   }
 
@@ -433,7 +433,7 @@ class _MarketScreenState extends State<MarketScreen> {
                                       ? (_candles[_candles.length - 2].close > _candles[_candles.length - 2].open
                                           ? AppTheme.buyGreen
                                           : AppTheme.sellRed)
-                                      : AppTheme.textPrimary;
+                                      : AppTheme.getTextPrimary(context);
 
                                   return Text(
                                     priceText,

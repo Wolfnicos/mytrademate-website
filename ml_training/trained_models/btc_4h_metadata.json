@@ -1,0 +1,14 @@
+{
+  "coin": "BTC",
+  "timeframe": "4h",
+  "num_features": 76,
+  "sequence_length": 60,
+  "num_classes": 3,
+  "test_accuracy": 0.792553186416626,
+  "train_samples": 752,
+  "test_samples": 188,
+  "model_size_mb": 0.17147064208984375,
+  "date": "2025-11-25T06:59:23.035007",
+  "compatible": "iOS/Android",
+  "feature_order": "Flutter compatible (patterns first)"
+}

@@ -144,11 +144,15 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       final balances = await exchange.getAccountBalances();
       final quote = AppSettingsService().quoteCurrency.toUpperCase();
 
-      // Extract coins from portfolio (excluding quote currency and coins below $5)
+      // Extract coins from portfolio (excluding quote currency, fiat currencies, and coins below $5)
       final Set<String> coins = {};
       for (final asset in balances.keys) {
         final upperAsset = asset.toUpperCase();
-        if (upperAsset != quote && balances[asset]! > 0.0) {
+        // Skip quote currency and fiat currencies (EUR, USD, GBP, etc.)
+        if (upperAsset == quote || !UserCoinsService.isValidCoin(upperAsset)) {
+          continue;
+        }
+        if (balances[asset]! > 0.0) {
           // Calculate value to filter out coins below $5
           try {
             final ticker = await exchange.fetchTicker24hWithFallback([
@@ -219,6 +223,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       // NEW: CryptoMLService now fetches candles for EACH model's timeframe!
       // We just pass the symbol and let the service handle multi-timeframe fetching
       final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      // 🆕 V2 PRO MODELS: For 4h/1d + BTC/ETH/SOL/BNB, CryptoMLService now uses V2 (150 features) automatically!
       final prediction = await CryptoMLService().getPrediction(
         coin: coin,
         symbol: _selectedSymbol,

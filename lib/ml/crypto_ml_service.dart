@@ -9,6 +9,7 @@ import 'package:mytrademate/services/volume_profile_service.dart';
 import 'package:mytrademate/services/fear_greed_service.dart';
 import 'package:mytrademate/ml/ensemble_weights_v2.dart';
 import 'package:mytrademate/ml/hybrid/hybrid_prediction_engine.dart';
+import 'package:mytrademate/ml/crypto_ml_v2_service.dart';
 
 /// Service pentru predicții ML crypto
 class CryptoMLService {
@@ -48,12 +49,14 @@ class CryptoMLService {
            _phase3EnabledTimeframes.contains(timeframe);
   }
 
-  /// Get best available model for a coin+timeframe with fallback logic
+  /// Get best available V1 model for a coin+timeframe with fallback logic
   /// If exact model doesn't exist (e.g., btc_4h), falls back to closest smaller timeframe
   ///
-  /// Fallback hierarchy:
-  /// - 4h → 1h → 15m → 5m
-  /// - 1d → 4h → 1h → 15m → 5m
+  /// NOTE: V1 models only exist for 5m, 15m, 1h. For 4h/1d use V2 service!
+  ///
+  /// Fallback hierarchy (V1 only - skips 4h/1d which don't exist):
+  /// - 4h → 1h → 15m → 5m (skips 4h since V1 doesn't have it)
+  /// - 1d → 1h → 15m → 5m (skips 1d/4h since V1 doesn't have them)
   /// - 1h → 15m → 5m
   /// - 15m → 5m
   /// - 5m → (no fallback)
@@ -63,9 +66,11 @@ class CryptoMLService {
     final normalizedCoin = coin.toLowerCase().replaceAll(RegExp(r'(usd|eur|usdt|usdc)$'), '');
 
     // Define fallback chain for each timeframe
+    // NOTE: V1 models DON'T EXIST for 4h/1d - skip them in fallback chain!
+    // V2 service handles 1h/4h/1d with better models (150 features)
     final Map<String, List<String>> fallbackChain = {
-      '1d': ['1d', '4h', '1h', '15m', '5m'],
-      '4h': ['4h', '1h', '15m', '5m'],
+      '1d': ['1h', '15m', '5m'],    // Skip 1d/4h - V1 doesn't have them
+      '4h': ['1h', '15m', '5m'],    // Skip 4h - V1 doesn't have it
       '1h': ['1h', '15m', '5m'],
       '15m': ['15m', '5m'],
       '5m': ['5m'],
@@ -120,6 +125,9 @@ class CryptoMLService {
     debugPrint('✅ ========================================');
   }
 
+  // Track models that don't exist (V1 4h/1d) to avoid retry spam
+  static final Set<String> _unavailableModels = {};
+
   /// Ensure a specific model is loaded (lazy loading with retry)
   /// Returns true if model was loaded successfully or already loaded
   /// Implements exponential backoff retry for transient failures
@@ -129,6 +137,26 @@ class CryptoMLService {
     // Check if already loaded
     if (_interpreters.containsKey(key)) {
       return true;
+    }
+
+    // Skip models we already know don't exist (V1 4h/1d)
+    if (_unavailableModels.contains(key)) {
+      return false;
+    }
+
+    // Coins that DON'T have any .tflite models - use general fallback only
+    // These coins only have metadata/scaler JSON but no trained models
+    const coinsWithoutModels = ['ada', 'avax', 'doge', 'xrp', 'dot', 'link', 'uni'];
+    if (coinsWithoutModels.contains(coin) && coin != 'general') {
+      _unavailableModels.add(key);
+      return false;
+    }
+
+    // V1 models for 4h/1d don't exist - skip immediately without retry
+    // V2 service handles these timeframes
+    if ((timeframe == '4h' || timeframe == '1d') && coin != 'general') {
+      _unavailableModels.add(key);
+      return false;
     }
 
     // Try to load with exponential backoff retry (max 3 attempts)
@@ -142,13 +170,10 @@ class CryptoMLService {
           debugPrint('✅ Model loaded: $key');
           return true;
         } else {
-          debugPrint('❌ Failed to load model: $key (attempt $attempt/$maxRetries)');
-
-          // Wait before retrying (exponential backoff: 500ms, 1s, 2s)
-          if (attempt < maxRetries) {
-            final delayMs = 500 * (1 << (attempt - 1)); // 500, 1000, 2000
-            await Future.delayed(Duration(milliseconds: delayMs));
-          }
+          // Model doesn't exist or can't be loaded - mark as unavailable and stop retrying
+          _unavailableModels.add(key);
+          debugPrint('ℹ️  Model $key not available - skipping');
+          return false;
         }
       } catch (e, stackTrace) {
         debugPrint('❌ Exception loading model $key (attempt $attempt/$maxRetries): $e');
@@ -162,7 +187,8 @@ class CryptoMLService {
       }
     }
 
-    // All retries failed
+    // All retries failed due to exceptions
+    _unavailableModels.add(key);
     debugPrint('⚠️  Model $key failed to load after $maxRetries attempts - predictions will use fallback');
     return false;
   }
@@ -243,7 +269,18 @@ class CryptoMLService {
 
       // 1. Încarcă modelul TFLite
       // General models: assets/ml/general_5m.tflite (no _model suffix)
-      // Coin-specific models: assets/ml/btc_5m_model.tflite (with _model suffix)
+      // V1 models (5m/15m/1h): assets/ml/btc_5m_model.tflite (with _model suffix)
+      // V2 models (1h/4h/1d): assets/ml/btc_1h_v2.tflite (with _v2 suffix) - used by CryptoMLV2Service
+      //
+      // NOTE: V1 models for 4h/1d DON'T EXIST! Only V2 has them.
+      // Skip loading V1 for 4h/1d - CryptoMLV2Service handles these.
+      if ((timeframe == '4h' || timeframe == '1d') && coin != 'general') {
+        // V1 models don't exist for 4h/1d - skip silently
+        // V2 service handles these timeframes with better models
+        debugPrint('ℹ️  Skipping V1 model for $coin@$timeframe (only V2 available)');
+        return false;
+      }
+
       final modelPath = coin == 'general'
           ? 'assets/ml/general_$timeframe.tflite'
           : 'assets/ml/${coinLower}_${timeframe}_model.tflite';
@@ -324,6 +361,7 @@ class CryptoMLService {
 
   /// Obține predicția pentru o monedă (MULTI-TIMEFRAME WEIGHTED ENSEMBLE)
   /// NOW fetches candles for EACH model's timeframe!
+  /// For 4h/1d: Uses V2 PRO models (150 features) when available!
   Future<CryptoPrediction> getPrediction({
     required String coin,
     required String symbol, // NEW: Exchange symbol (e.g., BTCEUR, BTCUSDT)
@@ -334,6 +372,60 @@ class CryptoMLService {
   }) async {
     // ignore: avoid_print
     print('');
+
+    // 🆕 V2 PRO MODELS: For 1h/4h/1d, use WEIGHTED ENSEMBLE V2
+    // BTC: btc_1h_v2 + btc_4h_v2 + btc_1d_v2
+    // ETH/SOL/BNB: only 4h and 1d available
+    if (timeframe == '1h' || timeframe == '4h' || timeframe == '1d') {
+      final normalizedCoin = coin.toLowerCase().replaceAll(RegExp(r'(usd|eur|usdt|usdc)$'), '');
+      // Check if V2 model exists for this coin (BTC, ETH, SOL, BNB)
+      if (['btc', 'eth', 'sol', 'bnb'].contains(normalizedCoin)) {
+        try {
+          if (!silent) {
+            // ignore: avoid_print
+            print('🆕 ==========================================');
+            // ignore: avoid_print
+            print('🆕 V2 WEIGHTED ENSEMBLE for ${coin.toUpperCase()} @ $timeframe');
+            // ignore: avoid_print
+            print('🆕 Weights: Primary=50%, Secondary=30%, Tertiary=20%');
+            // ignore: avoid_print
+            print('🆕 ==========================================');
+          }
+
+          final v2Service = CryptoMLV2Service.instance;
+          // Use WEIGHTED ensemble for the requested timeframe!
+          final v2Prediction = await v2Service.getV2WeightedEnsemblePrediction(
+            coin: normalizedCoin,
+            symbol: symbol,
+            targetTimeframe: timeframe,
+            silent: silent,
+            exchangeService: exchangeService,
+          );
+
+          if (v2Prediction != null) {
+            if (!silent) {
+              // ignore: avoid_print
+              print('✅ V2 ENSEMBLE RESULT: ${v2Prediction.action} (${(v2Prediction.confidence * 100).toStringAsFixed(1)}%)');
+              // ignore: avoid_print
+              print('✅ ${v2Prediction.decisionReason}');
+            }
+            // Return V2 weighted ensemble prediction!
+            return v2Prediction;
+          } else {
+            if (!silent) {
+              // ignore: avoid_print
+              print('⚠️  V2 ensemble returned null, falling back to original models');
+            }
+          }
+        } catch (e) {
+          if (!silent) {
+            // ignore: avoid_print
+            print('⚠️  V2 failed, falling back to original models: $e');
+          }
+        }
+      }
+    }
+
     if (!silent) {
       // ignore: avoid_print
       print('🎯 ==========================================');
@@ -450,6 +542,44 @@ class CryptoMLService {
       // Get best available model for this timeframe (with fallback)
       final coinKey = _getBestModelKey(normalizedCoin, tf);
 
+      // 🆕 V2 FALLBACK: If no V1 model for 4h/1d, try V2 service
+      if (coinKey == null && (tf == '4h' || tf == '1d')) {
+        if (['btc', 'eth', 'sol', 'bnb'].contains(normalizedCoin)) {
+          try {
+            final v2Service = CryptoMLV2Service.instance;
+            final v2Prediction = await v2Service.getPredictionV2(
+              coin: normalizedCoin,
+              symbol: symbol,
+              timeframe: tf,
+              silent: silent,
+              exchangeService: exchangeService,
+            );
+
+            if (v2Prediction != null) {
+              if (!silent) {
+                // ignore: avoid_print
+                print('   🆕 V2 fallback for $normalizedCoin@$tf: ${v2Prediction.action} (${(v2Prediction.confidence * 100).toStringAsFixed(1)}%)');
+              }
+
+              // Calculate weight for this V2 prediction
+              double weight = tf == '4h' ? 0.10 : 0.05; // Lower weight for longer timeframes
+
+              weightedPredictions.add(_WeightedPrediction(
+                v2Prediction,
+                weight,
+                '${normalizedCoin}_${tf}_v2',
+              ));
+            }
+          } catch (e) {
+            if (!silent) {
+              // ignore: avoid_print
+              print('   ⚠️ V2 fallback failed for $normalizedCoin@$tf: $e');
+            }
+          }
+        }
+        continue;
+      }
+
       // Skip if no model found or already loaded
       if (coinKey == null || loadedModels.contains(coinKey)) {
         continue;
@@ -548,35 +678,73 @@ class CryptoMLService {
       }
     }
 
-    // STEP 2: Load ALL general models
-    // NEW: Fetch candles for EACH general model's timeframe!
+    // STEP 2: Load ALL general models OR use Technical Analysis for coins without ML models
+    // For coins in coinsWithoutModels list, use TechnicalAnalysisEngine instead of dead general models
 
-    for (final tf in ['5m', '1d']) {
-      // LAZY LOADING: Ensure general model is loaded before using
-      await _ensureModelLoaded('general', tf);
+    // Coins that don't have ML models - use Technical Analysis instead
+    const coinsWithoutMLModels = ['ada', 'avax', 'doge', 'xrp', 'dot', 'link', 'uni'];
+    final useTechnicalAnalysis = coinsWithoutMLModels.contains(normalizedCoin);
 
-      final generalKey = 'general_$tf';
-      if (_interpreters.containsKey(generalKey)) {
+    // For Technical Analysis: use requested timeframe + supporting timeframes
+    // For General models: only 5m and 1d exist
+    final timeframesToAnalyze = useTechnicalAnalysis
+        ? _getTATimeframes(timeframe)  // Requested TF + related TFs
+        : ['5m', '1d'];                // Only general models available
+
+    for (final tf in timeframesToAnalyze) {
+      try {
+        // Fetch candles for THIS timeframe (using exchange-specific service)
+        // Try primary exchange first, fallback to Binance if it fails
+        late final result;
         try {
-          // Fetch candles for THIS general model's timeframe (using exchange-specific service)
-          // Try primary exchange first, fallback to Binance if it fails
-          late final result;
-          try {
-            final service = exchangeService ?? _binanceService;
-            result = await service.getFeaturesWithATRFallback(symbol, interval: tf);
-          } catch (primaryError) {
-            // If primary exchange fails (e.g., Coinbase stale data), retry with Binance
-            if (exchangeService != null && exchangeService != _binanceService) {
-              // ignore: avoid_print
-              print('   🔄 Primary exchange failed for $generalKey, retrying with Binance...');
-              result = await _binanceService.getFeaturesWithATRFallback(symbol, interval: tf);
-            } else {
-              rethrow; // Already using Binance or no exchange service
-            }
+          final service = exchangeService ?? _binanceService;
+          // ignore: avoid_print
+          print('   📊 [${useTechnicalAnalysis ? "TA" : "General"} $tf] Fetching candles for $symbol from ${service.exchangeName}');
+          result = await service.getFeaturesWithATRFallback(symbol, interval: tf);
+          // ignore: avoid_print
+          print('   📊 [${useTechnicalAnalysis ? "TA" : "General"} $tf] Got ${result.features.length} timesteps, price=${result.currentPrice.toStringAsFixed(4)}');
+        } catch (primaryError) {
+          // If primary exchange fails (e.g., Coinbase stale data), retry with Binance
+          if (exchangeService != null && exchangeService != _binanceService) {
+            // ignore: avoid_print
+            print('   🔄 Primary exchange failed for $tf, retrying with Binance...');
+            result = await _binanceService.getFeaturesWithATRFallback(symbol, interval: tf);
+          } else {
+            rethrow; // Already using Binance or no exchange service
+          }
+        }
+
+        final CryptoPrediction pred;
+        final String modelKey;
+
+        if (useTechnicalAnalysis) {
+          // USE TECHNICAL ANALYSIS for coins without ML models
+          // This provides meaningful predictions based on actual indicator values
+          modelKey = 'ta_$tf';
+          pred = TechnicalAnalysisEngine.analyze(
+            features: result.features,
+            coin: coin,
+            timeframe: tf,
+            atr: result.atr,
+            volumePercentile: volumePercentile,
+            silent: silent,
+          );
+          if (!silent) {
+            // ignore: avoid_print
+            print('   🔬 [Technical Analysis $tf] ${pred.action} @ ${(pred.confidence * 100).toStringAsFixed(1)}%');
+          }
+        } else {
+          // USE GENERAL ML MODEL for other coins
+          // LAZY LOADING: Ensure general model is loaded before using
+          await _ensureModelLoaded('general', tf);
+
+          modelKey = 'general_$tf';
+          if (!_interpreters.containsKey(modelKey)) {
+            continue; // Skip if model not available
           }
 
-          final pred = await _getPredictionWithModel(
-            generalKey,
+          pred = await _getPredictionWithModel(
+            modelKey,
             result.features,
             coin: coin,
             timeframe: timeframe, // Use requested timeframe for confidence
@@ -584,56 +752,57 @@ class CryptoMLService {
             volumePercentile: volumePercentile,
             bidAskRatio: bidAskRatio,
           );
+        }
 
-          // ADAPTIVE MODEL SELECTION: Filter general models based on market conditions
-          // High volatility (ATR > 2.0) → skip long timeframes (slow to react)
-          if (volatility > 2.0 && ['1d', '7d', '4h'].contains(tf)) {
-            if (!silent) {
-              // ignore: avoid_print
-              print('   ⚡ [Adaptive Selection] HIGH VOLATILITY (ATR=${(volatility * 100).toStringAsFixed(2)}%) → skipping long tf $generalKey');
-            }
-            continue;
-          }
-          // Low volume (< 30% percentile) → skip short timeframes (noisy signals)
-          if (volumePercentile < 0.30 && !['1h', '4h', '1d', '7d'].contains(tf)) {
-            if (!silent) {
-              // ignore: avoid_print
-              print('   🔇 [Adaptive Selection] LOW VOLUME (percentile=${(volumePercentile * 100).toStringAsFixed(1)}%) → skipping short tf $generalKey');
-            }
-            continue;
-          }
+        // ADAPTIVE MODEL SELECTION: Filter models based on market conditions
+        // High volatility (ATR > 2.0) → skip long timeframes (slow to react)
+        if (volatility > 2.0 && ['1d', '7d', '4h'].contains(tf)) {
           if (!silent) {
             // ignore: avoid_print
-            print('   ✅ [Adaptive Selection] NORMAL CONDITIONS → using $generalKey');
+            print('   ⚡ [Adaptive Selection] HIGH VOLATILITY (ATR=${(volatility * 100).toStringAsFixed(2)}%) → skipping long tf $modelKey');
           }
-
-          // PHASE 3 PILOT: Apply Phase 3 weights if enabled for this coin+timeframe
-          final double weight;
-          if (applyPhase3) {
-            // Use Phase 3 enhanced weights (real ATR + volume boost + recency penalty for general models)
-            final trainedDate = _getTrainedDate(generalKey);
-            weight = EnsembleWeightsV2.calculateTimeframeWeight(
-              requestedTf: timeframe,
-              modelTf: tf,
-              coin: coin,
-              atr: volatility, // Real ATR from candles
-              modelKey: generalKey,
-              isGeneral: true,
-              volumePercentile: volumePercentile,
-              trainedDate: trainedDate,
-            );
-          } else {
-            // Use existing logic (general penalty 0.6x)
-            weight = _calculateTimeframeWeight(timeframe, tf) * 0.6;
-          }
-          
-          // Apply time-based weight adjustment (Asia/Europe/US sessions)
-          final adjustedWeight = _getTimeBasedWeight(generalKey, weight);
-          weightedPredictions.add(_WeightedPrediction(pred, adjustedWeight, generalKey));
-        } catch (e) {
-          // ignore: avoid_print
-          print('   ❌ Error loading $generalKey: $e');
+          continue;
         }
+        // Low volume (< 30% percentile) → skip short timeframes (noisy signals)
+        if (volumePercentile < 0.30 && !['1h', '4h', '1d', '7d'].contains(tf)) {
+          if (!silent) {
+            // ignore: avoid_print
+            print('   🔇 [Adaptive Selection] LOW VOLUME (percentile=${(volumePercentile * 100).toStringAsFixed(1)}%) → skipping short tf $modelKey');
+          }
+          continue;
+        }
+        if (!silent) {
+          // ignore: avoid_print
+          print('   ✅ [Adaptive Selection] NORMAL CONDITIONS → using $modelKey');
+        }
+
+        // PHASE 3 PILOT: Apply Phase 3 weights if enabled for this coin+timeframe
+        final double weight;
+        if (applyPhase3) {
+          // Use Phase 3 enhanced weights (real ATR + volume boost + recency penalty)
+          final trainedDate = _getTrainedDate(modelKey);
+          weight = EnsembleWeightsV2.calculateTimeframeWeight(
+            requestedTf: timeframe,
+            modelTf: tf,
+            coin: coin,
+            atr: volatility, // Real ATR from candles
+            modelKey: modelKey,
+            isGeneral: !useTechnicalAnalysis, // TA is not "general" model
+            volumePercentile: volumePercentile,
+            trainedDate: trainedDate,
+          );
+        } else {
+          // Use existing logic (general penalty 0.6x, TA gets 0.8x)
+          final penalty = useTechnicalAnalysis ? 0.8 : 0.6;
+          weight = _calculateTimeframeWeight(timeframe, tf) * penalty;
+        }
+
+        // Apply time-based weight adjustment (Asia/Europe/US sessions)
+        final adjustedWeight = _getTimeBasedWeight(modelKey, weight);
+        weightedPredictions.add(_WeightedPrediction(pred, adjustedWeight, modelKey));
+      } catch (e) {
+        // ignore: avoid_print
+        print('   ❌ Error in ${useTechnicalAnalysis ? "TA" : "general"} $tf: $e');
       }
     }
 
@@ -668,7 +837,9 @@ class CryptoMLService {
     final volPercentile = volumePercentile;
     var finalAction = ensemble.action;
     var finalConfidence = ensemble.confidence;
-    String decisionReason = 'Normal market conditions';
+    String decisionReason = useTechnicalAnalysis
+        ? 'Technical analysis based on RSI, MACD, and price patterns'
+        : 'Normal market conditions';
 
     // 1. ANTI-CHOP FILTER: Low volatility + High liquidity + Low confidence → HOLD
     if (atrPercent < 0.15 && volPercentile > 85.0 && finalConfidence < 0.55) {
@@ -989,11 +1160,20 @@ class CryptoMLService {
     //   - signal < 20% → T = 1.5 (weak signal → minimal dampening)
     //   - signal >= 20% → T = 1.0 (normal signal → NO dampening, trust model)
     final signalPercent = signalStrength * 100;
-    final double temperature = signalPercent < 10 ? 2.0
+    double temperature = signalPercent < 10 ? 2.0
                               : signalPercent < 20 ? 1.5
                               : 1.0;  // No scaling when signal is reasonable!
 
     final maxProb = probabilities.reduce((a, b) => a > b ? a : b);
+
+    // CRITICAL: NEVER allow 100% confidence - always apply minimum dampening
+    // If model outputs exact 1.0 (or very close), force temperature scaling
+    // No trading prediction can be 100% certain
+    if (maxProb >= 0.99) {
+      temperature = temperature < 1.5 ? 1.5 : temperature; // Force minimum T=1.5 for near-certain predictions
+    } else if (maxProb >= 0.95) {
+      temperature = temperature < 1.2 ? 1.2 : temperature; // Force minimum T=1.2 for very high confidence
+    }
 
     // Only apply temperature scaling if confidence is EXTREMELY high (>92%) or signal is VERY weak (<15%)
     // This preserves the model's conviction in most cases
@@ -1203,7 +1383,29 @@ class CryptoMLService {
     final expValues = scaledLogits.map((l) => exp(l - maxLogit)).toList();
     final sumExp = expValues.reduce((a, b) => a + b);
 
-    return expValues.map((e) => e / sumExp).toList();
+    final scaled = expValues.map((e) => e / sumExp).toList();
+
+    // CRITICAL: Hard cap at 98% - no prediction can be 100% certain in trading
+    // If any probability exceeds 0.98, redistribute excess to other classes
+    const maxAllowedProb = 0.98;
+    final maxScaledProb = scaled.reduce((a, b) => a > b ? a : b);
+
+    if (maxScaledProb > maxAllowedProb) {
+      final maxIdx = scaled.indexOf(maxScaledProb);
+      final excess = maxScaledProb - maxAllowedProb;
+      final otherCount = scaled.length - 1;
+
+      for (int i = 0; i < scaled.length; i++) {
+        if (i == maxIdx) {
+          scaled[i] = maxAllowedProb;
+        } else {
+          // Redistribute excess proportionally to other classes
+          scaled[i] = scaled[i] + (excess / otherCount);
+        }
+      }
+    }
+
+    return scaled;
   }
 
   /// Calculează puterea semnalului (0.0-1.0)
@@ -1349,6 +1551,27 @@ class CryptoMLService {
     final weight = 0.15 * (1.0 / (logDistance + 0.5));
 
     return weight.clamp(0.05, 0.35);
+  }
+
+  /// Get timeframes to analyze for Technical Analysis based on requested timeframe
+  /// Returns the requested timeframe + supporting timeframes for better ensemble
+  List<String> _getTATimeframes(String requestedTf) {
+    // Primary: requested timeframe (highest weight)
+    // Secondary: one shorter + one longer timeframe for context
+    switch (requestedTf) {
+      case '5m':
+        return ['5m', '15m'];  // 5m primary + 15m context
+      case '15m':
+        return ['15m', '5m', '1h'];  // 15m primary + 5m/1h context
+      case '1h':
+        return ['1h', '15m', '4h'];  // 1h primary + 15m/4h context
+      case '4h':
+        return ['4h', '1h', '1d'];  // 4h primary + 1h/1d context
+      case '1d':
+        return ['1d', '4h'];  // 1d primary + 4h context
+      default:
+        return [requestedTf, '1h'];  // Fallback
+    }
   }
 
   /// WEIGHTED ENSEMBLE - combines predictions with timeframe-based weights
@@ -1634,6 +1857,276 @@ class CryptoPrediction {
   @override
   String toString() {
     return '$actionEmoji $action (${(confidence * 100).toStringAsFixed(1)}%) - $signalDescription signal';
+  }
+}
+
+/// Technical Analysis Engine - Fallback for coins without ML models
+/// Uses RSI, MACD, Bollinger Bands, patterns, and trend analysis
+class TechnicalAnalysisEngine {
+  /// Analyze features and generate prediction based on technical indicators
+  /// Feature indices (76 total):
+  /// - 0-24: Candle patterns (binary 0/1)
+  /// - 25-29: Price action (returns, log_returns, volatility, hl_range, close_position)
+  /// - 30-32: RSI features (rsi_14, rsi_oversold, rsi_overbought)
+  /// - 33-38: MACD features (macd, macd_signal, macd_hist, macd_cross_up, macd_cross_down, macd_above_signal)
+  /// - 39-43: Bollinger (bb_upper, bb_lower, bb_width, bb_position, bb_squeeze)
+  /// - 44-46: ATR (atr_14, atr_high, atr_expanding)
+  /// - 47-51: ADX (adx_14, adx_strong, plus_di, minus_di, di_cross)
+  /// - 52-55: Stochastic (stoch_k, stoch_d, stoch_oversold, stoch_overbought)
+  /// - 56-60: Ichimoku (tenkan, kijun, senkou_a, senkou_b, above_cloud)
+  /// - 61-62: Volume (volume_sma_ratio, volume_spike)
+  /// - 63-68: Moving averages (ma20, ma50, ma200, price_above_ma20, price_above_ma50, price_above_ma200)
+  /// - 69-72: Trend (higher_high, lower_low, uptrend, downtrend)
+  /// - 73-75: Reserved/extra
+  static CryptoPrediction analyze({
+    required List<List<double>> features,
+    required String coin,
+    required String timeframe,
+    required double atr,
+    required double volumePercentile,
+    bool silent = false,
+  }) {
+    if (features.isEmpty || features.last.length < 70) {
+      return CryptoPrediction(
+        action: 'HOLD',
+        confidence: 0.3,
+        decisionReason: 'Insufficient data for technical analysis',
+        signalStrength: 0.0,
+        atr: atr,
+        volumePercentile: volumePercentile,
+        probabilities: {'BUY': 0.33, 'SELL': 0.33, 'HOLD': 0.34},
+        modelAccuracy: 0.5,
+        timestamp: DateTime.now(),
+      );
+    }
+
+    // Use last timestep for current analysis
+    final current = features.last;
+    final prev = features.length > 1 ? features[features.length - 2] : current;
+
+    // Scoring system: positive = bullish, negative = bearish
+    double score = 0.0;
+    int signalsCount = 0;
+    final List<String> bullishSignals = [];
+    final List<String> bearishSignals = [];
+
+    // === 1. PATTERN ANALYSIS (indices 0-24) ===
+    // Bullish patterns: indices for doji(0), hammer(1), inverted_hammer(2), bullish_engulfing(11), piercing(13), morning_star(15), three_white_soldiers(17)
+    // Bearish patterns: shooting_star(3), hanging_man(4), bearish_engulfing(12), dark_cloud(14), evening_star(16), three_black_crows(18)
+    final bullishPatternIndices = [0, 1, 2, 11, 13, 15, 17, 19, 21]; // tweezer_bottom(19), bullish_harami(21)
+    final bearishPatternIndices = [3, 4, 12, 14, 16, 18, 20, 22]; // tweezer_top(20), bearish_harami(22)
+
+    int bullishPatterns = 0;
+    int bearishPatterns = 0;
+    for (final idx in bullishPatternIndices) {
+      if (idx < current.length && current[idx] > 0.5) bullishPatterns++;
+    }
+    for (final idx in bearishPatternIndices) {
+      if (idx < current.length && current[idx] > 0.5) bearishPatterns++;
+    }
+
+    if (bullishPatterns > bearishPatterns) {
+      score += (bullishPatterns - bearishPatterns) * 0.15;
+      bullishSignals.add('${bullishPatterns} bullish patterns');
+    } else if (bearishPatterns > bullishPatterns) {
+      score -= (bearishPatterns - bullishPatterns) * 0.15;
+      bearishSignals.add('${bearishPatterns} bearish patterns');
+    }
+    signalsCount++;
+
+    // === 2. RSI ANALYSIS (indices 30-32) ===
+    if (current.length > 32) {
+      final rsi = current[30];
+      final rsiOversold = current[31]; // Binary: 1 if RSI < 30
+      final rsiOverbought = current[32]; // Binary: 1 if RSI > 70
+
+      if (rsiOversold > 0.5) {
+        score += 0.2;
+        bullishSignals.add('RSI oversold');
+      } else if (rsiOverbought > 0.5) {
+        score -= 0.2;
+        bearishSignals.add('RSI overbought');
+      } else if (rsi > 0.4 && rsi < 0.6) {
+        // Neutral RSI (40-60 normalized range)
+      } else if (rsi < 0.4) {
+        score += 0.1;
+      } else {
+        score -= 0.1;
+      }
+      signalsCount++;
+    }
+
+    // === 3. MACD ANALYSIS (indices 33-38) ===
+    if (current.length > 38) {
+      final macdHist = current[35];
+      final macdCrossUp = current[36];
+      final macdCrossDown = current[37];
+      final macdAboveSignal = current[38];
+
+      if (macdCrossUp > 0.5) {
+        score += 0.25;
+        bullishSignals.add('MACD bullish cross');
+      } else if (macdCrossDown > 0.5) {
+        score -= 0.25;
+        bearishSignals.add('MACD bearish cross');
+      } else if (macdAboveSignal > 0.5 && macdHist > 0) {
+        score += 0.1;
+      } else if (macdAboveSignal < 0.5 && macdHist < 0) {
+        score -= 0.1;
+      }
+      signalsCount++;
+    }
+
+    // === 4. BOLLINGER BANDS (indices 39-43) ===
+    if (current.length > 43) {
+      final bbPosition = current[42]; // 0 = at lower band, 1 = at upper band
+      final bbSqueeze = current[43]; // Volatility squeeze
+
+      if (bbPosition < 0.1) {
+        score += 0.15; // Near lower band = potential bounce
+        bullishSignals.add('Near BB lower');
+      } else if (bbPosition > 0.9) {
+        score -= 0.15; // Near upper band = potential reversal
+        bearishSignals.add('Near BB upper');
+      }
+      signalsCount++;
+    }
+
+    // === 5. STOCHASTIC (indices 52-55) ===
+    if (current.length > 55) {
+      final stochOversold = current[54];
+      final stochOverbought = current[55];
+
+      if (stochOversold > 0.5) {
+        score += 0.15;
+        bullishSignals.add('Stoch oversold');
+      } else if (stochOverbought > 0.5) {
+        score -= 0.15;
+        bearishSignals.add('Stoch overbought');
+      }
+      signalsCount++;
+    }
+
+    // === 6. TREND ANALYSIS (indices 69-72) ===
+    if (current.length > 72) {
+      final higherHigh = current[69];
+      final lowerLow = current[70];
+      final uptrend = current[71];
+      final downtrend = current[72];
+
+      if (uptrend > 0.5) {
+        score += 0.2;
+        bullishSignals.add('Uptrend');
+      } else if (downtrend > 0.5) {
+        score -= 0.2;
+        bearishSignals.add('Downtrend');
+      }
+
+      if (higherHigh > 0.5 && lowerLow < 0.5) {
+        score += 0.1;
+      } else if (lowerLow > 0.5 && higherHigh < 0.5) {
+        score -= 0.1;
+      }
+      signalsCount++;
+    }
+
+    // === 7. MOVING AVERAGES (indices 66-68) ===
+    if (current.length > 68) {
+      final aboveMA20 = current[66];
+      final aboveMA50 = current[67];
+      final aboveMA200 = current[68];
+
+      int maScore = 0;
+      if (aboveMA20 > 0.5) maScore++;
+      if (aboveMA50 > 0.5) maScore++;
+      if (aboveMA200 > 0.5) maScore++;
+
+      if (maScore >= 3) {
+        score += 0.15;
+        bullishSignals.add('Above all MAs');
+      } else if (maScore == 0) {
+        score -= 0.15;
+        bearishSignals.add('Below all MAs');
+      } else if (maScore >= 2) {
+        score += 0.05;
+      } else {
+        score -= 0.05;
+      }
+      signalsCount++;
+    }
+
+    // === 8. VOLUME ANALYSIS (indices 61-62) ===
+    if (current.length > 62) {
+      final volumeSpike = current[62];
+      if (volumeSpike > 0.5 && score > 0) {
+        score += 0.1; // Volume confirms bullish move
+        bullishSignals.add('Volume spike');
+      } else if (volumeSpike > 0.5 && score < 0) {
+        score -= 0.1; // Volume confirms bearish move
+        bearishSignals.add('Volume spike');
+      }
+      signalsCount++;
+    }
+
+    // === CALCULATE FINAL PREDICTION ===
+    // Normalize score to -1 to +1 range
+    final normalizedScore = score.clamp(-1.0, 1.0);
+
+    // Determine action
+    String action;
+    if (normalizedScore > 0.15) {
+      action = 'BUY';
+    } else if (normalizedScore < -0.15) {
+      action = 'SELL';
+    } else {
+      action = 'HOLD';
+    }
+
+    // Calculate confidence (0.3 to 0.85 range for TA)
+    final confidence = 0.3 + (normalizedScore.abs() * 0.55);
+
+    // Calculate signal strength based on agreement
+    final signalStrength = (bullishSignals.length + bearishSignals.length) / (signalsCount * 2) * 100;
+
+    // Build decision reason
+    String reason;
+    if (action == 'BUY') {
+      reason = 'Technical analysis: ${bullishSignals.take(3).join(", ")}';
+    } else if (action == 'SELL') {
+      reason = 'Technical analysis: ${bearishSignals.take(3).join(", ")}';
+    } else {
+      reason = 'Mixed signals - no clear direction';
+    }
+
+    if (!silent) {
+      // ignore: avoid_print
+      print('📊 [TechnicalAnalysis] Score: ${normalizedScore.toStringAsFixed(2)} → $action');
+      // ignore: avoid_print
+      print('   Bullish: ${bullishSignals.join(", ")}');
+      // ignore: avoid_print
+      print('   Bearish: ${bearishSignals.join(", ")}');
+    }
+
+    // Calculate probabilities from score
+    final buyProb = normalizedScore > 0 ? 0.33 + (normalizedScore * 0.33) : 0.33 - (normalizedScore.abs() * 0.15);
+    final sellProb = normalizedScore < 0 ? 0.33 + (normalizedScore.abs() * 0.33) : 0.33 - (normalizedScore * 0.15);
+    final holdProb = 1.0 - buyProb - sellProb;
+
+    return CryptoPrediction(
+      action: action,
+      confidence: confidence.clamp(0.3, 0.85),
+      decisionReason: reason,
+      signalStrength: signalStrength.clamp(0.0, 100.0),
+      atr: atr,
+      volumePercentile: volumePercentile,
+      probabilities: {
+        'BUY': buyProb.clamp(0.05, 0.80),
+        'SELL': sellProb.clamp(0.05, 0.80),
+        'HOLD': holdProb.clamp(0.10, 0.50),
+      },
+      modelAccuracy: 0.55, // Technical analysis baseline accuracy
+      timestamp: DateTime.now(),
+    );
   }
 }
 

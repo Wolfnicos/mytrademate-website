@@ -507,7 +507,22 @@ class CoinbaseService implements BaseExchangeService {
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
-        throw Exception('[Coinbase] Failed to fetch candles: ${response.statusCode}');
+        // Parse error message from response body
+        String errorMsg = '';
+        try {
+          final errorData = json.decode(response.body);
+          errorMsg = errorData['message'] ?? '';
+        } catch (_) {}
+
+        if (response.statusCode == 404 || errorMsg.toLowerCase().contains('notfound')) {
+          debugPrint('[Coinbase] ⚠️ Product not found: $coinbaseSymbol (may be delisted or not available)');
+          return []; // Return empty list instead of throwing
+        }
+        if (errorMsg.toLowerCase().contains('delisted')) {
+          debugPrint('[Coinbase] ⚠️ Product delisted: $coinbaseSymbol');
+          return []; // Return empty list for delisted products
+        }
+        throw Exception('[Coinbase] Failed to fetch candles: ${response.statusCode} $errorMsg');
       }
 
       final List<dynamic> candles = json.decode(response.body) as List<dynamic>;
@@ -549,7 +564,22 @@ class CoinbaseService implements BaseExchangeService {
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (response.statusCode != 200) {
-        throw Exception('[Coinbase] Ticker error: ${response.statusCode}');
+        // Parse error message
+        String errorMsg = '';
+        try {
+          final errorData = json.decode(response.body);
+          errorMsg = errorData['message'] ?? '';
+        } catch (_) {}
+
+        if (response.statusCode == 404 || errorMsg.toLowerCase().contains('notfound')) {
+          debugPrint('[Coinbase] ⚠️ Ticker not found: $coinbaseSymbol');
+          throw Exception('[Coinbase] Product not found: $coinbaseSymbol');
+        }
+        if (errorMsg.toLowerCase().contains('delisted')) {
+          debugPrint('[Coinbase] ⚠️ Ticker delisted: $coinbaseSymbol');
+          throw Exception('[Coinbase] Product delisted: $coinbaseSymbol');
+        }
+        throw Exception('[Coinbase] Ticker error: ${response.statusCode} $errorMsg');
       }
 
       final data = json.decode(response.body) as Map<String, dynamic>;

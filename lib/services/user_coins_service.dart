@@ -57,8 +57,8 @@ class UserCoinsService with ChangeNotifier {
   // Exchange-specific coin exclusions
   // Some exchanges don't support certain coins due to business conflicts or listing policies
   static const Map<String, List<String>> excludedCoinsPerExchange = {
-    'Coinbase': ['BNB', 'MATIC', 'UNI'],  // BNB (competitor), MATIC/UNI delisted Nov 2025
-    'Kraken': ['BNB'],                     // BNB not available (competitor)
+    'Coinbase': ['BNB', 'MATIC'],  // BNB (competitor), MATIC delisted (migrated to POL)
+    'Kraken': ['BNB', 'MATIC'],    // BNB not available, MATIC migrated to POL
   };
 
   /// Get default coins filtered for specific exchange

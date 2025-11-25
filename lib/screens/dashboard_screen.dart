@@ -347,7 +347,9 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
               const SizedBox(width: AppTheme.spacing12),
               Text(
                 'Portfolio Overview',
-                style: AppTheme.headingMedium,
+                style: AppTheme.headingMedium.copyWith(
+                  color: AppTheme.getTextPrimary(context),
+                ),
               ),
             ],
           ),
@@ -358,7 +360,7 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
           Text(
             'Total Value',
             style: AppTheme.bodySmall.copyWith(
-              color: AppTheme.textTertiary,
+              color: AppTheme.getTextTertiary(context),
               textBaseline: TextBaseline.alphabetic,
             ),
           ),
@@ -372,7 +374,9 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
           else
             Text(
               '${AppSettingsService.currencyPrefix(AppSettingsService().quoteCurrency)}${_totalValue.toStringAsFixed(2)}',
-              style: AppTheme.monoLarge,
+              style: AppTheme.monoLarge.copyWith(
+                color: AppTheme.getTextPrimary(context),
+              ),
             ),
 
           const SizedBox(height: AppTheme.spacing16),
@@ -393,14 +397,14 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
               children: [
                 Icon(
                   Icons.info_outline,
-                  color: AppTheme.textTertiary,
+                  color: AppTheme.getTextTertiary(context),
                   size: 16,
                 ),
                 const SizedBox(width: AppTheme.spacing8),
                 Text(
                   'Live portfolio value',
                   style: AppTheme.bodySmall.copyWith(
-                    color: AppTheme.textTertiary,
+                    color: AppTheme.getTextTertiary(context),
                   ),
                 ),
               ],
@@ -928,7 +932,9 @@ class _PnLTodaySectionState extends State<PnLTodaySection> {
                     Flexible(
                       child: Text(
                         'Market',
-                        style: AppTheme.headingMedium,
+                        style: AppTheme.headingMedium.copyWith(
+                          color: AppTheme.getTextPrimary(context),
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1015,13 +1021,14 @@ class _PnLTodaySectionState extends State<PnLTodaySection> {
                   coin,
                   style: AppTheme.bodyLarge.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: AppTheme.getTextPrimary(context),
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${AppSettingsService.currencyPrefix(AppSettingsService().quoteCurrency)}${price.toStringAsFixed(price >= 100 ? 0 : 2)}',
                   style: AppTheme.bodySmall.copyWith(
-                    color: AppTheme.textTertiary,
+                    color: AppTheme.getTextTertiary(context),
                   ),
                 ),
               ],

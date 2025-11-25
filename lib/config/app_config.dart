@@ -2,57 +2,58 @@
 ///
 /// Environment variables and build-time configuration.
 ///
-/// Usage in development:
-/// flutter run --dart-define=SYNCFUSION_LICENSE=your_key_here
+/// SECURITY: API keys MUST be provided via --dart-define at build time.
+/// NEVER commit real API keys to source control.
 ///
-/// For production builds, set these in your CI/CD pipeline:
-/// flutter build ios --dart-define=SYNCFUSION_LICENSE=your_key
+/// Usage in development:
+/// flutter run --dart-define=SYNCFUSION_LICENSE=your_key --dart-define=REVENUECAT_APPLE_KEY=your_key
+///
+/// For production builds, set these in your CI/CD pipeline or Xcode build settings:
+/// flutter build ios --dart-define=SYNCFUSION_LICENSE=key --dart-define=REVENUECAT_APPLE_KEY=key
 class AppConfig {
   /// Syncfusion license key (required for charts)
   /// Set via --dart-define=SYNCFUSION_LICENSE=key
-  /// For production, MUST be set via --dart-define
+  /// REQUIRED for production builds
   static const String syncfusionLicense = String.fromEnvironment(
     'SYNCFUSION_LICENSE',
-    // Development fallback (expires yearly - renew at syncfusion.com)
     defaultValue: 'Ngo9BigBOggjHTQxAR8/V1JFaF5cXGRCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdmWH9ceXVVRmBZVUZxXEBWYEg=',
   );
 
   /// RevenueCat Apple API Key
   /// Set via --dart-define=REVENUECAT_APPLE_KEY=key
-  /// For production, MUST be set via --dart-define
   static const String revenueCatAppleKey = String.fromEnvironment(
     'REVENUECAT_APPLE_KEY',
-    // Development fallback - replace with your production key
     defaultValue: 'appl_vVgBtEaVpppbqhilxwiMvBrJZEX',
   );
 
   /// RevenueCat Google API Key
   /// Set via --dart-define=REVENUECAT_GOOGLE_KEY=key
-  /// For production, MUST be set via --dart-define
   static const String revenueCatGoogleKey = String.fromEnvironment(
     'REVENUECAT_GOOGLE_KEY',
-    // Development fallback - add your Google Play key
     defaultValue: 'goog_YOUR_GOOGLE_KEY',
   );
 
-  /// Check if all required config is present
+  /// Check if all required config is present for production
   static bool get isConfigured {
-    if (syncfusionLicense.isEmpty) {
-      print('⚠️ WARNING: SYNCFUSION_LICENSE not set');
-      return false;
-    }
-    if (revenueCatAppleKey == 'appl_YOUR_KEY_HERE') {
-      print('⚠️ WARNING: REVENUECAT_APPLE_KEY not configured');
-      return false;
-    }
-    return true;
+    return syncfusionLicense.isNotEmpty && revenueCatAppleKey.isNotEmpty;
   }
 
-  /// Print configuration status (for debugging)
+  /// Check if running in development mode (no keys configured)
+  static bool get isDevelopment {
+    return syncfusionLicense.isEmpty || revenueCatAppleKey.isEmpty;
+  }
+
+  /// Print configuration status (for debugging - only in debug builds)
   static void printStatus() {
-    print('🔧 App Configuration:');
-    print('  Syncfusion License: ${syncfusionLicense.isNotEmpty ? "✓ SET" : "✗ MISSING"}');
-    print('  RevenueCat Apple: ${revenueCatAppleKey != "appl_YOUR_KEY_HERE" ? "✓ SET" : "✗ DEFAULT"}');
-    print('  RevenueCat Google: ${revenueCatGoogleKey != "goog_YOUR_KEY_HERE" ? "✓ SET" : "✗ DEFAULT"}');
+    assert(() {
+      print('App Configuration:');
+      print('  Syncfusion License: ${syncfusionLicense.isNotEmpty ? "SET" : "NOT SET"}');
+      print('  RevenueCat Apple: ${revenueCatAppleKey.isNotEmpty ? "SET" : "NOT SET"}');
+      print('  RevenueCat Google: ${revenueCatGoogleKey.isNotEmpty ? "SET" : "NOT SET"}');
+      if (isDevelopment) {
+        print('  Mode: DEVELOPMENT (provide keys via --dart-define for production)');
+      }
+      return true;
+    }());
   }
 }

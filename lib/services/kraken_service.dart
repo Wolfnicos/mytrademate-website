@@ -416,7 +416,13 @@ class KrakenService implements BaseExchangeService {
       final errors = data['error'] as List<dynamic>;
 
       if (errors.isNotEmpty) {
-        throw Exception('[Kraken] OHLC error: ${errors.join(", ")}');
+        final errorStr = errors.join(", ");
+        // Handle "Unknown asset pair" or "Invalid asset pair" gracefully
+        if (errorStr.contains('Unknown asset pair') || errorStr.contains('Invalid asset pair')) {
+          debugPrint('[Kraken] ⚠️ Asset pair not found: $krakenSymbol (may not be listed on Kraken)');
+          return []; // Return empty list instead of throwing
+        }
+        throw Exception('[Kraken] OHLC error: $errorStr');
       }
 
       final result = data['result'] as Map<String, dynamic>;
@@ -515,7 +521,13 @@ class KrakenService implements BaseExchangeService {
       final errors = data['error'] as List<dynamic>;
 
       if (errors.isNotEmpty) {
-        throw Exception('[Kraken] Ticker error: ${errors.join(", ")}');
+        final errorStr = errors.join(", ");
+        // Handle "Unknown asset pair" or "Invalid asset pair" gracefully
+        if (errorStr.contains('Unknown asset pair') || errorStr.contains('Invalid asset pair')) {
+          debugPrint('[Kraken] ⚠️ Ticker not found: $krakenSymbol (may not be listed on Kraken)');
+          throw Exception('[Kraken] Asset pair not found: $krakenSymbol');
+        }
+        throw Exception('[Kraken] Ticker error: $errorStr');
       }
 
       final result = data['result'] as Map<String, dynamic>;

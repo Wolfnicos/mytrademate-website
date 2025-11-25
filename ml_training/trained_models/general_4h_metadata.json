@@ -1,0 +1,20 @@
+{
+  "model": "V14 GENERAL",
+  "timeframe": "4h",
+  "coins_trained_on": [
+    "BTC",
+    "ETH",
+    "BNB",
+    "SOL"
+  ],
+  "num_features": 76,
+  "sequence_length": 60,
+  "num_classes": 3,
+  "test_accuracy": 0.710106372833252,
+  "train_samples": 3008,
+  "test_samples": 752,
+  "model_size_mb": 0.6440048217773438,
+  "date": "2025-11-25T07:28:22.247242",
+  "compatible": "iOS/Android",
+  "feature_order": "Flutter compatible (patterns first)"
+}

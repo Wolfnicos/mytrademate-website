@@ -60,6 +60,8 @@ class AppSettingsService extends ChangeNotifier {
     if (IS_BETA_BUILD) return null;
 
     // PRODUCTION MODE: Calculate remaining hours
+    // If trial hasn't started yet (dialog pending), don't show hours
+    if (_trialStartTime == null) return null;
     if (!isInTrial) return null;
     final now = DateTime.now();
     final diff = now.difference(_trialStartTime!);

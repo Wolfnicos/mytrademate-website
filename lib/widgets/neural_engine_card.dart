@@ -94,6 +94,7 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
   @override
   Widget build(BuildContext context) {
     final isActive = _isLoaded;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AnimatedBuilder(
       animation: Listenable.merge([_pulseAnimation, _flowAnimation, _glowAnimation]),
@@ -103,14 +104,10 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
             borderRadius: BorderRadius.circular(AppTheme.radiusXL),
             gradient: LinearGradient(
               colors: isActive
-                  ? [
-                      const Color(0xFF0F172A),
-                      const Color(0xFF1E293B),
-                    ]
-                  : [
-                      AppTheme.surface,
-                      AppTheme.surfaceVariant,
-                    ],
+                  ? (isDark
+                      ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
+                      : [const Color(0xFFF1F5F9), const Color(0xFFE2E8F0)])
+                  : [AppTheme.surface, AppTheme.surfaceVariant],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -184,6 +181,8 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
   }
 
   Widget _buildHeader(bool isActive) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       children: [
         // Animated brain icon with holographic glow
@@ -236,14 +235,16 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
                   ShaderMask(
                     shaderCallback: (bounds) => LinearGradient(
                       colors: isActive
-                          ? [Colors.white, const Color(0xFFE0E7FF)]
-                          : [AppTheme.textSecondary, AppTheme.textTertiary],
+                          ? (isDark
+                              ? [Colors.white, const Color(0xFFE0E7FF)]
+                              : [AppTheme.primary, AppTheme.secondary])
+                          : [AppTheme.getTextSecondary(context), AppTheme.getTextTertiary(context)],
                     ).createShader(bounds),
                     child: Text(
                       'Neural Engine',
                       style: AppTheme.headingMedium.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: isDark ? Colors.white : AppTheme.textPrimaryLight,
                         letterSpacing: -0.5,
                       ),
                     ),
@@ -258,7 +259,7 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
                     ? 'Deep Learning • $_modelCount Models • 76 Indicators'
                     : 'Initializing neural pathways...',
                 style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.textTertiary,
+                  color: AppTheme.getTextTertiary(context),
                   fontSize: 11,
                 ),
               ),
@@ -403,7 +404,7 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
           Text(
             label,
             style: AppTheme.bodySmall.copyWith(
-              color: AppTheme.textTertiary,
+              color: AppTheme.getTextTertiary(context),
               fontSize: 10,
             ),
             textAlign: TextAlign.center,
@@ -447,7 +448,7 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
               child: Text(
                 'Analyzing market patterns in real-time',
                 style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.textTertiary,
+                  color: AppTheme.getTextTertiary(context),
                   fontSize: 11,
                 ),
               ),
@@ -534,14 +535,14 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
         Text(
           'Loading AI Models...',
           style: AppTheme.bodyMedium.copyWith(
-            color: AppTheme.textSecondary,
+            color: AppTheme.getTextSecondary(context),
           ),
         ),
         const SizedBox(height: AppTheme.spacing8),
         Text(
           'Initializing neural pathways',
           style: AppTheme.bodySmall.copyWith(
-            color: AppTheme.textTertiary,
+            color: AppTheme.getTextTertiary(context),
           ),
         ),
         const SizedBox(height: AppTheme.spacing20),
