@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -1606,25 +1607,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: const Icon(Icons.open_in_new, color: AppTheme.textTertiary),
                   onTap: () => _openWebsite(),
                 ),
-                // Developer Tools
-                const Divider(color: AppTheme.glassBorder),
-                ListTile(
-                  leading: const Icon(Icons.refresh, color: AppTheme.warning),
-                  title: Text('Reset Trial (Debug)', style: AppTheme.bodyMedium),
-                  subtitle: Text('Reset 48h trial - show dialog again', style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary)),
-                  trailing: const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
-                  onTap: () async {
-                    await AppSettingsService().resetTrialForTesting();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Trial reset! Restart app to see dialog'),
-                          backgroundColor: AppTheme.success,
-                        ),
-                      );
-                    }
-                  },
-                ),
+                // Developer Tools - only visible in debug mode
+                if (kDebugMode) ...[
+                  const Divider(color: AppTheme.glassBorder),
+                  ListTile(
+                    leading: const Icon(Icons.refresh, color: AppTheme.warning),
+                    title: Text('Reset Trial (Debug)', style: AppTheme.bodyMedium),
+                    subtitle: Text('Reset 48h trial - show dialog again', style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary)),
+                    trailing: const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
+                    onTap: () async {
+                      await AppSettingsService().resetTrialForTesting();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Trial reset! Restart app to see dialog'),
+                            backgroundColor: AppTheme.success,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ],
               ],
             ),
           ),
