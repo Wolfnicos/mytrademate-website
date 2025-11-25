@@ -983,24 +983,21 @@ class CryptoMLService {
     // Fewer active features → higher T (model less reliable)
     var probabilities = output[0];
 
-    // Calculate dynamic temperature with GENTLE scaling
-    // Lower temperatures preserve more of the model's conviction
-    // Only dampen when signal is truly weak or confidence is suspiciously high
-    //   - signal < 20% → T = 3.0 (very weak signal → moderate dampening)
-    //   - signal < 30% → T = 2.0 (weak signal → light dampening)
-    //   - signal < 40% → T = 1.5 (medium signal → minimal dampening)
-    //   - signal >= 40% → T = 1.0 (good signal → NO dampening, trust model)
+    // Calculate dynamic temperature with MINIMAL scaling (reduced aggressiveness)
+    // Trust the model more - only dampen extreme cases
+    //   - signal < 10% → T = 2.0 (very weak signal → light dampening)
+    //   - signal < 20% → T = 1.5 (weak signal → minimal dampening)
+    //   - signal >= 20% → T = 1.0 (normal signal → NO dampening, trust model)
     final signalPercent = signalStrength * 100;
-    final double temperature = signalPercent < 20 ? 3.0
-                              : signalPercent < 30 ? 2.0
-                              : signalPercent < 40 ? 1.5
-                              : 1.0;  // No scaling when signal is good!
+    final double temperature = signalPercent < 10 ? 2.0
+                              : signalPercent < 20 ? 1.5
+                              : 1.0;  // No scaling when signal is reasonable!
 
     final maxProb = probabilities.reduce((a, b) => a > b ? a : b);
 
-    // Only apply temperature scaling if confidence is VERY high (>85%) or signal is VERY weak (<30%)
-    // This preserves the model's conviction when signals are reasonable
-    if (maxProb > 0.85 || signalStrength < 0.30) {
+    // Only apply temperature scaling if confidence is EXTREMELY high (>92%) or signal is VERY weak (<15%)
+    // This preserves the model's conviction in most cases
+    if (maxProb > 0.92 || signalStrength < 0.15) {
       if (!silent) {
         // ignore: avoid_print
         print('   🔥 BEFORE scaling: [${probabilities.map((p) => p.toStringAsFixed(4)).join(", ")}]');
@@ -1127,34 +1124,35 @@ class CryptoMLService {
     );
   }
 
-  /// PATCH 2: Rolling normalization - normalizează pe fereastră glisantă (ultimele 30 candles)
-  /// Mai rapid și mai sensibil la schimbările recente de preț
+  /// FIXED: Use saved scaler (mean/std from training) for proper normalization
+  /// This ensures inference uses the same normalization as training!
   List<List<double>> _normalizeData(
     List<List<double>> data,
     Map<String, dynamic> scaler,
   ) {
-    const lookback = 30; // Rolling window de 30 candles
+    // Get mean and std from saved scaler (from training)
+    final List<double> scalerMean = (scaler['mean'] as List).cast<double>();
+    final List<double> scalerStd = (scaler['std'] as List).cast<double>();
+
     final normalized = <List<double>>[];
 
     for (int t = 0; t < data.length; t++) {
-      final start = t >= lookback ? t - lookback + 1 : 0;
-      final window = data.sublist(start, t + 1);
-
       final row = <double>[];
       for (int f = 0; f < data[0].length; f++) {
-        // CRITICAL FIX: Pattern features (indices 0-5) are binary (0.0 or 1.0)
+        // CRITICAL: Pattern features (indices 0-5) are binary (0.0 or 1.0)
         // DO NOT normalize binary features - models were trained on 0/1 values
         if (f < 6) {
           // Keep pattern features as-is (0.0 or 1.0)
           row.add(data[t][f]);
-        } else {
-          // Normalize continuous features (indices 6-75)
-          final col = window.map((r) => r[f]).toList();
-          final mean = col.reduce((a, b) => a + b) / col.length;
-          final variance = col.map((x) => (x - mean) * (x - mean)).reduce((a, b) => a + b) / col.length;
-          final std = variance > 0 ? sqrt(variance) : 0.0;
+        } else if (f < scalerMean.length && f < scalerStd.length) {
+          // Use SAVED scaler mean/std from training (not rolling!)
+          final mean = scalerMean[f];
+          final std = scalerStd[f];
           final value = std > 1e-8 ? (data[t][f] - mean) / std : 0.0;
           row.add(double.parse(value.toStringAsFixed(6)));
+        } else {
+          // Fallback for features beyond scaler length
+          row.add(data[t][f]);
         }
       }
       normalized.add(row);
@@ -1427,8 +1425,8 @@ class CryptoMLService {
       }
     }
 
-    // Apply both multipliers and clamp to max 75% confidence
-    finalConfidence = (finalConfidence * consensusMultiplier * volumeMultiplier).clamp(0.30, 0.75);
+    // Apply both multipliers and clamp to max 90% confidence (was 75%)
+    finalConfidence = (finalConfidence * consensusMultiplier * volumeMultiplier).clamp(0.30, 0.90);
 
     // Weighted average signal strength
     var avgSignalStrength = 0.0;
@@ -1463,11 +1461,11 @@ class CryptoMLService {
         ? (bullishPatterns - bearishPatterns).abs() / totalPatterns
         : 0.0;
 
-    // Apply conflict penalty: if both bullish and bearish patterns exist, reduce confidence by 20%
+    // Apply conflict penalty: if both bullish and bearish patterns exist, reduce confidence by 10% (was 20%)
     if (bullishPatterns > 0 && bearishPatterns > 0) {
-      finalConfidence *= 0.80; // 20% penalty for conflicting patterns
+      finalConfidence *= 0.90; // 10% penalty for conflicting patterns (reduced from 20%)
       // ignore: avoid_print
-      print('⚠️  PATTERN CONFLICT: $bullishPatterns bullish vs $bearishPatterns bearish → -20% confidence');
+      print('⚠️  PATTERN CONFLICT: $bullishPatterns bullish vs $bearishPatterns bearish → -10% confidence');
       // ignore: avoid_print
       print('   Conflict Score: ${(conflictScore * 100).toStringAsFixed(1)}% (0%=clear, 100%=balanced conflict)');
     }
