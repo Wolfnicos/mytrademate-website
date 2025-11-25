@@ -1130,9 +1130,18 @@ class CryptoMLService {
     List<List<double>> data,
     Map<String, dynamic> scaler,
   ) {
-    // Get mean and std from saved scaler (from training)
-    final List<double> scalerMean = (scaler['mean'] as List).cast<double>();
-    final List<double> scalerStd = (scaler['std'] as List).cast<double>();
+    // Get mean and std from saved scaler (from training) with null safety
+    final meanList = scaler['mean'];
+    final stdList = scaler['std'];
+
+    // Fallback to identity scaler if not available
+    final int numFeatures = data.isNotEmpty ? data[0].length : 76;
+    final List<double> scalerMean = meanList != null
+        ? (meanList as List).map((e) => (e as num).toDouble()).toList()
+        : List<double>.filled(numFeatures, 0.0);
+    final List<double> scalerStd = stdList != null
+        ? (stdList as List).map((e) => (e as num).toDouble()).toList()
+        : List<double>.filled(numFeatures, 1.0);
 
     final normalized = <List<double>>[];
 

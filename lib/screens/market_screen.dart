@@ -490,22 +490,17 @@ class _MarketScreenState extends State<MarketScreen> {
 
                       const SizedBox(height: AppTheme.spacing20),
 
-                      // Interval Selector
-                      Consumer<SubscriptionProvider>(
-                        builder: (context, subscription, _) {
-                          final isProUser = subscription.isProUser;
-                          return Wrap(
-                            spacing: AppTheme.spacing8,
-                            runSpacing: AppTheme.spacing8,
-                            children: [
-                              _buildIntervalChip(isProUser ? '5M' : '5M 🔒', '5m', isProUser),
-                              _buildIntervalChip(isProUser ? '15M' : '15M 🔒', '15m', isProUser),
-                              _buildIntervalChip(isProUser ? '1H' : '1H 🔒', '1h', isProUser),
-                              _buildIntervalChip(isProUser ? '4H' : '4H 🔒', '4h', isProUser),
-                              _buildIntervalChip(isProUser ? '1D' : '1D 🔒', '1d', isProUser),
-                            ],
-                          );
-                        },
+                      // Interval Selector - ALL timeframes FREE for everyone
+                      Wrap(
+                        spacing: AppTheme.spacing8,
+                        runSpacing: AppTheme.spacing8,
+                        children: [
+                          _buildIntervalChip('5M', '5m', true),
+                          _buildIntervalChip('15M', '15m', true),
+                          _buildIntervalChip('1H', '1h', true),
+                          _buildIntervalChip('4H', '4h', true),
+                          _buildIntervalChip('1D', '1d', true),
+                        ],
                       ),
                     ],
                   ),
@@ -523,27 +518,18 @@ class _MarketScreenState extends State<MarketScreen> {
 
   Widget _buildIntervalChip(String label, String value, bool isUnlocked) {
     final bool selected = _interval == value;
-    final isLocked = !isUnlocked && ['5m', '15m', '1h', '4h'].contains(value);
 
     return GestureDetector(
       onTap: () {
-        if (isLocked) {
-          // Show paywall for locked timeframes
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const PaywallScreen()),
-          );
-        } else {
-          debugPrint('🔄 [Market] User changed timeframe to $value (old: $_interval)');
-          setState(() {
-            _interval = value;
-            _candles = []; // Clear old candles when changing timeframe
-            _loadingChart = true;
-          });
-          debugPrint('🔄 [Market] Cleared _candles, now length=${_candles.length}');
-          debugPrint('🔄 [Market] Calling _loadChart() for $_interval');
-          _loadChart();
-        }
+        debugPrint('🔄 [Market] User changed timeframe to $value (old: $_interval)');
+        setState(() {
+          _interval = value;
+          _candles = []; // Clear old candles when changing timeframe
+          _loadingChart = true;
+        });
+        debugPrint('🔄 [Market] Cleared _candles, now length=${_candles.length}');
+        debugPrint('🔄 [Market] Calling _loadChart() for $_interval');
+        _loadChart();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(
