@@ -50,6 +50,12 @@ post_install do |installer|
       # Bump pods with older minimums up to iOS 14 to match project
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
 
+      # FIX: Prevent symbol stripping for TensorFlow Lite in App Store builds
+      # This fixes "Failed to lookup symbol 'TfLiteModelCreate'" error in TestFlight
+      config.build_settings['STRIP_INSTALLED_PRODUCT'] = 'NO'
+      config.build_settings['STRIP_STYLE'] = 'non-global'
+      config.build_settings['DEAD_CODE_STRIPPING'] = 'NO'
+
       # Fix Metal toolchain search path warning by removing invalid paths
       config.build_settings['LIBRARY_SEARCH_PATHS'] = config.build_settings['LIBRARY_SEARCH_PATHS'].select { |path|
         !path.include?('MetalToolchain')

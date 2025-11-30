@@ -75,6 +75,9 @@ class EnsemblePredictor {
       return;
     }
 
+    // RELEASE MODE LOGGING - use print() instead of debugPrint()
+    // ignore: avoid_print
+    print('🤖 [RELEASE LOG] Loading ensemble models...');
     debugPrint('🤖 Loading ensemble models...');
 
     // Legacy models commented out for potential future use
@@ -204,16 +207,22 @@ class EnsemblePredictor {
       try {
         final coinLower = entry.toLowerCase();
         final modelPath = 'assets/models/${coinLower}_model.tflite';
+        // ignore: avoid_print
+        print('🪙 [RELEASE LOG] [$entry] Loading: $modelPath');
         debugPrint('');
         debugPrint('🪙 [$entry] Attempting to load: $modelPath');
 
         _perCoinModels[entry] = await Interpreter.fromAsset(modelPath);
 
+        // ignore: avoid_print
+        print('🪙 [RELEASE LOG] [$entry] ✅ SUCCESS');
         debugPrint('   ✅ $entry model loaded successfully!');
         debugPrint('   📊 Model: Per-coin specialized');
         debugPrint('   📏 Size: ~27MB');
         debugPrint('   🎯 Input: [1, 60, 76] -> Output: [1, 3] (SELL, HOLD, BUY)');
       } catch (e) {
+        // ignore: avoid_print
+        print('🪙 [RELEASE LOG] [$entry] ❌ FAILED: $e');
         debugPrint('');
         debugPrint('   ❌ $entry model NOT FOUND!');
         debugPrint('   ⚠️  Error: $e');
