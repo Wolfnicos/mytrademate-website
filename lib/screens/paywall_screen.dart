@@ -122,7 +122,7 @@ class PaywallScreen extends StatelessWidget {
 
                   // Subtitle (Clean)
                   Text(
-                    'Advanced AI predictions & strategies',
+                    'Advanced market insights & strategies',
                     style: AppTheme.bodyLarge.copyWith(
                       color: AppTheme.textSecondary,
                       fontSize: 17,
@@ -290,6 +290,41 @@ class PaywallScreen extends StatelessWidget {
                             ),
                           ),
                         ),
+                        const SizedBox(height: AppTheme.spacing16),
+
+                        // 7-day free trial badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(100),
+                            border: Border.all(
+                              color: AppTheme.primary.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.access_time_rounded,
+                                color: AppTheme.primary,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '7-Day Free Trial',
+                                style: AppTheme.bodyMedium.copyWith(
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -309,7 +344,7 @@ class PaywallScreen extends StatelessWidget {
                           // Annual Button (Primary - Gradient)
                           _buildModernButton(
                             context: context,
-                            label: 'Subscribe Annual',
+                            label: 'Start Free Trial - Annual',
                             onPressed: () async {
                               final success = await subscription.purchaseAnnual(context);
                               if (success && context.mounted) {
@@ -323,7 +358,7 @@ class PaywallScreen extends StatelessWidget {
                           // Monthly Button (Secondary)
                           _buildModernButton(
                             context: context,
-                            label: 'Subscribe Monthly',
+                            label: 'Start Free Trial - Monthly',
                             onPressed: () async {
                               final success = await subscription.purchaseMonthly(context);
                               if (success && context.mounted) {
@@ -360,6 +395,31 @@ class PaywallScreen extends StatelessWidget {
                       fontSize: 12,
                     ),
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppTheme.spacing12),
+
+                  // Auto-renewal disclosure (Required by Apple Guidelines 3.1.2)
+                  Container(
+                    padding: const EdgeInsets.all(AppTheme.spacing12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surface.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                      border: Border.all(
+                        color: AppTheme.glassBorder,
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      'Start with a 7-day free trial. Payment will be charged to your Apple ID account after the trial ends. '
+                      'Subscription automatically renews unless canceled at least 24 hours before the end of the current period. '
+                      'You can manage and cancel your subscriptions in your App Store account settings.',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.textTertiary.withOpacity(0.7),
+                        fontSize: 10,
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                   const SizedBox(height: AppTheme.spacing16),
 
