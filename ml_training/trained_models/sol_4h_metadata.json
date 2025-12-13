@@ -1,0 +1,14 @@
+{
+  "coin": "SOL",
+  "timeframe": "4h",
+  "num_features": 76,
+  "sequence_length": 60,
+  "num_classes": 3,
+  "test_accuracy": 0.6382978558540344,
+  "train_samples": 752,
+  "test_samples": 188,
+  "model_size_mb": 0.1908721923828125,
+  "date": "2025-11-25T07:23:31.953706",
+  "compatible": "iOS/Android",
+  "feature_order": "Flutter compatible (patterns first)"
+}

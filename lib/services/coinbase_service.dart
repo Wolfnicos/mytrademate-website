@@ -14,6 +14,7 @@ import '../models/candle.dart';
 import '../models/features_with_atr.dart';
 import '../services/full_feature_builder.dart';
 import 'base_exchange_service.dart';
+import 'rate_limiter_service.dart';
 
 /// Coinbase Exchange API Service
 /// Implements BaseExchangeService for Coinbase Pro/Advanced Trade API
@@ -56,6 +57,23 @@ class CoinbaseService implements BaseExchangeService {
         return const Duration(minutes: 15); // Long intervals: 15 min cache
       default:
         return const Duration(minutes: 5);
+    }
+  }
+
+  // Maximum age for actual candle data (not cache age)
+  Duration _getMaxDataAge(String interval) {
+    switch (interval) {
+      case '5m':
+      case '15m':
+        return const Duration(hours: 24); // Short intervals: data must be < 24h old
+      case '1h':
+      case '4h':
+        return const Duration(days: 3); // Medium intervals: data must be < 3 days old
+      case '1d':
+      case '1w':
+        return const Duration(days: 30); // Long intervals: data must be < 30 days old
+      default:
+        return const Duration(hours: 24);
     }
   }
 
@@ -148,6 +166,7 @@ class CoinbaseService implements BaseExchangeService {
       final uri = Uri.https(_baseHost, '/api/v3/time');
       final localBefore = DateTime.now().millisecondsSinceEpoch;
 
+      await RateLimiterService().throttle('Coinbase');
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (response.statusCode != 200) {
@@ -423,8 +442,9 @@ class CoinbaseService implements BaseExchangeService {
 
       debugPrint('[Coinbase] 📡 Calling: $uri');
       debugPrint('[Coinbase] 📝 Headers: ${headers.keys.join(", ")}');
-      debugPrint('[Coinbase] 🔑 API Key: ${_apiKey?.substring(0, 30)}...');
+      debugPrint('[Coinbase] 🔑 API Key: ${_apiKey != null && _apiKey!.length > 6 ? "${_apiKey!.substring(0, 6)}***" : "***"}');
 
+      await RateLimiterService().throttle('Coinbase');
       final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
 
       debugPrint('[Coinbase] 📥 Response status: ${response.statusCode}');
@@ -483,10 +503,26 @@ class CoinbaseService implements BaseExchangeService {
       };
 
       final uri = Uri.https(_exchangeHost, path, queryParams);
+      await RateLimiterService().throttle('Coinbase');
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
-        throw Exception('[Coinbase] Failed to fetch candles: ${response.statusCode}');
+        // Parse error message from response body
+        String errorMsg = '';
+        try {
+          final errorData = json.decode(response.body);
+          errorMsg = errorData['message'] ?? '';
+        } catch (_) {}
+
+        if (response.statusCode == 404 || errorMsg.toLowerCase().contains('notfound')) {
+          debugPrint('[Coinbase] ⚠️ Product not found: $coinbaseSymbol (may be delisted or not available)');
+          return []; // Return empty list instead of throwing
+        }
+        if (errorMsg.toLowerCase().contains('delisted')) {
+          debugPrint('[Coinbase] ⚠️ Product delisted: $coinbaseSymbol');
+          return []; // Return empty list for delisted products
+        }
+        throw Exception('[Coinbase] Failed to fetch candles: ${response.statusCode} $errorMsg');
       }
 
       final List<dynamic> candles = json.decode(response.body) as List<dynamic>;
@@ -524,10 +560,26 @@ class CoinbaseService implements BaseExchangeService {
       final path = '/products/$coinbaseSymbol/ticker';
       final uri = Uri.https(_exchangeHost, path);
 
+      await RateLimiterService().throttle('Coinbase');
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (response.statusCode != 200) {
-        throw Exception('[Coinbase] Ticker error: ${response.statusCode}');
+        // Parse error message
+        String errorMsg = '';
+        try {
+          final errorData = json.decode(response.body);
+          errorMsg = errorData['message'] ?? '';
+        } catch (_) {}
+
+        if (response.statusCode == 404 || errorMsg.toLowerCase().contains('notfound')) {
+          debugPrint('[Coinbase] ⚠️ Ticker not found: $coinbaseSymbol');
+          throw Exception('[Coinbase] Product not found: $coinbaseSymbol');
+        }
+        if (errorMsg.toLowerCase().contains('delisted')) {
+          debugPrint('[Coinbase] ⚠️ Ticker delisted: $coinbaseSymbol');
+          throw Exception('[Coinbase] Product delisted: $coinbaseSymbol');
+        }
+        throw Exception('[Coinbase] Ticker error: ${response.statusCode} $errorMsg');
       }
 
       final data = json.decode(response.body) as Map<String, dynamic>;
@@ -536,6 +588,7 @@ class CoinbaseService implements BaseExchangeService {
       // Get 24h stats from /products/{product-id}/stats
       final stats24hPath = '/products/$coinbaseSymbol/stats';
       final statsUri = Uri.https(_exchangeHost, stats24hPath);
+      await RateLimiterService().throttle('Coinbase');
       final statsResponse = await http.get(statsUri).timeout(const Duration(seconds: 5));
 
       double changePercent = 0.0;
@@ -573,6 +626,7 @@ class CoinbaseService implements BaseExchangeService {
       // Using v6 API (v4 is deprecated and returns wrong rates)
       try {
         final uri = Uri.https('open.er-api.com', '/v6/latest/EUR');
+        await RateLimiterService().throttle('Coinbase');
         final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
         if (response.statusCode == 200) {
@@ -596,7 +650,9 @@ class CoinbaseService implements BaseExchangeService {
         final eurUri = Uri.https('api.kraken.com', '/0/public/Ticker', {'pair': 'XBTEUR'});
         final usdUri = Uri.https('api.kraken.com', '/0/public/Ticker', {'pair': 'XBTUSD'});
 
+        await RateLimiterService().throttle('Coinbase');
         final eurResponse = await http.get(eurUri).timeout(const Duration(seconds: 5));
+        await RateLimiterService().throttle('Coinbase');
         final usdResponse = await http.get(usdUri).timeout(const Duration(seconds: 5));
 
         if (eurResponse.statusCode == 200 && usdResponse.statusCode == 200) {
@@ -693,6 +749,7 @@ class CoinbaseService implements BaseExchangeService {
           : '/api/v3/brokerage/products';
 
       final uri = Uri.https(_baseHost, path);
+      await RateLimiterService().throttle('Coinbase');
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
@@ -755,6 +812,7 @@ class CoinbaseService implements BaseExchangeService {
       );
 
       final uri = Uri.https(_baseHost, '/products/$coinbaseSymbol/stats');
+      await RateLimiterService().throttle('Coinbase');
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (response.statusCode != 200) {
@@ -773,14 +831,23 @@ class CoinbaseService implements BaseExchangeService {
   @override
   Future<double> getVolumePercentile(String targetSymbol, {List<String>? comparisonSymbols}) async {
     try {
-      // Extract quote currency from targetSymbol (e.g., BTC-EUR → EUR)
-      final RegExp quoteRegex = RegExp(r'(EUR|USD|USDC|USDT)$');
-      final match = quoteRegex.firstMatch(targetSymbol);
-      final quote = match?.group(1) ?? 'USD'; // Coinbase defaults to USD
+      // FIX 2025: Extract quote currency and compare ONLY with same quote
+      String quote;
+      if (targetSymbol.contains('-')) {
+        quote = targetSymbol.split('-').last; // BTC-EUR → EUR
+      } else {
+        quote = 'USD'; // fallback
+      }
 
-      // Build dynamic comparison list with same quote currency
-      final baseAssets = ['BTC', 'ETH', 'XRP', 'ADA', 'DOGE', 'DOT', 'LINK', 'UNI'];
-      final symbols = comparisonSymbols ?? baseAssets.map((base) => buildTradingPair(base, quote)).toList();
+      // TOP symbols by quote currency
+      final Map<String, List<String>> _topVolumeSymbolsByQuote = {
+        'USD': ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD', 'DOGE-USD', 'ADA-USD', 'AVAX-USD', 'MATIC-USD', 'LINK-USD', 'DOT-USD'],
+        'EUR': ['BTC-EUR', 'ETH-EUR', 'SOL-EUR', 'XRP-EUR', 'DOGE-EUR', 'ADA-EUR'],
+      };
+
+      final symbols = (comparisonSymbols != null && comparisonSymbols.isNotEmpty)
+          ? comparisonSymbols
+          : (_topVolumeSymbolsByQuote[quote] ?? _topVolumeSymbolsByQuote['USD']!);
 
       // Fetch volumes for all symbols in parallel
       final volumeFutures = symbols.map((s) => get24hVolume(s));
@@ -864,31 +931,49 @@ class CoinbaseService implements BaseExchangeService {
       final cacheAge = now.difference(_cacheTimestamp[cacheKey]!);
       if (cacheAge < cacheDuration) {
         final cachedCandles = _candlesCache[cacheKey]!;
-        debugPrint('[Coinbase] ⚡ Using CACHED candles for $coinbaseSymbol @ $interval (age: ${cacheAge.inSeconds}s)');
 
-        // Calculate ATR from cached data
-        final candlesForATR = cachedCandles.map((c) => [
-          c.openTime.millisecondsSinceEpoch.toDouble(),
-          c.open,
-          c.high,
-          c.low,
-          c.close,
-          c.volume,
-        ]).toList();
+        // Validate data age (not just cache age)
+        if (cachedCandles.isNotEmpty) {
+          final latestCandle = cachedCandles.last;
+          final dataAge = now.difference(latestCandle.closeTime);
+          final maxDataAge = _getMaxDataAge(interval);
 
-        final atr = _calculateATR(candlesForATR, period: 14);
+          if (dataAge > maxDataAge) {
+            // Data is too old, invalidate cache and fetch fresh data
+            debugPrint('[Coinbase] ❌ STALE DATA detected for $coinbaseSymbol @ $interval');
+            debugPrint('[Coinbase]    Latest candle: ${latestCandle.closeTime} (${dataAge.inMinutes}min ago)');
+            debugPrint('[Coinbase]    Max allowed age: ${maxDataAge.inHours}h - INVALIDATING CACHE');
+            _candlesCache.remove(cacheKey);
+            _cacheTimestamp.remove(cacheKey);
+            // Continue to fetch fresh data below
+          } else {
+            debugPrint('[Coinbase] ⚡ Using CACHED candles for $coinbaseSymbol @ $interval (cache age: ${cacheAge.inSeconds}s, data age: ${dataAge.inMinutes}min)');
 
-        // Build features using FullFeatureBuilder
-        final fullBuilder = FullFeatureBuilder();
-        final features = fullBuilder.buildFeatures(candles: cachedCandles);
+            // Calculate ATR from cached data
+            final candlesForATR = cachedCandles.map((c) => [
+              c.openTime.millisecondsSinceEpoch.toDouble(),
+              c.open,
+              c.high,
+              c.low,
+              c.close,
+              c.volume,
+            ]).toList();
 
-        final currentPrice = cachedCandles.isNotEmpty ? cachedCandles.last.close : 0.0;
+            final atr = _calculateATR(candlesForATR, period: 14);
 
-        return FeaturesWithATR(
-          features: features,
-          atr: atr,
-          currentPrice: currentPrice,
-        );
+            // Build features using FullFeatureBuilder
+            final fullBuilder = FullFeatureBuilder();
+            final features = fullBuilder.buildFeatures(candles: cachedCandles);
+
+            final currentPrice = cachedCandles.isNotEmpty ? cachedCandles.last.close : 0.0;
+
+            return FeaturesWithATR(
+              features: features,
+              atr: atr,
+              currentPrice: currentPrice,
+            );
+          }
+        }
       }
     }
 
@@ -897,16 +982,45 @@ class CoinbaseService implements BaseExchangeService {
     try {
       candles = await fetchKlines(coinbaseSymbol, interval, limit: 1000);
 
-      // Store in cache
+      // VALIDATE FETCHED DATA BEFORE CACHING
+      if (candles.isNotEmpty) {
+        final dataAge = now.difference(candles.last.closeTime);
+        final maxDataAge = _getMaxDataAge(interval);
+
+        if (dataAge > maxDataAge) {
+          // Fetched data is stale - DON'T cache it!
+          debugPrint('[Coinbase] ❌ FETCHED DATA IS STALE for $coinbaseSymbol @ $interval');
+          debugPrint('[Coinbase]    Latest candle: ${candles.last.closeTime} (${dataAge.inHours}h old)');
+          debugPrint('[Coinbase]    Max allowed: ${maxDataAge.inHours}h - REJECTING and NOT caching');
+          throw Exception('Coinbase: Fetched data is too old (${dataAge.inHours}h) for $coinbaseSymbol @ $interval');
+        }
+      }
+
+      // Store in cache ONLY if data is fresh
       _candlesCache[cacheKey] = candles;
       _cacheTimestamp[cacheKey] = now;
 
       debugPrint('[Coinbase] 💾 CACHED candles for $coinbaseSymbol @ $interval (${candles.length} candles)');
     } catch (e) {
-      // If rate limited and we have old cache, use it
+      // If rate limited and we have old cache, check if it's still usable
       if (_candlesCache.containsKey(cacheKey)) {
-        debugPrint('[Coinbase] ⚠️  Rate limited, using STALE cache for $coinbaseSymbol @ $interval');
         candles = _candlesCache[cacheKey]!;
+        if (candles.isNotEmpty) {
+          final dataAge = now.difference(candles.last.closeTime);
+          final maxDataAge = _getMaxDataAge(interval);
+
+          // Reject cache if data is too old
+          if (dataAge > maxDataAge) {
+            debugPrint('[Coinbase] ❌ Rate limited + STALE DATA (${dataAge.inHours}h old) for $coinbaseSymbol @ $interval');
+            debugPrint('[Coinbase]    Max allowed: ${maxDataAge.inHours}h - REJECTING fallback cache');
+            throw Exception('Coinbase: Data too old (${dataAge.inHours}h) and failed to fetch fresh data for $coinbaseSymbol @ $interval');
+          }
+
+          debugPrint('[Coinbase] ⚠️  Rate limited, using acceptable cache for $coinbaseSymbol @ $interval');
+          debugPrint('[Coinbase]    Latest candle: ${candles.last.closeTime} (${dataAge.inMinutes}min ago, max: ${maxDataAge.inHours}h)');
+        } else {
+          debugPrint('[Coinbase] ⚠️  Rate limited, using EMPTY cache for $coinbaseSymbol @ $interval');
+        }
       } else {
         rethrow;
       }

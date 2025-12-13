@@ -15,7 +15,9 @@ class UserCoinsService with ChangeNotifier {
   static const String _coinsKey = 'user_coins';
   static const String _sourceKey = 'coins_source'; // 'api' or 'default'
 
-  // TOP 12 popular cryptocurrencies for 2025 (default when no API connected)
+  // TOP 10 cryptocurrencies by market cap (Nov 2025)
+  // Default list shown when user has NO API connected
+  // When user connects API, their actual portfolio coins (TRUMP, WLFI, etc.) will be shown
   // Fiat currencies that should NEVER be treated as tradeable coins
   static const List<String> fiatCurrencies = [
     'EUR', 'USD', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD',
@@ -23,18 +25,18 @@ class UserCoinsService with ChangeNotifier {
   ];
 
   static const List<String> defaultCoins = [
-    'BTC',   // Bitcoin - #1 by market cap
-    'ETH',   // Ethereum - #2 smart contracts
-    'SOL',   // Solana - fast L1
-    'BNB',   // Binance Coin - exchange token
-    'XRP',   // Ripple - payments
-    'AVAX',  // Avalanche - DeFi platform
+    'BTC',   // #1 Bitcoin - largest by market cap
+    'ETH',   // #2 Ethereum - smart contracts
+    'BNB',   // #4 Binance Coin - exchange token
+    'SOL',   // #5 Solana - fast L1
+    'XRP',   // #6 Ripple - payments
+    'ADA',   // #8 Cardano - proof-of-stake
+    'DOGE',  // #9 Dogecoin - meme coin
+    'AVAX',  // #10 Avalanche - DeFi platform
+    'DOT',   // Polkadot - interoperability
     'LINK',  // Chainlink - oracle network
-    'POL',   // Polygon - Ethereum L2
-    'ARB',   // Arbitrum - Ethereum L2
-    'OP',    // Optimism - Ethereum L2
-    'TRUMP', // Trump Coin - 2025 trending
-    'WLFI',  // World Liberty Financial - 2025 trending
+    'MATIC', // Polygon - Ethereum L2
+    'UNI',   // Uniswap - DEX token
   ];
 
   /// Validate that a coin is not a fiat currency
@@ -55,8 +57,8 @@ class UserCoinsService with ChangeNotifier {
   // Exchange-specific coin exclusions
   // Some exchanges don't support certain coins due to business conflicts or listing policies
   static const Map<String, List<String>> excludedCoinsPerExchange = {
-    'Coinbase': ['BNB', 'TRUMP', 'WLFI'],  // BNB not available; TRUMP/WLFI not listed yet
-    'Kraken': ['BNB', 'TRUMP', 'WLFI'],    // BNB not available; TRUMP/WLFI not listed yet
+    'Coinbase': ['BNB', 'MATIC'],  // BNB (competitor), MATIC delisted (migrated to POL)
+    'Kraken': ['BNB', 'MATIC'],    // BNB not available, MATIC migrated to POL
   };
 
   /// Get default coins filtered for specific exchange
@@ -85,6 +87,38 @@ class UserCoinsService with ChangeNotifier {
     final source = prefs.getString(_sourceKey) ?? 'default';
 
     if (savedCoins != null && savedCoins.isNotEmpty) {
+      // MIGRATION: Remove delisted/unavailable coins (ANC, UST, LUNA)
+      // These coins are no longer tradeable on major exchanges
+      const delistedCoins = ['ANC', 'UST', 'LUNA'];
+      final hasDelistedCoins = savedCoins.any((coin) => delistedCoins.contains(coin));
+
+      if (hasDelistedCoins && source == 'default') {
+        debugPrint('🔄 Migrating: Removing delisted coins from saved list...');
+        // Remove delisted coins from saved list
+        final cleanedCoins = savedCoins.where((coin) => !delistedCoins.contains(coin)).toList();
+
+        // If cleaned list is empty or too small, reset to defaults
+        if (cleanedCoins.length < 3) {
+          debugPrint('   Too few valid coins remaining, resetting to defaults');
+          _cachedCoins = _cachedExchangeName != null
+              ? getDefaultCoinsForExchange(_cachedExchangeName!)
+              : List<String>.from(defaultCoins);
+          await _saveCoins(_cachedCoins, 'default');
+          _cachedSource = 'default';
+          debugPrint('✅ Migrated to ${_cachedCoins.length} default coins: ${_cachedCoins.join(", ")}');
+          return _cachedCoins;
+        }
+
+        // Save cleaned list
+        _cachedCoins = cleanedCoins;
+        await _saveCoins(_cachedCoins, source);
+        _cachedSource = source;
+        final removed = savedCoins.where((coin) => delistedCoins.contains(coin)).toList();
+        debugPrint('✅ Removed delisted coins: ${removed.join(", ")}');
+        debugPrint('   New coin list (${_cachedCoins.length}): ${_cachedCoins.join(", ")}');
+        return _cachedCoins;
+      }
+
       _cachedCoins = savedCoins;
       _cachedSource = source;
       debugPrint('✅ Loaded ${savedCoins.length} coins from $source');

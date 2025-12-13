@@ -55,3 +55,15 @@ train_trend_76.py
 lib/ai/
 lib/widgets/exchange_connection_card.dart
 test/ai/
+
+# Environment files (API keys - NEVER commit)
+.env
+.env.local
+.env.development
+.env.production
+env.sh
+secrets.sh
+**/secrets/
+ml_training/venv_tf211/
+ml_training/__pycache__/
+*.pyc

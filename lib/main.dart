@@ -18,6 +18,7 @@ import 'screens/ai_strategies_screen.dart';
 import 'screens/portfolio_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/paywall_screen.dart';
 import 'services/app_settings_service.dart';
 import 'services/auth_service.dart';
 import 'services/local_notification_service.dart';
@@ -27,12 +28,45 @@ import 'theme/app_theme.dart';
 import 'providers/navigation_provider.dart';
 import 'services/achievement_service.dart';
 import 'services/ml_loading_state.dart';
+import 'config/app_config.dart';
+import 'services/binance_service.dart';
+import 'services/kraken_service.dart';
+
+/// Migration: Clean stored API credentials (removes trailing quotes/whitespace)
+/// This fixes credentials that were saved before quote-stripping was added
+Future<void> _cleanStoredCredentials() async {
+  try {
+    // Clean Binance credentials
+    final binance = BinanceService();
+    if (binance.hasCredentials && binance.apiKey != null && binance.apiSecret != null) {
+      // Re-save credentials (will trigger automatic cleaning via saveCredentials)
+      await binance.saveCredentials(binance.apiKey!, binance.apiSecret!);
+      debugPrint('[Migration] ✅ Cleaned Binance credentials');
+    }
+
+    // Clean Kraken credentials
+    final kraken = KrakenService();
+    if (kraken.hasCredentials && kraken.apiKey != null && kraken.apiSecret != null) {
+      // Re-save credentials (will trigger automatic cleaning via saveCredentials)
+      await kraken.saveCredentials(kraken.apiKey!, kraken.apiSecret!);
+      debugPrint('[Migration] ✅ Cleaned Kraken credentials');
+    }
+  } catch (e) {
+    debugPrint('[Migration] ⚠️  Error cleaning credentials: $e');
+  }
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Register Syncfusion Community License (valid for 1 year for individual developers)
-  SyncfusionLicense.registerLicense('Ngo9BigBOggjHTQxAR8/V1JFaF5cXGRCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdmWH9ceXVVRmBZVUZxXEBWYEg=');
+  // Register Syncfusion License (from environment variables)
+  // Set via: flutter run --dart-define=SYNCFUSION_LICENSE=your_key_here
+  if (AppConfig.syncfusionLicense.isNotEmpty) {
+    SyncfusionLicense.registerLicense(AppConfig.syncfusionLicense);
+  } else {
+    print('⚠️ WARNING: Syncfusion license not configured. Charts may not work properly.');
+    print('   Set via: flutter run --dart-define=SYNCFUSION_LICENSE=your_key');
+  }
 
   // Initialize ONLY fast, essential services in main()
   // This allows the app to start in <1 second
@@ -49,17 +83,19 @@ Future<void> main() async {
   final themeProvider = ThemeProvider();
   await themeProvider.init();
 
-  // Initialize RevenueCat SDK (DISABLED for LITE version testing)
-  // TODO: Enable after getting real RevenueCat API keys
-  // await SubscriptionProvider.initializeRevenueCat();
+  // Initialize RevenueCat SDK
+  await SubscriptionProvider.initializeRevenueCat();
 
-  // Initialize subscription provider (check status disabled for testing)
+  // Initialize subscription provider
   final subscriptionProvider = SubscriptionProvider();
-  // await subscriptionProvider.checkSubscriptionStatus();
+  await subscriptionProvider.checkSubscriptionStatus();
 
   // Initialize exchange provider
   final exchangeProvider = ExchangeProvider();
   await exchangeProvider.initialize();
+
+  // MIGRATION: Clean stored API credentials (removes trailing quotes, whitespace)
+  await _cleanStoredCredentials();
 
   // Start the app immediately
   runApp(
@@ -186,26 +222,46 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Create widget list in build() so they can respond to Provider changes
-    final widgetOptions = <Widget>[
-      const DashboardScreen(),
-      const MarketScreen(),
-      const AiStrategiesScreen(),
-      const PortfolioScreen(),
-    ];
+    return Consumer<SubscriptionProvider>(
+      builder: (context, subscription, _) {
+        // ✅ FREE TIER: Dashboard, Market, Portfolio only
+        // ❌ INSIGHTS TAB BLOCKED for FREE users → Shows paywall
+        // 🎁 48H TRIAL: Full access to all features
+        // 💎 PRO: Full access forever
 
-    final nav = Provider.of<NavigationProvider>(context);
-    return Scaffold(
-      extendBody: true,
-      appBar: _PremiumAppBar(),
-      body: IndexedStack(
-        index: nav.index,
-        children: widgetOptions,
-      ),
-      bottomNavigationBar: _PremiumBottomNav(
-        currentIndex: nav.index,
-        onTap: nav.setIndex,
-      ),
+        final widgetOptions = <Widget>[
+          const DashboardScreen(),
+          const MarketScreen(),
+          const AiStrategiesScreen(),
+          const PortfolioScreen(),
+        ];
+
+        final nav = Provider.of<NavigationProvider>(context);
+        final isProUser = subscription.isProUser;
+
+        return Scaffold(
+          extendBody: true,
+          appBar: _PremiumAppBar(),
+          body: IndexedStack(
+            index: nav.index,
+            children: widgetOptions,
+          ),
+          bottomNavigationBar: _PremiumBottomNav(
+            currentIndex: nav.index,
+            onTap: (index) {
+              // Block Insights tab (index 2) for FREE users
+              if (index == 2 && !isProUser) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PaywallScreen()),
+                );
+                return;
+              }
+              nav.setIndex(index);
+            },
+          ),
+        );
+      },
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 /// Global app settings (quote currency etc.) with persistence and notifications.
 class AppSettingsService extends ChangeNotifier {
@@ -7,12 +8,11 @@ class AppSettingsService extends ChangeNotifier {
   factory AppSettingsService() => _instance;
   AppSettingsService._internal();
 
-  // BETA MODE: Set to false before production release!
-  // When true, all users have unlimited premium access for testing
-  static const bool IS_BETA_BUILD = true;
+  // ✅ PRODUCTION MODE: Beta testing completed
+  static const bool IS_BETA_BUILD = false;
 
-  // Allowed quote currencies (BUSD excluded - deprecated by Binance 2024)
-  static const List<String> allowedQuoteCurrencies = ['USDT', 'EUR', 'USD', 'USDC'];
+  // Allowed quote currencies (BUSD, USDC excluded - limited exchange support)
+  static const List<String> allowedQuoteCurrencies = ['USDT', 'EUR', 'USD'];
   static const String defaultQuoteCurrency = 'USDT';
 
   static const String _kQuoteKey = 'quote_currency';
@@ -36,7 +36,11 @@ class AppSettingsService extends ChangeNotifier {
     // BETA MODE: Grant unlimited premium access for testing
     if (IS_BETA_BUILD) return true;
 
-    // PRODUCTION MODE: Check actual trial period
+    // PRODUCTION MODE: If trial dialog should be shown, consider user in trial
+    // This prevents paywall from blocking BEFORE user sees trial dialog
+    if (shouldShowTrialDialog) return true;
+
+    // Check actual trial period (48h after activation)
     if (_trialStartTime == null || _trialDeclined) return false;
     final now = DateTime.now();
     final diff = now.difference(_trialStartTime!);
@@ -56,6 +60,8 @@ class AppSettingsService extends ChangeNotifier {
     if (IS_BETA_BUILD) return null;
 
     // PRODUCTION MODE: Calculate remaining hours
+    // If trial hasn't started yet (dialog pending), don't show hours
+    if (_trialStartTime == null) return null;
     if (!isInTrial) return null;
     final now = DateTime.now();
     final diff = now.difference(_trialStartTime!);
@@ -67,6 +73,22 @@ class AppSettingsService extends ChangeNotifier {
     _trialStartTime = DateTime.now();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_kTrialStartKey, _trialStartTime!.millisecondsSinceEpoch);
+
+    // Track trial activation in RevenueCat (for analytics and debugging)
+    try {
+      final trialEnd = _trialStartTime!.add(const Duration(hours: 48));
+      await Purchases.setAttributes({
+        'trial_activated': 'true',
+        'trial_start': _trialStartTime!.toIso8601String(),
+        'trial_end': trialEnd.toIso8601String(),
+        'trial_duration_hours': '48',
+      });
+      debugPrint('✅ RevenueCat: Trial tracking attributes set (48h from $_trialStartTime)');
+    } catch (e) {
+      debugPrint('⚠️ RevenueCat: Failed to set trial attributes: $e');
+      // Continue anyway - local trial still works
+    }
+
     debugPrint('🎁 FREE TRIAL: Activated 48-hour trial at $_trialStartTime');
     notifyListeners();
   }
@@ -76,6 +98,20 @@ class AppSettingsService extends ChangeNotifier {
     _trialDeclined = true;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kTrialDeclinedKey, true);
+
+    // Track trial decline in RevenueCat (for conversion analytics)
+    try {
+      await Purchases.setAttributes({
+        'trial_activated': 'false',
+        'trial_declined': 'true',
+        'trial_declined_at': DateTime.now().toIso8601String(),
+      });
+      debugPrint('✅ RevenueCat: Trial decline tracked');
+    } catch (e) {
+      debugPrint('⚠️ RevenueCat: Failed to track trial decline: $e');
+      // Continue anyway
+    }
+
     debugPrint('⏭️ FREE TRIAL: User declined trial');
     notifyListeners();
   }

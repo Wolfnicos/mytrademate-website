@@ -144,11 +144,15 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       final balances = await exchange.getAccountBalances();
       final quote = AppSettingsService().quoteCurrency.toUpperCase();
 
-      // Extract coins from portfolio (excluding quote currency and coins below $5)
+      // Extract coins from portfolio (excluding quote currency, fiat currencies, and coins below $5)
       final Set<String> coins = {};
       for (final asset in balances.keys) {
         final upperAsset = asset.toUpperCase();
-        if (upperAsset != quote && balances[asset]! > 0.0) {
+        // Skip quote currency and fiat currencies (EUR, USD, GBP, etc.)
+        if (upperAsset == quote || !UserCoinsService.isValidCoin(upperAsset)) {
+          continue;
+        }
+        if (balances[asset]! > 0.0) {
           // Calculate value to filter out coins below $5
           try {
             final ticker = await exchange.fetchTicker24hWithFallback([
@@ -219,11 +223,13 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       // NEW: CryptoMLService now fetches candles for EACH model's timeframe!
       // We just pass the symbol and let the service handle multi-timeframe fetching
       final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
+      // 🆕 V2 PRO MODELS: For 4h/1d + BTC/ETH/SOL/BNB, CryptoMLService now uses V2 (150 features) automatically!
       final prediction = await CryptoMLService().getPrediction(
         coin: coin,
         symbol: _selectedSymbol,
         timeframe: _interval,
         exchangeService: exchangeProvider.currentExchange,
+        userCoins: _availableCoins,  // Pass user's portfolio coins for volume percentile
       );
 
       // Get current price for price change tracking
@@ -309,11 +315,14 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
       debugPrint('🔄 AI Strategies (SILENT): fetching CryptoML prediction for $coin @$_interval');
 
       // Fetch prediction with silent flag (reduced logging)
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
       final prediction = await CryptoMLService().getPrediction(
         coin: coin,
         symbol: _selectedSymbol,
         timeframe: _interval,
         silent: true,  // Silent mode: no verbose logging
+        exchangeService: exchangeProvider.currentExchange,
+        userCoins: _availableCoins,  // Pass user's portfolio coins for volume percentile
       );
 
       // Get current price for price change tracking
@@ -529,7 +538,12 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
               )).toList(),
               onChanged: (v) {
                 if (v == null) return;
-                setState(() => _selectedSymbol = v);
+                setState(() {
+                  _selectedSymbol = v;
+                  // Reset price tracking when switching symbols to avoid -100% error
+                  _previousPrice = null;
+                  _previousAtr = null;
+                });
                 _runInference();
               },
             ),
@@ -550,11 +564,11 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                   {'label': isProUser ? '5M' : '5M 🔒', 'value': '5m'},
                   {'label': isProUser ? '15M' : '15M 🔒', 'value': '15m'},
                   {'label': isProUser ? '1H' : '1H 🔒', 'value': '1h'},
-                  {'label': isProUser ? '4H' : '4H FREE', 'value': '4h'},
+                  {'label': isProUser ? '4H' : '4H 🔒', 'value': '4h'},
                   {'label': isProUser ? '1D' : '1D 🔒', 'value': '1d'},
                 ].map((item) {
                   final bool selected = _interval == item['value'];
-                  final bool isLocked = !isProUser && item['value'] != '4h';
+                  final bool isLocked = !isProUser;
 
                   return GestureDetector(
                     onTap: isLocked ? () {
@@ -628,7 +642,7 @@ class _AiStrategiesScreenState extends State<AiStrategiesScreen> {
                         const SizedBox(width: AppTheme.spacing8),
                         Expanded(
                           child: Text(
-                            '🔒 Short-term timeframes (5m-1h) and long-term (1d) are Premium only. Upgrade to unlock all signals.',
+                            '🔒 AI Predictions require Premium subscription. Upgrade to unlock all timeframes and get intelligent market insights.',
                             style: AppTheme.bodySmall.copyWith(
                               color: AppTheme.textSecondary,
                               height: 1.4,

@@ -1,2 +1,9 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "Generated.xcconfig"
+
+// FIX: Prevent symbol stripping for TensorFlow Lite in App Store builds
+// This fixes "Failed to lookup symbol 'TfLiteModelCreate'" error in TestFlight
+STRIP_INSTALLED_PRODUCT=NO
+STRIP_STYLE=non-global
+DEAD_CODE_STRIPPING=NO
+PRESERVE_DEAD_CODE_INITS_AND_TERMS=YES

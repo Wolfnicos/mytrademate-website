@@ -5,6 +5,7 @@ import '../services/app_settings_service.dart';
 import '../widgets/premium_card.dart';
 import '../widgets/upgrade_banner.dart';
 import '../providers/subscription_provider.dart';
+import '../providers/exchange_provider.dart';
 import 'paywall_screen.dart';
 
 class AiPredictionPage extends StatefulWidget {
@@ -78,15 +79,22 @@ class _AiPredictionPageState extends State<AiPredictionPage> {
 
     try {
       // Get coin from symbol (e.g., BTCUSDT -> BTC)
-      final coin = _selectedSymbol.replaceAll(RegExp(r'(USDT|EUR|USDC)$'), '');
+      final coin = _selectedSymbol.replaceAll(RegExp(r'(USDT|USDC|BUSD|USD|EUR|BTC)$'), '');
 
       debugPrint('▶️ AIPage: fetching ML prediction for $coin @$_interval');
 
+      // Build user's portfolio coins for volume percentile comparison
+      final quote = AppSettingsService().quoteCurrency;
+      final userCoins = _buildPairOptions(quote);
+
       // NEW: CryptoMLService now fetches candles for EACH model's timeframe!
+      final exchangeProvider = Provider.of<ExchangeProvider>(context, listen: false);
       final res = await CryptoMLService().getPrediction(
         coin: coin,
         symbol: _selectedSymbol,
         timeframe: _interval,
+        exchangeService: exchangeProvider.currentExchange,
+        userCoins: userCoins,  // Pass user's portfolio coins for volume percentile
       );
 
       debugPrint('ℹ️ AIPage: CryptoML result action=${res.action} conf=${res.confidence.toStringAsFixed(3)}');

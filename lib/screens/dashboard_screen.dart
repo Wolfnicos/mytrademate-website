@@ -3,14 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/app_settings_service.dart';
 import '../services/user_coins_service.dart';
-// import '../providers/subscription_provider.dart'; // Unused - commented out
+import '../providers/subscription_provider.dart';
 import '../providers/exchange_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/ai_indicator.dart';
 import '../widgets/crypto_avatar.dart';
-import '../widgets/trial_banner.dart';
-// import '../widgets/trial_activation_dialog.dart'; // Unused - commented out
+import '../widgets/neural_engine_card.dart';
 import '../ml/ensemble_predictor.dart';
 import '../utils/responsive.dart';
 
@@ -25,10 +24,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // DISABLED: Trial dialog not used in Portfolio Lite edition
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   _maybeShowTrialDialog();
-    // });
     // Listen to quote currency changes and rebuild all tiles
     AppSettingsService().addListener(_onSettingsChanged);
 
@@ -70,24 +65,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       });
     }
   }
-
-  // Future<void> _maybeShowTrialDialog() async { // UNUSED - commented out
-  //   if (!mounted) return;
-  //
-  //   final settings = AppSettingsService();
-  //   if (settings.shouldShowTrialDialog) {
-  //     final accepted = await TrialActivationDialog.show(context);
-  //     if (accepted) {
-  //       await settings.activateTrial();
-  //       // Notify SubscriptionProvider to rebuild UI (hide upgrade banners)
-  //       if (mounted) {
-  //         Provider.of<SubscriptionProvider>(context, listen: false).notifyListeners();
-  //       }
-  //     } else {
-  //       await settings.declineTrial();
-  //     }
-  //   }
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -140,11 +117,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
 
-            // Trial Banner (shows only if in trial)
-            const SliverToBoxAdapter(
-              child: TrialBanner(),
-            ),
-
             // Content
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacing20),
@@ -162,10 +134,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                   const SizedBox(height: AppTheme.spacing16),
 
-                  // AI Models Status Card
+                  // Neural Engine Card - Premium 2025 Design
                   RepaintBoundary(
-                    key: ValueKey('ai_models_${AppSettingsService().quoteCurrency}'),
-                    child: const AIModelsStatusCard(),
+                    key: ValueKey('neural_engine_${AppSettingsService().quoteCurrency}'),
+                    child: const NeuralEngineCard(),
                   ),
 
                   const SizedBox(height: AppTheme.spacing16),
@@ -343,7 +315,9 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
               const SizedBox(width: AppTheme.spacing12),
               Text(
                 'Portfolio Overview',
-                style: AppTheme.headingMedium,
+                style: AppTheme.headingMedium.copyWith(
+                  color: AppTheme.getTextPrimary(context),
+                ),
               ),
             ],
           ),
@@ -354,7 +328,7 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
           Text(
             'Total Value',
             style: AppTheme.bodySmall.copyWith(
-              color: AppTheme.textTertiary,
+              color: AppTheme.getTextTertiary(context),
               textBaseline: TextBaseline.alphabetic,
             ),
           ),
@@ -368,7 +342,9 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
           else
             Text(
               '${AppSettingsService.currencyPrefix(AppSettingsService().quoteCurrency)}${_totalValue.toStringAsFixed(2)}',
-              style: AppTheme.monoLarge,
+              style: AppTheme.monoLarge.copyWith(
+                color: AppTheme.getTextPrimary(context),
+              ),
             ),
 
           const SizedBox(height: AppTheme.spacing16),
@@ -389,14 +365,14 @@ class _PortfolioOverviewCardState extends State<PortfolioOverviewCard> {
               children: [
                 Icon(
                   Icons.info_outline,
-                  color: AppTheme.textTertiary,
+                  color: AppTheme.getTextTertiary(context),
                   size: 16,
                 ),
                 const SizedBox(width: AppTheme.spacing8),
                 Text(
                   'Live portfolio value',
                   style: AppTheme.bodySmall.copyWith(
-                    color: AppTheme.textTertiary,
+                    color: AppTheme.getTextTertiary(context),
                   ),
                 ),
               ],
@@ -924,7 +900,9 @@ class _PnLTodaySectionState extends State<PnLTodaySection> {
                     Flexible(
                       child: Text(
                         'Market',
-                        style: AppTheme.headingMedium,
+                        style: AppTheme.headingMedium.copyWith(
+                          color: AppTheme.getTextPrimary(context),
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1011,13 +989,14 @@ class _PnLTodaySectionState extends State<PnLTodaySection> {
                   coin,
                   style: AppTheme.bodyLarge.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: AppTheme.getTextPrimary(context),
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${AppSettingsService.currencyPrefix(AppSettingsService().quoteCurrency)}${price.toStringAsFixed(price >= 100 ? 0 : 2)}',
                   style: AppTheme.bodySmall.copyWith(
-                    color: AppTheme.textTertiary,
+                    color: AppTheme.getTextTertiary(context),
                   ),
                 ),
               ],

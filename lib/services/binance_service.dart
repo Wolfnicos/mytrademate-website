@@ -11,6 +11,7 @@ import '../models/features_with_atr.dart';
 // import '../services/technical_indicator_calculator.dart';
 import '../services/full_feature_builder.dart';
 import 'base_exchange_service.dart';
+import 'rate_limiter_service.dart';
 
 /// Result wrapper for feature extraction
 class FeatureResult {
@@ -72,6 +73,52 @@ class BinanceService implements BaseExchangeService {
     return '$base$quote';
   }
 
+  @override
+  String getPreferredQuote(String base, String desiredQuote) {
+    // Normalize to uppercase
+    final baseUpper = base.toUpperCase();
+    final quoteUpper = desiredQuote.toUpperCase();
+
+    // Major coins that support EUR, USD, USDT, BTC on Binance (as of 2025)
+    // Note: BUSD was deprecated by Binance in 2024
+    const majorCoinsWithEUR = {
+      'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'AVAX', 'LINK',
+      'DOGE', 'ADA', 'DOT', 'MATIC', 'LTC', 'BCH', 'XLM',
+      'UNI', 'AAVE', 'SNX', 'COMP', 'YFI', 'MKR'
+    };
+
+    // Check if coin supports EUR/USD/USDT
+    if (majorCoinsWithEUR.contains(baseUpper)) {
+      // If user wants EUR and coin supports it → EUR
+      if (quoteUpper == 'EUR') return 'EUR';
+      // If user wants USD → convert to USDT (Binance.com doesn't have pure USD pairs)
+      if (quoteUpper == 'USD') {
+        // Binance only has USDT, not USD
+        return 'USDT';
+      }
+      // If user wants USDT → USDT
+      if (quoteUpper == 'USDT') return 'USDT';
+      // If user wants BTC → BTC (for advanced traders who measure in BTC)
+      // Only return BTC if explicitly requested AND coin is not BTC itself
+      if (quoteUpper == 'BTC' && baseUpper != 'BTC') return 'BTC';
+      // If user wants USDC → USDC or fallback to USDT
+      if (quoteUpper == 'USDC') {
+        // Some coins have USDC pairs (ETH, BNB, etc.)
+        if (baseUpper == 'ETH' || baseUpper == 'BNB' || baseUpper == 'SOL') {
+          return 'USDC';
+        }
+        return 'USDT'; // Fallback to USDT for others
+      }
+
+      // Default: return desired quote if it's major, else USDT
+      return quoteUpper == 'EUR' || quoteUpper == 'USD' ? quoteUpper : 'USDT';
+    } else {
+      // Small/mid-cap coins typically only have USDT pairs on Binance
+      // Examples: TRUMP, WLFI, POL, ARB, OP
+      return 'USDT';
+    }
+  }
+
   /// Synchronize local time with Binance server time
   /// This prevents "Timestamp out of recvWindow" errors due to clock skew
   @override
@@ -80,6 +127,7 @@ class BinanceService implements BaseExchangeService {
       final uri = Uri.https(_baseHost, '/api/v3/time');
       final localBefore = DateTime.now().millisecondsSinceEpoch;
 
+      await RateLimiterService().throttle('Binance');
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (response.statusCode != 200) {
@@ -120,8 +168,12 @@ class BinanceService implements BaseExchangeService {
   @override
   Future<void> loadCredentials() async {
     try {
-      _apiKey = await _secureStorage.read(key: 'binance_api_key');
-      _apiSecret = await _secureStorage.read(key: 'binance_api_secret');
+      final rawKey = await _secureStorage.read(key: 'binance_api_key');
+      final rawSecret = await _secureStorage.read(key: 'binance_api_secret');
+
+      // Clean credentials when loading (defensive - removes quotes, whitespace)
+      _apiKey = rawKey?.replaceAll(RegExp(r'\s+'), '').replaceAll("'", '').replaceAll('"', '');
+      _apiSecret = rawSecret?.replaceAll(RegExp(r'\s+'), '').replaceAll("'", '').replaceAll('"', '');
 
       // Sync time when loading credentials (prepares for API calls)
       if (_apiKey != null && _apiSecret != null) {
@@ -135,9 +187,9 @@ class BinanceService implements BaseExchangeService {
   /// Save API credentials to secure storage
   @override
   Future<void> saveCredentials(String apiKey, String apiSecret) async {
-    // Remove ALL whitespace from credentials (common copy-paste issue)
-    final cleanApiKey = apiKey.replaceAll(RegExp(r'\s+'), '');
-    final cleanApiSecret = apiSecret.replaceAll(RegExp(r'\s+'), '');
+    // Remove ALL whitespace and quotes from credentials (common copy-paste issues)
+    final cleanApiKey = apiKey.replaceAll(RegExp(r'\s+'), '').replaceAll("'", '').replaceAll('"', '');
+    final cleanApiSecret = apiSecret.replaceAll(RegExp(r'\s+'), '').replaceAll("'", '').replaceAll('"', '');
 
     await _secureStorage.write(key: 'binance_api_key', value: cleanApiKey);
     await _secureStorage.write(key: 'binance_api_secret', value: cleanApiSecret);
@@ -238,6 +290,7 @@ class BinanceService implements BaseExchangeService {
         'signature': signature,
       });
 
+      await RateLimiterService().throttle('Binance');
       final response = await http.get(
         uri,
         headers: {'X-MBX-APIKEY': _apiKey!},
@@ -268,6 +321,7 @@ class BinanceService implements BaseExchangeService {
         'signature': signature,
       });
 
+      await RateLimiterService().throttle('Binance');
       final response = await http.get(
         uri,
         headers: {'X-MBX-APIKEY': _apiKey!},
@@ -336,7 +390,7 @@ class BinanceService implements BaseExchangeService {
       String? binanceSymbol;
       if (symbol != null) {
         final upperSymbol = symbol.toUpperCase();
-        if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+        if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT') && !upperSymbol.endsWith('BUSD')) {
           // Convert USD to USDT (Binance doesn't have raw USD pairs)
           final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
           binanceSymbol = '${base}USDT';
@@ -350,6 +404,7 @@ class BinanceService implements BaseExchangeService {
           ? Uri.https(_baseHost, '/api/v3/exchangeInfo', {'symbol': binanceSymbol})
           : Uri.https(_baseHost, '/api/v3/exchangeInfo');
 
+      await RateLimiterService().throttle('Binance');
       final response = await http.get(uri);
 
       if (response.statusCode != 200) {
@@ -487,7 +542,7 @@ class BinanceService implements BaseExchangeService {
     // Binance.com doesn't have USD pairs, only USDT
     final upperSymbol = symbol.toUpperCase();
     String binanceSymbol;
-    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT') && !upperSymbol.endsWith('BUSD')) {
       // Convert USD to USDT (Binance doesn't have raw USD pairs)
       final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
       binanceSymbol = '${base}USDT';
@@ -528,6 +583,7 @@ class BinanceService implements BaseExchangeService {
 
     final uri = Uri.https(_baseHost, '/api/v3/order');
     final String body = '$queryString&signature=$signature';
+    await RateLimiterService().throttle('Binance');
     final res = await http.post(
       uri,
       headers: <String, String>{
@@ -566,7 +622,7 @@ class BinanceService implements BaseExchangeService {
     // Binance.com doesn't have USD pairs, only USDT
     final upperSymbol = symbol.toUpperCase();
     String binanceSymbol;
-    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT') && !upperSymbol.endsWith('BUSD')) {
       // Convert USD to USDT (Binance doesn't have raw USD pairs)
       final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
       binanceSymbol = '${base}USDT';
@@ -593,6 +649,7 @@ class BinanceService implements BaseExchangeService {
 
     final uri = Uri.https(_baseHost, '/api/v3/order');
     final String body = '$queryString&signature=$signature';
+    await RateLimiterService().throttle('Binance');
     final res = await http.post(
       uri,
       headers: <String, String>{
@@ -628,7 +685,7 @@ class BinanceService implements BaseExchangeService {
     // Convert symbol format for Binance API
     final upperSymbol = symbol.toUpperCase();
     String binanceSymbol;
-    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT') && !upperSymbol.endsWith('BUSD')) {
       final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
       binanceSymbol = '${base}USDT';
       debugPrint('[BinanceService] placeStopLimitOrder: Converting $symbol → $binanceSymbol');
@@ -655,6 +712,7 @@ class BinanceService implements BaseExchangeService {
 
     final uri = Uri.https(_baseHost, '/api/v3/order');
     final String body = '$queryString&signature=$signature';
+    await RateLimiterService().throttle('Binance');
     final res = await http.post(
       uri,
       headers: <String, String>{
@@ -688,7 +746,7 @@ class BinanceService implements BaseExchangeService {
     // Convert symbol format for Binance API
     final upperSymbol = symbol.toUpperCase();
     String binanceSymbol;
-    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT') && !upperSymbol.endsWith('BUSD')) {
       final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
       binanceSymbol = '${base}USDT';
       debugPrint('[BinanceService] placeStopMarketOrder: Converting $symbol → $binanceSymbol');
@@ -713,6 +771,7 @@ class BinanceService implements BaseExchangeService {
 
     final uri = Uri.https(_baseHost, '/api/v3/order');
     final String body = '$queryString&signature=$signature';
+    await RateLimiterService().throttle('Binance');
     final res = await http.post(
       uri,
       headers: <String, String>{
@@ -737,7 +796,7 @@ class BinanceService implements BaseExchangeService {
     String? binanceSymbol;
     if (symbol != null && symbol.isNotEmpty) {
       final upperSymbol = symbol.toUpperCase();
-      if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT') && !upperSymbol.endsWith('BUSD')) {
         final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
         binanceSymbol = '${base}USDT';
         debugPrint('[BinanceService] fetchOpenOrders: Converting $symbol → $binanceSymbol');
@@ -761,6 +820,7 @@ class BinanceService implements BaseExchangeService {
       'signature': signature,
     });
 
+    await RateLimiterService().throttle('Binance');
     final res = await http.get(uri, headers: {'X-MBX-APIKEY': _apiKey!});
     if (res.statusCode != 200) {
       throw Exception('Binance openOrders error ${res.statusCode}: ${res.body}');
@@ -786,7 +846,7 @@ class BinanceService implements BaseExchangeService {
     // Convert symbol format for Binance API
     final upperSymbol = symbol.toUpperCase();
     String binanceSymbol;
-    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT') && !upperSymbol.endsWith('BUSD')) {
       final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
       binanceSymbol = '${base}USDT';
       debugPrint('[BinanceService] cancelOrder: Converting $symbol → $binanceSymbol');
@@ -810,6 +870,7 @@ class BinanceService implements BaseExchangeService {
       ...params,
       'signature': signature,
     });
+    await RateLimiterService().throttle('Binance');
     final res = await http.delete(uri, headers: {'X-MBX-APIKEY': _apiKey!});
     if (res.statusCode != 200) {
       throw Exception('Binance cancel error ${res.statusCode}: ${res.body}');
@@ -836,7 +897,7 @@ class BinanceService implements BaseExchangeService {
     // Convert symbol format for Binance API
     final upperSymbol = symbol.toUpperCase();
     String binanceSymbol;
-    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT') && !upperSymbol.endsWith('BUSD')) {
       final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
       binanceSymbol = '${base}USDT';
       debugPrint('[BinanceService] placeOcoOrder: Converting $symbol → $binanceSymbol');
@@ -864,6 +925,7 @@ class BinanceService implements BaseExchangeService {
 
     final uri = Uri.https(_baseHost, '/api/v3/order/oco');
     final String body = '$queryString&signature=$signature';
+    await RateLimiterService().throttle('Binance');
     final res = await http.post(
       uri,
       headers: <String, String>{
@@ -891,7 +953,7 @@ class BinanceService implements BaseExchangeService {
     // Binance.com doesn't have USD pairs, only USDT
     final upperSymbol = symbol.toUpperCase();
     String binanceSymbol;
-    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT') && !upperSymbol.endsWith('BUSD')) {
       // Convert USD to USDT (Binance doesn't have raw USD pairs)
       final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
       binanceSymbol = '${base}USDT';
@@ -908,6 +970,7 @@ class BinanceService implements BaseExchangeService {
     if (endTime != null) query['endTime'] = endTime.toString();
 
     final uri = Uri.https(_baseHost, '/api/v3/klines', query);
+    await RateLimiterService().throttle('Binance');
     final http.Response res = await http.get(uri);
     if (res.statusCode != 200) {
       throw Exception('Binance klines error ${res.statusCode}: ${res.body}');
@@ -942,6 +1005,7 @@ class BinanceService implements BaseExchangeService {
   /// Fetch tradable spot pairs (symbol, base, quote) from exchangeInfo
   Future<List<Map<String, String>>> fetchTradingPairs() async {
     final uri = Uri.https(_baseHost, '/api/v3/exchangeInfo');
+    await RateLimiterService().throttle('Binance');
     final http.Response res = await http.get(uri);
     if (res.statusCode != 200) {
       throw Exception('Binance exchangeInfo error ${res.statusCode}: ${res.body}');
@@ -970,14 +1034,18 @@ class BinanceService implements BaseExchangeService {
     // Binance.com doesn't have USD pairs, only USDT
     final upperSymbol = symbol.toUpperCase();
     String binanceSymbol;
-    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+    if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT') && !upperSymbol.endsWith('BUSD')) {
       // Convert USD to USDT (Binance doesn't have raw USD pairs)
+      // Exclude BUSD (Binance USD is a valid quote currency)
       final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
       binanceSymbol = '${base}USDT';
       debugPrint('[BinanceService] fetchTicker24h: Converting $symbol → $binanceSymbol');
     } else {
       binanceSymbol = upperSymbol;
     }
+
+    // Rate limiting: prevent API throttling/bans
+    await RateLimiterService().throttle('Binance');
 
     final uri = Uri.https(_baseHost, '/api/v3/ticker/24hr', {'symbol': binanceSymbol});
     final http.Response res = await http.get(uri);
@@ -1001,7 +1069,7 @@ class BinanceService implements BaseExchangeService {
       // Binance.com doesn't have USD pairs, only USDT
       final upperSymbol = symbol.toUpperCase();
       String binanceSymbol;
-      if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT')) {
+      if (upperSymbol.endsWith('USD') && !upperSymbol.endsWith('USDT') && !upperSymbol.endsWith('BUSD')) {
         // Convert USD to USDT (Binance doesn't have raw USD pairs)
         final base = upperSymbol.replaceAll(RegExp(r'USD$'), '');
         binanceSymbol = '${base}USDT';
@@ -1011,6 +1079,7 @@ class BinanceService implements BaseExchangeService {
       }
 
       final uri = Uri.https(_baseHost, '/api/v3/ticker/24hr', {'symbol': binanceSymbol});
+      await RateLimiterService().throttle('Binance');
       final http.Response res = await http.get(uri);
       if (res.statusCode != 200) {
         throw Exception('Binance 24hr volume error ${res.statusCode}: ${res.body}');
@@ -1034,14 +1103,32 @@ class BinanceService implements BaseExchangeService {
   /// Used by Phase 3: High-volume symbols (percentile > 0.5) get +5% confidence boost
   Future<double> getVolumePercentile(String targetSymbol, {List<String>? comparisonSymbols}) async {
     try {
-      // Extract quote currency from targetSymbol (e.g., BTCUSDT → USDT)
-      final RegExp quoteRegex = RegExp(r'(USDT|USDC|EUR|USD)$');
-      final match = quoteRegex.firstMatch(targetSymbol);
-      final quote = match?.group(1) ?? 'EUR'; // Fallback to EUR if no match
+      // FIX 2025: Extract quote currency and compare ONLY with same quote
+      String quote;
+      if (targetSymbol.endsWith('USDT') || targetSymbol.endsWith('BUSD') || targetSymbol.endsWith('USDC')) {
+        quote = 'USDT';
+      } else if (targetSymbol.endsWith('EUR')) {
+        quote = 'EUR';
+      } else if (targetSymbol.endsWith('USD')) {
+        quote = 'USD';
+      } else {
+        quote = 'USDT'; // fallback
+      }
 
-      // Build dynamic comparison list with same quote currency
-      final baseAssets = ['BTC', 'ETH', 'XRP', 'ADA', 'DOGE', 'POL', 'DOT', 'LINK', 'UNI', 'TRUMP', 'WLFI'];
-      final symbols = comparisonSymbols ?? baseAssets.map((base) => '$base$quote').toList();
+      // TOP symbols by quote currency (top 10 by market cap + WLFI/TRUMP)
+      final Map<String, List<String>> _topVolumeSymbolsByQuote = {
+        'USDT': [
+          'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
+          'ADAUSDT', 'AVAXUSDT', 'TRXUSDT', 'MATICUSDT', 'LINKUSDT',
+          'WLFIUSDT', 'TRUMPUSDT'  // 2025 trending
+        ],
+        'EUR': ['BTCEUR', 'ETHEUR', 'BNBEUR', 'SOLEUR', 'XRPEUR', 'ADAEUR'],
+        'USD': ['BTCUSD', 'ETHUSD', 'BNBUSD', 'SOLUSD'],
+      };
+
+      final symbols = (comparisonSymbols != null && comparisonSymbols.isNotEmpty)
+          ? comparisonSymbols
+          : (_topVolumeSymbolsByQuote[quote] ?? _topVolumeSymbolsByQuote['USDT']!);
 
       // Fetch volumes for all symbols in parallel
       final volumeFutures = symbols.map((s) => get24hVolume(s));
@@ -1057,7 +1144,7 @@ class BinanceService implements BaseExchangeService {
       }
 
       final percentile = lowerCount / volumes.length;
-      debugPrint('📊 Volume percentile for $targetSymbol: ${(percentile * 100).toStringAsFixed(1)}% (volume: ${targetVolume.toStringAsFixed(0)} $quote)');
+      debugPrint('📊 Volume percentile for $targetSymbol: ${(percentile * 100).toStringAsFixed(1)}% (volume: ${targetVolume.toStringAsFixed(0)} units)');
 
       return percentile;
     } catch (e) {

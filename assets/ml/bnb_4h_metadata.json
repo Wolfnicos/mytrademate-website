@@ -1,0 +1,16 @@
+{
+  "coin": "BNB",
+  "timeframe": "4h",
+  "num_features": 76,
+  "sequence_length": 60,
+  "num_classes": 3,
+  "test_accuracy": 0.5797872543334961,
+  "train_samples": 752,
+  "test_samples": 188,
+  "model_size_kb": 79.8828125,
+  "date": "2025-11-25T08:58:11.960606",
+  "architecture": "Conv1D+Dense",
+  "tflite_ops": "BUILTIN only",
+  "tensorflow_version": "2.12.0",
+  "compatible": "iOS/Android"
+}

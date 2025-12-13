@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-// import '../services/app_settings_service.dart'; // Unused - commented out
 
 /// Dialog shown to new users offering 48-hour free trial
-/// Shows on first app launch after onboarding
+/// Compact and professional design
 class TrialActivationDialog extends StatelessWidget {
   const TrialActivationDialog({super.key});
 
@@ -23,232 +22,90 @@ class TrialActivationDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 400),
+        constraints: const BoxConstraints(maxWidth: 340),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppTheme.surface,
-              AppTheme.surface.withOpacity(0.95),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: AppTheme.primary.withOpacity(0.3),
-            width: 2,
+            color: AppTheme.primary.withOpacity(0.2),
+            width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.primary.withOpacity(0.2),
+              color: Colors.black.withOpacity(0.3),
               blurRadius: 30,
               spreadRadius: 5,
             ),
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacing24),
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Premium icon
+              // Premium icon - smaller
               Container(
-                width: 80,
-                height: 80,
+                width: 64,
+                height: 64,
                 decoration: BoxDecoration(
                   gradient: AppTheme.primaryGradient,
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primary.withOpacity(0.3),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                    ),
-                  ],
                 ),
                 child: const Icon(
-                  Icons.workspace_premium,
+                  Icons.rocket_launch_rounded,
                   color: Colors.white,
-                  size: 40,
+                  size: 32,
                 ),
               ),
 
-              const SizedBox(height: AppTheme.spacing20),
+              const SizedBox(height: 20),
 
-              // Title
+              // Title - more compact
               Text(
-                '🎁 Welcome to MyTradeMate!',
-                style: AppTheme.displayMedium.copyWith(
+                'Try Pro Free',
+                style: TextStyle(
                   color: AppTheme.textPrimary,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
                 ),
-                textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: AppTheme.spacing12),
+              const SizedBox(height: 8),
 
               // Subtitle
               Text(
-                'Start your FREE 48-hour trial',
-                style: AppTheme.headingLarge.copyWith(
+                '48 hours • All features unlocked',
+                style: TextStyle(
                   color: AppTheme.primary,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                 ),
-                textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: AppTheme.spacing24),
+              const SizedBox(height: 24),
 
-              // Features during trial
-              Container(
-                padding: const EdgeInsets.all(AppTheme.spacing16),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                  border: Border.all(
-                    color: AppTheme.primary.withOpacity(0.3),
-                  ),
+              // Features - compact row
+              _buildCompactFeatures(),
+
+              const SizedBox(height: 24),
+
+              // Action buttons - stacked for cleaner look
+              _buildStartButton(context),
+
+              const SizedBox(height: 12),
+
+              // Skip button - subtle
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.textTertiary,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Full Pro Access for 48 hours:',
-                      style: AppTheme.bodyLarge.copyWith(
-                        color: AppTheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.spacing12),
-                    _buildFeature('All timeframes (5m, 15m, 1h, 4h, 1d)'),
-                    _buildFeature('Advanced AI predictions'),
-                    _buildFeature('Market volatility indicators'),
-                    _buildFeature('Full trading capabilities'),
-                  ],
+                child: const Text(
+                  'Skip for now',
+                  style: TextStyle(fontSize: 14),
                 ),
-              ),
-
-              const SizedBox(height: AppTheme.spacing20),
-
-              // What happens after trial
-              Container(
-                padding: const EdgeInsets.all(AppTheme.spacing16),
-                decoration: BoxDecoration(
-                  color: AppTheme.warning.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                  border: Border.all(
-                    color: AppTheme.warning.withOpacity(0.3),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.info_outline, color: AppTheme.warning, size: 20),
-                        const SizedBox(width: AppTheme.spacing8),
-                        Text(
-                          'After trial ends:',
-                          style: AppTheme.bodyMedium.copyWith(
-                            color: AppTheme.warning,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppTheme.spacing8),
-                    Text(
-                      '• FREE tier: 4H timeframe only\n'
-                      '• PRO: €6.99/month - unlock all features',
-                      style: AppTheme.bodySmall.copyWith(
-                        color: AppTheme.textSecondary,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: AppTheme.spacing24),
-
-              // Action buttons
-              Row(
-                children: [
-                  // Maybe Later button
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.textSecondary,
-                        side: BorderSide(color: AppTheme.glassBorder),
-                        padding: const EdgeInsets.symmetric(vertical: AppTheme.spacing12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                        ),
-                      ),
-                      child: const Text('Maybe Later'),
-                    ),
-                  ),
-
-                  const SizedBox(width: AppTheme.spacing12),
-
-                  // Start Trial button
-                  Expanded(
-                    flex: 2,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primary.withOpacity(0.3),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          foregroundColor: Colors.white,
-                          shadowColor: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(vertical: AppTheme.spacing12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.rocket_launch, size: 20, color: Colors.white),
-                            const SizedBox(width: AppTheme.spacing8),
-                            const Text(
-                              'Start FREE Trial',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppTheme.spacing12),
-
-              // Fine print
-              Text(
-                'No credit card required • Cancel anytime',
-                style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.textTertiary,
-                  fontSize: 11,
-                ),
-                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -257,34 +114,71 @@ class TrialActivationDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildFeature(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppTheme.spacing8),
+  Widget _buildCompactFeatures() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: AppTheme.success.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.check,
-              color: AppTheme.success,
-              size: 14,
-            ),
-          ),
-          const SizedBox(width: AppTheme.spacing12),
-          Expanded(
-            child: Text(
-              text,
-              style: AppTheme.bodyMedium.copyWith(
-                color: AppTheme.textSecondary,
-              ),
-            ),
-          ),
+          _buildFeatureIcon(Icons.auto_graph_rounded, '5 Timeframes'),
+          _buildFeatureIcon(Icons.psychology_rounded, 'AI Signals'),
+          _buildFeatureIcon(Icons.insights_rounded, 'Insights'),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureIcon(IconData icon, String label) {
+    return Column(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: AppTheme.primary, size: 24),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStartButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton(
+        onPressed: () => Navigator.of(context).pop(true),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: const Text(
+          'Start Free Trial',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+          ),
+        ),
       ),
     );
   }

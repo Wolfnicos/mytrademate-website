@@ -76,9 +76,9 @@ class LocalNotificationService {
       return granted ?? false;
     }
 
-    // Android: Check if notifications are enabled
+    // Android: Request permission on Android 13+ (API 33+)
     if (Platform.isAndroid) {
-      debugPrint('🔔 Android: Checking notification settings...');
+      debugPrint('🔔 Android: Requesting notification permissions...');
 
       final androidImpl = _notifications.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
@@ -88,11 +88,18 @@ class LocalNotificationService {
         return false;
       }
 
-      final enabled = await androidImpl.areNotificationsEnabled();
-      debugPrint('🔔 Android notifications enabled: $enabled');
+      // First check if already enabled
+      var enabled = await androidImpl.areNotificationsEnabled();
+      debugPrint('🔔 Android notifications currently enabled: $enabled');
 
-      // On Android 13+, if not enabled, the system will show permission dialog automatically
-      // when we try to show a notification
+      // On Android 13+ (API 33+), we need to explicitly request permission
+      if (enabled != true) {
+        debugPrint('🔔 Android: Requesting POST_NOTIFICATIONS permission...');
+        final granted = await androidImpl.requestNotificationsPermission();
+        debugPrint('🔔 Android permission request result: $granted');
+        enabled = granted;
+      }
+
       return enabled ?? false;
     }
 
@@ -235,15 +242,29 @@ class LocalNotificationService {
   static Future<bool> areNotificationsEnabled() async {
     if (!_initialized) await initialize();
 
+    if (kIsWeb) return false;
+
     // Check Android
-    final androidImpl = _notifications.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    if (androidImpl != null) {
-      final enabled = await androidImpl.areNotificationsEnabled();
-      return enabled ?? false;
+    if (Platform.isAndroid) {
+      final androidImpl = _notifications.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (androidImpl != null) {
+        final enabled = await androidImpl.areNotificationsEnabled();
+        return enabled ?? false;
+      }
     }
 
-    // iOS always returns true if permission granted during init
-    return true;
+    // Check iOS
+    if (Platform.isIOS) {
+      final iosImpl = _notifications.resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin>();
+      if (iosImpl != null) {
+        // Check notification settings
+        final settings = await iosImpl.checkPermissions();
+        return settings?.isEnabled ?? false;
+      }
+    }
+
+    return false;
   }
 }

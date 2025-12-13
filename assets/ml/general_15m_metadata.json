@@ -1,0 +1,26 @@
+{
+  "coin": "GENERAL",
+  "timeframe": "15m",
+  "num_features": 76,
+  "sequence_length": 60,
+  "num_classes": 3,
+  "test_accuracy": 0.9193954467773438,
+  "train_samples": 6352,
+  "test_samples": 1588,
+  "model_size_kb": 79.8828125,
+  "date": "2025-11-25T09:40:06.617127",
+  "architecture": "Conv1D+Dense",
+  "tflite_ops": "BUILTIN only",
+  "tensorflow_version": "2.12.0",
+  "compatible": "iOS/Android",
+  "trained_on": [
+    "BTC",
+    "ETH",
+    "BNB",
+    "SOL",
+    "XRP",
+    "ADA",
+    "AVAX",
+    "DOT"
+  ]
+}

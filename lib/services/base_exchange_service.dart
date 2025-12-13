@@ -78,8 +78,9 @@ abstract class BaseExchangeService {
   /// Get volume percentile for a symbol (0.0 to 1.0)
   /// Used by ML service for volume-aware predictions
   /// @param symbol - Trading pair (e.g., 'BTCEUR', 'ETHUSDT')
+  /// @param comparisonSymbols - Optional list of symbols to compare against (defaults to top coins by quote currency)
   /// @returns Volume percentile (0.0 = lowest, 1.0 = highest)
-  Future<double> getVolumePercentile(String symbol);
+  Future<double> getVolumePercentile(String symbol, {List<String>? comparisonSymbols});
 
   /// Build trading pair symbol in exchange-specific format
   /// @param base - Base currency (e.g., 'BTC', 'ETH')
@@ -89,6 +90,18 @@ abstract class BaseExchangeService {
   ///   - Coinbase: 'BTC-EUR'
   ///   - Kraken: 'XBTEUR' (BTC → XBT)
   String buildTradingPair(String base, String quote);
+
+  /// Get preferred quote currency for a base coin
+  /// Each exchange supports different trading pairs - this method returns
+  /// the best available quote currency for the given base coin.
+  /// @param base - Base currency (e.g., 'BTC', 'ETH', 'TRUMP')
+  /// @param desiredQuote - Desired quote currency (e.g., 'EUR', 'USD')
+  /// @returns Best available quote currency (falls back to USDT/USD if desired not available)
+  /// Example:
+  ///   - Binance.getPreferredQuote('BTC', 'EUR') → 'EUR' (BTCEUR exists)
+  ///   - Binance.getPreferredQuote('TRUMP', 'EUR') → 'USDT' (TRUMPEUR doesn't exist)
+  ///   - Coinbase.getPreferredQuote('BTC', 'EUR') → 'EUR' (BTC-EUR exists)
+  String getPreferredQuote(String base, String desiredQuote);
 
   // ===================================
   // Time Synchronization

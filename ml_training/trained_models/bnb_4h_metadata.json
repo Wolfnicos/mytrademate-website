@@ -1,0 +1,14 @@
+{
+  "coin": "BNB",
+  "timeframe": "4h",
+  "num_features": 76,
+  "sequence_length": 60,
+  "num_classes": 3,
+  "test_accuracy": 0.6914893388748169,
+  "train_samples": 752,
+  "test_samples": 188,
+  "model_size_mb": 0.19086456298828125,
+  "date": "2025-11-25T07:23:15.125473",
+  "compatible": "iOS/Android",
+  "feature_order": "Flutter compatible (patterns first)"
+}
