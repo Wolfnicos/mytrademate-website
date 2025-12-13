@@ -297,53 +297,62 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+    final maxContentWidth = isTablet ? 600.0 : double.infinity;
+
     return Scaffold(
       backgroundColor: AppTheme.getBackground(context),
       body: SafeArea(
-        child: Column(
-          children: [
-            // Progress indicator
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: List.generate(3, (index) {
-                  return Expanded(
-                    child: Container(
-                      height: 4,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      decoration: BoxDecoration(
-                        color: _currentPage >= index
-                            ? AppTheme.primary
-                            : AppTheme.glassBorder,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxContentWidth),
+            child: Column(
+              children: [
+                // Progress indicator
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: List.generate(3, (index) {
+                      return Expanded(
+                        child: Container(
+                          height: 4,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(
+                            color: _currentPage >= index
+                                ? AppTheme.primary
+                                : AppTheme.glassBorder,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
 
-            // PageView
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                onPageChanged: (index) {
-                  setState(() => _currentPage = index);
-                },
-                children: [
-                  _buildPage1Welcome(),
-                  _buildPage2FreePremium(),
-                  _buildPage3Security(),
-                ],
-              ),
-            ),
+                // PageView
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: (index) {
+                      setState(() => _currentPage = index);
+                    },
+                    children: [
+                      _buildPage1Welcome(),
+                      _buildPage2FreePremium(),
+                      _buildPage3Security(),
+                    ],
+                  ),
+                ),
 
-            // Bottom buttons
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: _buildBottomButtons(),
+                // Bottom buttons
+                Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: _buildBottomButtons(),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -351,28 +360,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   // PAGE 1: Welcome + All Features
   Widget _buildPage1Welcome() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+    final logoSize = isTablet ? 160.0 : 120.0;
+    final titleSize = isTablet ? 42.0 : 32.0;
+    final subtitleSize = isTablet ? 22.0 : 18.0;
+
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 32.0),
       child: Column(
         children: [
-          const SizedBox(height: 20),
+          SizedBox(height: isTablet ? 40 : 20),
 
           // Logo
           Image.asset(
             'assets/logo/mytrademate-logo.png',
-            width: 120,
-            height: 120,
+            width: logoSize,
+            height: logoSize,
             fit: BoxFit.contain,
           ),
 
-          const SizedBox(height: 20),
+          SizedBox(height: isTablet ? 32 : 20),
 
           // Title
           Text(
             'MyTradeMate',
             style: AppTheme.displayLarge.copyWith(
-              fontSize: 32,
+              fontSize: titleSize,
               fontWeight: FontWeight.bold,
               color: const Color(0xFFFFC837),
             ),
@@ -383,6 +398,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Text(
             'AI-Powered Crypto Tracking',
             style: AppTheme.headingMedium.copyWith(
+              fontSize: subtitleSize,
               fontWeight: FontWeight.w600,
               color: AppTheme.getTextPrimary(context),
             ),
@@ -392,34 +408,37 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 8),
 
           Text(
-            'Your intelligent portfolio assistant with advanced AI predictions',
+            'Your intelligent portfolio assistant with advanced market insights',
             style: AppTheme.bodyMedium.copyWith(
+              fontSize: isTablet ? 17.0 : 14.0,
               color: AppTheme.getTextSecondary(context),
             ),
             textAlign: TextAlign.center,
           ),
 
-          const SizedBox(height: 32),
+          SizedBox(height: isTablet ? 48 : 32),
 
           // Feature 1
           _buildFeatureCard(
             icon: Icons.psychology_outlined,
             iconColor: const Color(0xFF0A84FF),
-            title: 'Advanced AI Predictions',
+            title: 'Advanced Market Analysis',
             description: '5 timeframes • 76 indicators • Ensemble models',
+            isTablet: isTablet,
           ),
 
-          const SizedBox(height: 12),
+          SizedBox(height: isTablet ? 16 : 12),
 
           // Feature 2
           _buildFeatureCard(
             icon: Icons.show_chart_rounded,
             iconColor: const Color(0xFF34C759),
             title: 'Multi-Timeframe Analysis',
-            description: '5 timeframes • 2-day trial, then subscription',
+            description: '5 timeframes • 7-day free trial',
+            isTablet: isTablet,
           ),
 
-          const SizedBox(height: 12),
+          SizedBox(height: isTablet ? 16 : 12),
 
           // Feature 3
           _buildFeatureCard(
@@ -427,9 +446,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             iconColor: const Color(0xFFAF52DE),
             title: 'Portfolio Tracking',
             description: 'Real-time balances • P&L • Performance analytics',
+            isTablet: isTablet,
           ),
 
-          const SizedBox(height: 12),
+          SizedBox(height: isTablet ? 16 : 12),
 
           // Feature 4
           _buildFeatureCard(
@@ -437,6 +457,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             iconColor: const Color(0xFF34C759),
             title: 'Secure & Private',
             description: 'Read-only access • Encrypted storage • No trade execution',
+            isTablet: isTablet,
           ),
 
           const SizedBox(height: 40),
@@ -455,7 +476,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 32),
 
           Text(
-            '2-Day Free Trial',
+            '7-Day Free Trial',
             style: AppTheme.displayLarge.copyWith(
               fontSize: 32,
               fontWeight: FontWeight.bold,
@@ -467,7 +488,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 16),
 
           Text(
-            'Full access for 2 days, then €6.99/month or €67.99/year',
+            'Full access for 7 days, then €6.99/month or €67.99/year',
             style: AppTheme.bodyLarge.copyWith(
               fontSize: 17,
               color: AppTheme.getTextSecondary(context),
@@ -496,7 +517,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     Icon(Icons.check_circle, color: AppTheme.success, size: 28),
                     const SizedBox(width: 12),
                     Text(
-                      'Trial (2 Days)',
+                      'Free Trial (7 Days)',
                       style: AppTheme.headingLarge.copyWith(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -506,11 +527,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                _buildFeature('✓ All AI predictions (5m, 15m, 1h, 4h, 1d)', fontSize: 15),
+                _buildFeature('✓ All market insights (5m, 15m, 1h, 4h, 1d)', fontSize: 15),
                 _buildFeature('✓ Portfolio view (read-only)', fontSize: 15),
                 _buildFeature('✓ Real-time price data', fontSize: 15),
                 _buildFeature('✓ Candlestick charts', fontSize: 15),
-                _buildFeature('✓ Full access for 2 days', fontSize: 15),
+                _buildFeature('✓ Full access for 7 days', fontSize: 15),
                 const SizedBox(height: 8),
                 Text(
                   'Then subscription required',
@@ -567,7 +588,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 const SizedBox(height: 20),
                 _buildFeature('✓ All features unlocked', fontSize: 15),
-                _buildFeature('✓ AI predictions on all timeframes', fontSize: 15),
+                _buildFeature('✓ Market insights on all timeframes', fontSize: 15),
                 _buildFeature('✓ Portfolio tracking', fontSize: 15),
                 _buildFeature('✓ Real-time market data', fontSize: 15),
                 const SizedBox(height: 16),
@@ -645,7 +666,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 _buildDisclaimerItem(
                   icon: Icons.bar_chart_rounded,
-                  text: 'AI predictions are not financial advice',
+                  text: 'Market insights are not financial advice',
                 ),
                 _buildDisclaimerItem(
                   icon: Icons.visibility_outlined,
@@ -784,9 +805,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     required Color iconColor,
     required String title,
     required String description,
+    bool isTablet = false,
   }) {
+    final iconBoxSize = isTablet ? 56.0 : 48.0;
+    final iconSize = isTablet ? 28.0 : 24.0;
+    final titleSize = isTablet ? 18.0 : 16.0;
+    final descSize = isTablet ? 15.0 : 13.0;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isTablet ? 20 : 16),
       decoration: BoxDecoration(
         gradient: AppTheme.glassGradient,
         borderRadius: BorderRadius.circular(16),
@@ -798,13 +825,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: iconBoxSize,
+            height: iconBoxSize,
             decoration: BoxDecoration(
               color: iconColor.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: iconColor, size: 24),
+            child: Icon(icon, color: iconColor, size: iconSize),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -814,6 +841,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Text(
                   title,
                   style: AppTheme.bodyLarge.copyWith(
+                    fontSize: titleSize,
                     fontWeight: FontWeight.w600,
                     color: AppTheme.getTextPrimary(context),
                   ),
@@ -822,6 +850,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Text(
                   description,
                   style: AppTheme.bodySmall.copyWith(
+                    fontSize: descSize,
                     color: AppTheme.getTextSecondary(context),
                   ),
                 ),

@@ -7,7 +7,6 @@ import '../services/user_coins_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/crypto_avatar.dart';
-import '../widgets/upgrade_banner.dart';
 import '../utils/responsive.dart';
 import '../providers/subscription_provider.dart';
 import '../providers/exchange_provider.dart';
@@ -359,11 +358,6 @@ class _MarketScreenState extends State<MarketScreen> {
                   ],
                 ),
               ),
-            ),
-
-            // Upgrade Banner
-            const SliverToBoxAdapter(
-              child: UpgradeBanner(),
             ),
 
             // Coin Carousel

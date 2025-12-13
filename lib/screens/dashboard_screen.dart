@@ -9,8 +9,6 @@ import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/ai_indicator.dart';
 import '../widgets/crypto_avatar.dart';
-import '../widgets/trial_banner.dart';
-import '../widgets/trial_activation_dialog.dart';
 import '../widgets/neural_engine_card.dart';
 import '../ml/ensemble_predictor.dart';
 import '../utils/responsive.dart';
@@ -26,10 +24,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Show trial dialog on first app launch (48h free trial)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeShowTrialDialog();
-    });
     // Listen to quote currency changes and rebuild all tiles
     AppSettingsService().addListener(_onSettingsChanged);
 
@@ -69,27 +63,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         // Force rebuild of all dashboard tiles with new exchange
       });
-    }
-  }
-
-  Future<void> _maybeShowTrialDialog() async {
-    if (!mounted) return;
-
-    final settings = AppSettingsService();
-    // Wait for settings to be fully loaded from SharedPreferences
-    await settings.load();
-
-    if (settings.shouldShowTrialDialog) {
-      final accepted = await TrialActivationDialog.show(context);
-      if (accepted) {
-        await settings.activateTrial();
-        // Notify SubscriptionProvider to rebuild UI (hide upgrade banners)
-        if (mounted) {
-          Provider.of<SubscriptionProvider>(context, listen: false).notifyListeners();
-        }
-      } else {
-        await settings.declineTrial();
-      }
     }
   }
 
@@ -142,11 +115,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
               ),
-            ),
-
-            // Trial Banner (shows only if in trial)
-            const SliverToBoxAdapter(
-              child: TrialBanner(),
             ),
 
             // Content

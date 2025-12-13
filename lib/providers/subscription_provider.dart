@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import '../services/app_settings_service.dart';
 import '../config/app_config.dart';
 
 /// Manages subscription state via RevenueCat
@@ -9,33 +8,17 @@ import '../config/app_config.dart';
 /// Offering: "default"
 /// Products: monthly, yearly
 ///
-/// FREE TRIAL: First 48 hours after app install grants full Pro access
+/// Free trial is managed by Apple via App Store Connect
 class SubscriptionProvider extends ChangeNotifier {
   bool _isProUser = false;
   bool _isLoading = false;
   String? _errorMessage;
 
-  /// Returns true if user has Pro subscription OR is in 48h free trial
-  bool get isProUser {
-    // Check if in trial period (48h from first launch)
-    final isInTrial = AppSettingsService().isInTrial;
-    if (isInTrial) {
-      // Log only once per minute to avoid spam
-      return true;
-    }
+  /// Returns true if user has Pro subscription (includes Apple free trial)
+  bool get isProUser => _isProUser;
 
-    // Otherwise check RevenueCat subscription
-    return _isProUser;
-  }
-
-  /// Returns true only if user has paid Pro subscription (excludes trial)
+  /// Returns true only if user has paid Pro subscription
   bool get hasProSubscription => _isProUser;
-
-  /// Returns true if user is in trial period
-  bool get isInTrial => AppSettingsService().isInTrial;
-
-  /// Get remaining trial hours (null if not in trial)
-  int? get trialHoursRemaining => AppSettingsService().trialHoursRemaining;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -140,7 +123,7 @@ class SubscriptionProvider extends ChangeNotifier {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('🎉 Welcome to Pro! Enjoy faster AI predictions.'),
+              content: Text('🎉 Welcome to Pro! Enjoy faster market insights.'),
               backgroundColor: Colors.green,
             ),
           );

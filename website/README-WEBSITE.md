@@ -83,9 +83,9 @@ All critical facts verified:
 - ✅ 26 AI models (20 active + 6 legacy)
 - ✅ 76 indicators (25 candlestick + 51 technical)
 - ✅ 5 timeframes: 5m, 15m, 1h, 4h, 1D (NOT 7d)
-- ✅ 48-hour free trial (NOT 7-day)
-- ✅ €3.99/month for first 1,000 users
-- ✅ €5.99/month regular price
+- ✅ 7-day free trial (Apple managed)
+- ✅ €6.99/month
+- ✅ €67.99/year (save 19%)
 - ✅ Zero tracking confirmed
 - ✅ TikTok verification on all pages
 

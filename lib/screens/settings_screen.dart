@@ -275,7 +275,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _userCoinsCount = coins.length;
           _coinsSource = coinsSource;
         });
-        _showSnackBar('AI Alerts enabled - monitoring ${coins.length} ${coinsSource == "api" ? "portfolio" : "popular"} coins', isError: false);
+        _showSnackBar('Market Alerts enabled - monitoring ${coins.length} ${coinsSource == "api" ? "portfolio" : "popular"} coins', isError: false);
       }
     } else {
       // Stop background monitoring
@@ -283,7 +283,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (mounted) {
         setState(() => _aiAlertsEnabled = false);
-        _showSnackBar('AI Alerts disabled', isError: false);
+        _showSnackBar('Market Alerts disabled', isError: false);
       }
     }
   }
@@ -606,17 +606,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: AppTheme.spacing24),
 
-          // AI Alerts Section
-          _buildSectionHeader('AI Opportunity Alerts', Icons.notifications_active),
+          // Market Alerts Section
+          _buildSectionHeader('Market Opportunity Alerts', Icons.notifications_active),
           GlassCard(
             child: Column(
               children: [
                 SwitchListTile(
-                  title: Text('Enable AI Alerts', style: AppTheme.bodyLarge),
+                  title: Text('Enable Market Alerts', style: AppTheme.bodyLarge),
                   subtitle: Text(
                     _aiAlertsEnabled
                         ? 'Monitoring $_userCoinsCount ${_coinsSource == "api" ? "portfolio" : "popular"} coins'
-                        : 'Get notified when AI detects opportunities',
+                        : 'Get notified when market opportunities are detected',
                     style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
                   ),
                   value: _aiAlertsEnabled,
@@ -828,7 +828,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: AppTheme.spacing8),
                         Text(
-                          'Unlock short-term AI predictions (5m–4h) and price alerts',
+                          'Unlock short-term market insights (5m–4h) and price alerts',
                           style: AppTheme.bodySmall.copyWith(
                             color: AppTheme.textSecondary,
                           ),
@@ -1607,27 +1607,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: const Icon(Icons.open_in_new, color: AppTheme.textTertiary),
                   onTap: () => _openWebsite(),
                 ),
-                // Developer Tools - only visible in debug mode
-                if (kDebugMode) ...[
-                  const Divider(color: AppTheme.glassBorder),
-                  ListTile(
-                    leading: const Icon(Icons.refresh, color: AppTheme.warning),
-                    title: Text('Reset Trial (Debug)', style: AppTheme.bodyMedium),
-                    subtitle: Text('Reset 48h trial - show dialog again', style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary)),
-                    trailing: const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
-                    onTap: () async {
-                      await AppSettingsService().resetTrialForTesting();
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Trial reset! Restart app to see dialog'),
-                            backgroundColor: AppTheme.success,
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                ],
               ],
             ),
           ),
