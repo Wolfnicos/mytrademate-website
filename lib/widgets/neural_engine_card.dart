@@ -183,11 +183,12 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
 
     return Row(
       children: [
-        // Animated brain icon with holographic glow
+        // Premium AI brain icon with neural ring
         Transform.scale(
           scale: isActive ? _pulseAnimation.value : 1.0,
           child: Container(
-            padding: const EdgeInsets.all(AppTheme.spacing16),
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
               gradient: isActive
                   ? LinearGradient(
@@ -215,10 +216,39 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
                     ]
                   : null,
             ),
-            child: const Icon(
-              Icons.psychology_alt,
-              color: Colors.white,
-              size: 28,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Outer rotating ring (neural connections effect)
+                if (isActive)
+                  Transform.rotate(
+                    angle: _flowAnimation.value * 2 * math.pi,
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                          width: 1.5,
+                          strokeAlign: BorderSide.strokeAlignOutside,
+                        ),
+                      ),
+                      child: CustomPaint(
+                        painter: _NeuralRingPainter(
+                          progress: _flowAnimation.value,
+                          color: Colors.white.withOpacity(0.6),
+                        ),
+                      ),
+                    ),
+                  ),
+                // Brain icon
+                Icon(
+                  Icons.psychology_alt,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ],
             ),
           ),
         ),
@@ -339,27 +369,65 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
   Widget _buildStatsRow() {
     return Row(
       children: [
-        Expanded(child: _buildStatCard(
+        Expanded(child: _buildStatCardIcon(
           icon: Icons.memory,
-          value: '🧠',
           label: 'On-Device AI',
           color: AppTheme.primary,
         )),
         const SizedBox(width: AppTheme.spacing12),
-        Expanded(child: _buildStatCard(
+        Expanded(child: _buildStatCardIcon(
           icon: Icons.insights,
-          value: '📊',
           label: 'Analysis',
           color: AppTheme.secondary,
         )),
         const SizedBox(width: AppTheme.spacing12),
-        Expanded(child: _buildStatCard(
+        Expanded(child: _buildStatCardIcon(
           icon: Icons.schedule,
-          value: '5',
-          label: 'Timeframes',
-          color: AppTheme.success,
+          label: 'Multi-Timeframe',
+          color: AppTheme.secondary,
         )),
       ],
+    );
+  }
+
+  Widget _buildStatCardIcon({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.spacing12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            color.withOpacity(0.15),
+            color.withOpacity(0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: AppTheme.spacing4),
+          Icon(icon, color: color, size: 32),
+          const SizedBox(height: AppTheme.spacing8),
+          Text(
+            label,
+            style: AppTheme.bodySmall.copyWith(
+              color: AppTheme.getTextTertiary(context),
+              fontSize: 10,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppTheme.spacing4),
+        ],
+      ),
     );
   }
 
@@ -449,35 +517,6 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
                   color: AppTheme.getTextTertiary(context),
                   fontSize: 11,
                 ),
-              ),
-            ),
-            // Processing speed indicator
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppTheme.spacing8,
-                vertical: AppTheme.spacing4,
-              ),
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.speed,
-                    color: AppTheme.primary,
-                    size: 12,
-                  ),
-                  const SizedBox(width: AppTheme.spacing4),
-                  Text(
-                    '< 50ms',
-                    style: AppTheme.monoMedium.copyWith(
-                      color: AppTheme.primary,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
               ),
             ),
           ],
@@ -621,6 +660,38 @@ class NeuralNetworkPainter extends CustomPainter {
   bool shouldRepaint(covariant NeuralNetworkPainter oldDelegate) {
     return oldDelegate.animation != animation ||
            oldDelegate.glowIntensity != glowIntensity;
+  }
+}
+
+/// Neural ring painter for premium icon effect
+class _NeuralRingPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  _NeuralRingPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 2;
+
+    // Draw 4 small dots around the ring that pulse
+    final dotPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    for (int i = 0; i < 4; i++) {
+      final angle = (i * math.pi / 2) + (progress * math.pi * 2);
+      final dotX = center.dx + radius * math.cos(angle);
+      final dotY = center.dy + radius * math.sin(angle);
+      final pulseSize = 2.0 + math.sin(progress * math.pi * 2 + i) * 1.0;
+      canvas.drawCircle(Offset(dotX, dotY), pulseSize, dotPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _NeuralRingPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
 
