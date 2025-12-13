@@ -29,7 +29,6 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
   late Animation<double> _glowAnimation;
 
   bool _isLoaded = false;
-  int _modelCount = 51; // Total models available in assets/ml/
 
   @override
   void initState() {
@@ -73,7 +72,6 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
         if (isLoaded != _isLoaded) {
           setState(() {
             _isLoaded = isLoaded;
-            // _modelCount stays at 51 (total available models)
           });
         }
         if (!isLoaded) {
@@ -256,7 +254,7 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
               const SizedBox(height: AppTheme.spacing4),
               Text(
                 isActive
-                    ? 'Deep Learning • $_modelCount Models • 76 Indicators'
+                    ? 'Deep Learning • Advanced Analysis'
                     : 'Initializing neural pathways...',
                 style: AppTheme.bodySmall.copyWith(
                   color: AppTheme.getTextTertiary(context),
@@ -343,15 +341,15 @@ class _NeuralEngineCardState extends State<NeuralEngineCard>
       children: [
         Expanded(child: _buildStatCard(
           icon: Icons.memory,
-          value: '$_modelCount',
-          label: 'AI Models',
+          value: '🧠',
+          label: 'On-Device AI',
           color: AppTheme.primary,
         )),
         const SizedBox(width: AppTheme.spacing12),
         Expanded(child: _buildStatCard(
           icon: Icons.insights,
-          value: '76',
-          label: 'Indicators',
+          value: '📊',
+          label: 'Analysis',
           color: AppTheme.secondary,
         )),
         const SizedBox(width: AppTheme.spacing12),

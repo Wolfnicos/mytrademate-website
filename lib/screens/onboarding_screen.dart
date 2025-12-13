@@ -422,8 +422,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           _buildFeatureCard(
             icon: Icons.psychology_outlined,
             iconColor: const Color(0xFF0A84FF),
-            title: 'Advanced Market Analysis',
-            description: '5 timeframes • 76 indicators • Ensemble models',
+            title: 'On-Device AI',
+            description: 'Advanced machine learning • Pattern recognition',
             isTablet: isTablet,
           ),
 
@@ -433,8 +433,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           _buildFeatureCard(
             icon: Icons.show_chart_rounded,
             iconColor: const Color(0xFF34C759),
-            title: 'Multi-Timeframe Analysis',
-            description: '5 timeframes • 7-day free trial',
+            title: 'Technical Analysis',
+            description: 'Multi-timeframe • Advanced indicators',
             isTablet: isTablet,
           ),
 
